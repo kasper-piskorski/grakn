@@ -19,7 +19,9 @@
 package ai.grakn.graql.internal.reasoner.cache;
 
 import ai.grakn.graql.admin.Answer;
+import ai.grakn.graql.admin.CacheEntry;
 import ai.grakn.graql.admin.MultiUnifier;
+import ai.grakn.graql.admin.QueryCache;
 import ai.grakn.graql.internal.reasoner.MultiUnifierImpl;
 import ai.grakn.graql.internal.reasoner.explanation.LookupExplanation;
 import ai.grakn.graql.internal.reasoner.iterator.LazyAnswerIterator;
@@ -42,9 +44,9 @@ import java.util.stream.Stream;
  * @author Kasper Piskorski
  *
  */
-public class LazyQueryCache<Q extends ReasonerQueryImpl> extends Cache<Q, LazyAnswerIterator>{
+public class LazyQueryCacheImpl<Q extends ReasonerQueryImpl> extends QueryCacheBase<Q, LazyAnswerIterator> {
 
-    public LazyQueryCache(){ super();}
+    public LazyQueryCacheImpl(){ super();}
 
     @Override
     public LazyAnswerIterator record(Q query, LazyAnswerIterator answers) {
@@ -134,8 +136,8 @@ public class LazyQueryCache<Q extends ReasonerQueryImpl> extends Cache<Q, LazyAn
     }
 
     @Override
-    public void remove(Cache<Q, LazyAnswerIterator> c2, Set<Q> queries) {
-        c2.getQueries().stream()
+    public void remove(QueryCache<Q, LazyAnswerIterator> c2, Set<Q> queries) {
+        c2.queries().stream()
                 .filter(queries::contains)
                 .filter(this::contains)
                 .forEach( q -> {

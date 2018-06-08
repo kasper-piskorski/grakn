@@ -64,5 +64,5 @@ public abstract class ResolutionState {
     /**
      * @return parent state of this state
      */
-    QueryStateBase getParentState(){ return parentState;}
+    public QueryStateBase getParentState(){ return parentState;}
 }

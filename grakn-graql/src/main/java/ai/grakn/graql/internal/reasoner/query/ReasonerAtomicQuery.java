@@ -32,7 +32,7 @@ import ai.grakn.graql.internal.reasoner.UnifierImpl;
 import ai.grakn.graql.internal.reasoner.atom.Atom;
 import ai.grakn.graql.internal.reasoner.atom.binary.TypeAtom;
 import ai.grakn.graql.internal.reasoner.atom.predicate.NeqPredicate;
-import ai.grakn.graql.internal.reasoner.cache.QueryCache;
+import ai.grakn.graql.internal.reasoner.cache.QueryCacheImpl;
 import ai.grakn.graql.internal.reasoner.rule.InferenceRule;
 import ai.grakn.graql.internal.reasoner.state.AnswerState;
 import ai.grakn.graql.internal.reasoner.state.AtomicStateProducer;
@@ -167,7 +167,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
     }
 
     @Override
-    public ResolutionState subGoal(Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCache<ReasonerAtomicQuery> cache){
+    public ResolutionState subGoal(Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCacheImpl<ReasonerAtomicQuery> cache){
         return new AtomicStateProducer(this, sub, u, parent, subGoals, cache);
     }
 
@@ -180,7 +180,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
     }
 
     @Override
-    public Pair<Iterator<ResolutionState>, MultiUnifier> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> visitedSubGoals, QueryCache<ReasonerAtomicQuery> cache) {
+    public Pair<Iterator<ResolutionState>, MultiUnifier> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> visitedSubGoals, QueryCacheImpl<ReasonerAtomicQuery> cache) {
         Pair<Stream<Answer>, MultiUnifier> cacheEntry = cache.getAnswerStreamWithUnifier(this);
         MultiUnifier cacheUnifier = cacheEntry.getValue().inverse();
         Iterator<AnswerState> dbIterator = cacheEntry.getKey()

@@ -46,7 +46,7 @@ import ai.grakn.graql.internal.reasoner.atom.binary.RelationshipAtom;
 import ai.grakn.graql.internal.reasoner.atom.binary.IsaAtom;
 import ai.grakn.graql.internal.reasoner.atom.predicate.IdPredicate;
 import ai.grakn.graql.internal.reasoner.atom.predicate.NeqPredicate;
-import ai.grakn.graql.internal.reasoner.cache.QueryCache;
+import ai.grakn.graql.internal.reasoner.cache.QueryCacheImpl;
 import ai.grakn.graql.internal.reasoner.explanation.JoinExplanation;
 import ai.grakn.graql.internal.reasoner.plan.ResolutionPlan;
 import ai.grakn.graql.internal.reasoner.rule.InferenceRule;
@@ -470,7 +470,7 @@ public class ReasonerQueryImpl implements ReasonerQuery {
      * @param cache query cache
      * @return resolution subGoal formed from this query
      */
-    public ResolutionState subGoal(Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCache<ReasonerAtomicQuery> cache){
+    public ResolutionState subGoal(Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCacheImpl<ReasonerAtomicQuery> cache){
         return new ConjunctiveState(this, sub, u, parent, subGoals, cache);
     }
 
@@ -482,7 +482,7 @@ public class ReasonerQueryImpl implements ReasonerQuery {
      * @param cache query cache
      * @return resolution subGoals formed from this query obtained by expanding the inferred types contained in the query
      */
-    public Stream<ResolutionState> subGoals(Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCache<ReasonerAtomicQuery> cache){
+    public Stream<ResolutionState> subGoals(Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCacheImpl<ReasonerAtomicQuery> cache){
         return getQueryStream(sub)
                 .map(q -> q.subGoal(sub, u, parent, subGoals, cache));
     }
@@ -500,18 +500,19 @@ public class ReasonerQueryImpl implements ReasonerQuery {
      * @param cache query cache
      * @return query state iterator (db iter + unifier + state iter) for this query
      */
-    public Pair<Iterator<ResolutionState>, MultiUnifier> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCache<ReasonerAtomicQuery> cache){
+    public Pair<Iterator<ResolutionState>, MultiUnifier> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCacheImpl<ReasonerAtomicQuery> cache){
         Iterator<AnswerState> dbIterator;
         Iterator<QueryStateBase> subGoalIterator;
 
+        dbIterator = this.getQuery().stream()
+                .map(ans -> ans.explain(new JoinExplanation(this, ans)))
+                .map(ans -> new AnswerState(ans, parent.getUnifier(), parent))
+                .iterator();
+
         if(!this.isRuleResolvable()) {
-            dbIterator = this.getQuery().stream()
-                    .map(ans -> ans.explain(new JoinExplanation(this, ans)))
-                    .map(ans -> new AnswerState(ans, parent.getUnifier(), parent))
-                    .iterator();
             subGoalIterator = Collections.emptyIterator();
         } else {
-            dbIterator = Collections.emptyIterator();
+            //dbIterator = Collections.emptyIterator();
             LinkedList<ReasonerQueryImpl> subQueries = new ResolutionPlan(this).queryPlan();
 
             LOG.trace("CQ plan:\n" + subQueries.stream()

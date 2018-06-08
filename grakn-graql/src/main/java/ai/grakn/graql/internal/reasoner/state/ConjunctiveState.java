@@ -22,7 +22,7 @@ import ai.grakn.graql.admin.Answer;
 import ai.grakn.graql.admin.MultiUnifier;
 import ai.grakn.graql.admin.Unifier;
 import ai.grakn.graql.internal.reasoner.MultiUnifierImpl;
-import ai.grakn.graql.internal.reasoner.cache.QueryCache;
+import ai.grakn.graql.internal.reasoner.cache.QueryCacheImpl;
 import ai.grakn.graql.internal.reasoner.query.ReasonerAtomicQuery;
 import ai.grakn.graql.internal.reasoner.query.ReasonerQueries;
 import ai.grakn.graql.internal.reasoner.query.ReasonerQueryImpl;
@@ -45,7 +45,7 @@ public class ConjunctiveState extends QueryState<ReasonerQueryImpl> {
                             Unifier u,
                             QueryStateBase parent,
                             Set<ReasonerAtomicQuery> visitedSubGoals,
-                            QueryCache<ReasonerAtomicQuery> cache) {
+                            QueryCacheImpl<ReasonerAtomicQuery> cache) {
         super(ReasonerQueries.create(q, sub), sub, u, parent, visitedSubGoals, cache);
     }
 

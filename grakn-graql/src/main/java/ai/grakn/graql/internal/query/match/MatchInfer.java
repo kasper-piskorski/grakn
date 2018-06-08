@@ -63,7 +63,6 @@ class MatchInfer extends MatchModifier {
 
         validatePattern(embeddedTx);
 
-
         try {
             Iterator<Conjunction<VarPatternAdmin>> conjIt = getPattern().getDisjunctiveNormalForm().getPatterns().iterator();
             Conjunction<VarPatternAdmin> conj = conjIt.next();

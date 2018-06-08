@@ -53,12 +53,12 @@ import java.util.stream.Stream;
  * @author Kasper Piskorski
  *
  */
-class StructuralCache<Q extends ReasonerQueryImpl>{
+class StructuralQueryCacheImpl<Q extends ReasonerQueryImpl> implements StructuralQueryCache<Q> {
 
     private final Equivalence<ReasonerQuery> equivalence = ReasonerQueryEquivalence.StructuralEquivalence;
-    private final Map<Equivalence.Wrapper<Q>, CacheEntry<Q, GraqlTraversal>> structCache;
+    private final Map<Equivalence.Wrapper<Q>, CacheEntryImpl<Q, GraqlTraversal>> structCache;
 
-    StructuralCache(){
+    StructuralQueryCacheImpl(){
         this.structCache = new HashMap<>();
     }
 
@@ -66,11 +66,12 @@ class StructuralCache<Q extends ReasonerQueryImpl>{
      * @param query to be retrieved
      * @return answer stream of provided query
      */
+    @Override
     public Stream<Answer> get(Q query){
         Equivalence.Wrapper<Q> structQuery = equivalence.wrap(query);
         EmbeddedGraknTx<?> tx = query.tx();
 
-        CacheEntry<Q, GraqlTraversal> match = structCache.get(structQuery);
+        CacheEntryImpl<Q, GraqlTraversal> match = structCache.get(structQuery);
         if (match != null){
             Q equivalentQuery = match.query();
             GraqlTraversal traversal = match.cachedElement();
@@ -85,7 +86,7 @@ class StructuralCache<Q extends ReasonerQueryImpl>{
         }
 
         GraqlTraversal traversal = GreedyTraversalPlan.createTraversal(query.getPattern(), tx);
-        structCache.put(structQuery, new CacheEntry<>(query, traversal));
+        structCache.put(structQuery, new CacheEntryImpl<>(query, traversal));
 
         return MatchBase.streamWithTraversal(query.getPattern().commonVars(), tx, traversal)
                 .map(a -> a.explain(new LookupExplanation(query)));

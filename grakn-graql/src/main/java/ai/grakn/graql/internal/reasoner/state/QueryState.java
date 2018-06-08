@@ -21,7 +21,7 @@ package ai.grakn.graql.internal.reasoner.state;
 import ai.grakn.graql.admin.Answer;
 import ai.grakn.graql.admin.MultiUnifier;
 import ai.grakn.graql.admin.Unifier;
-import ai.grakn.graql.internal.reasoner.cache.QueryCache;
+import ai.grakn.graql.internal.reasoner.cache.QueryCacheImpl;
 import ai.grakn.graql.internal.reasoner.query.ReasonerAtomicQuery;
 import ai.grakn.graql.internal.reasoner.query.ReasonerQueryImpl;
 import ai.grakn.graql.internal.reasoner.utils.Pair;
@@ -45,7 +45,7 @@ public abstract class QueryState<Q extends ReasonerQueryImpl> extends QueryState
     private final Iterator<ResolutionState> subGoalIterator;
     private final MultiUnifier cacheUnifier;
 
-    QueryState(Q query, Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCache<ReasonerAtomicQuery> cache) {
+    QueryState(Q query, Answer sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals, QueryCacheImpl<ReasonerAtomicQuery> cache) {
         super(sub, u, parent, subGoals, cache);
         this.query = query;
 
@@ -62,7 +62,7 @@ public abstract class QueryState<Q extends ReasonerQueryImpl> extends QueryState
     /**
      * @return query corresponding to this query state
      */
-    Q getQuery(){ return query;}
+    public Q getQuery(){ return query;}
 
     /**
      * @return cache unifier if any

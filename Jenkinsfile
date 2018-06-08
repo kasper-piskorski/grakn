@@ -1,4 +1,4 @@
-#!groovy
+/h#!groovy
 
 // Jenkins normally serializes every variable in a Jenkinsfile so it can pause and resume jobs.
 // This method contains variables representing 'jobs', which cannot be serialized.

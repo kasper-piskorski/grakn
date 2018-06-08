@@ -42,7 +42,10 @@ import ai.grakn.exception.PropertyNotUniqueException;
 import ai.grakn.factory.EmbeddedGraknSession;
 import ai.grakn.graql.Pattern;
 import ai.grakn.graql.QueryBuilder;
+import ai.grakn.graql.admin.QueryCache;
+import ai.grakn.graql.admin.ReasonerQuery;
 import ai.grakn.kb.admin.GraknAdmin;
+import ai.grakn.kb.internal.cache.Cache;
 import ai.grakn.kb.internal.cache.GlobalCache;
 import ai.grakn.kb.internal.cache.TxCache;
 import ai.grakn.kb.internal.concept.AttributeImpl;
@@ -114,6 +117,8 @@ public abstract class EmbeddedGraknTx<G extends Graph> implements GraknAdmin {
     private final GlobalCache globalCache;
 
     private static final @Nullable Constructor<?> queryBuilderConstructor = getQueryBuilderConstructor();
+    private @Nullable
+    QueryCache queryCache = null;
 
     private static final @Nullable Method queryExecutorFactory = getQueryExecutorFactory();
 
@@ -177,6 +182,13 @@ public abstract class EmbeddedGraknTx<G extends Graph> implements GraknAdmin {
      */
     GlobalCache getGlobalCache() {
         return globalCache;
+    }
+
+    public QueryCache getQueryCache(){ return queryCache;}
+
+    public QueryCache initQueryCache(QueryCache qc){
+        queryCache = qc;
+        return qc;
     }
 
     /**

@@ -19,7 +19,9 @@
 package ai.grakn.graql.internal.reasoner.cache;
 
 import ai.grakn.graql.admin.Answer;
+import ai.grakn.graql.admin.CacheEntry;
 import ai.grakn.graql.admin.MultiUnifier;
+import ai.grakn.graql.admin.QueryCache;
 import ai.grakn.graql.internal.query.QueryAnswer;
 import ai.grakn.graql.internal.reasoner.MultiUnifierImpl;
 import ai.grakn.graql.internal.reasoner.query.QueryAnswers;
@@ -43,9 +45,9 @@ import java.util.stream.Stream;
  * @author Kasper Piskorski
  *
  */
-public class QueryCache<Q extends ReasonerQueryImpl> extends Cache<Q, QueryAnswers> {
+public class QueryCacheImpl<Q extends ReasonerQueryImpl> extends QueryCacheBase<Q, QueryAnswers> {
 
-    public QueryCache(){
+    public QueryCacheImpl(){
         super();
     }
 
@@ -173,8 +175,8 @@ public class QueryCache<Q extends ReasonerQueryImpl> extends Cache<Q, QueryAnswe
     }
 
     @Override
-    public void remove(Cache<Q, QueryAnswers> c2, Set<Q> queries) {
-        c2.getQueries().stream()
+    public void remove(QueryCache<Q, QueryAnswers> c2, Set<Q> queries) {
+        c2.queries().stream()
                 .filter(queries::contains)
                 .filter(this::contains)
                 .forEach( q -> this.getEntry(q).cachedElement().removeAll(c2.getAnswers(q)));

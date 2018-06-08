@@ -18,7 +18,8 @@
 
 package ai.grakn.graql.internal.reasoner.cache;
 
-import ai.grakn.graql.internal.reasoner.query.ReasonerQueryImpl;
+import ai.grakn.graql.admin.CacheEntry;
+import ai.grakn.graql.admin.ReasonerQuery;
 
 /**
  *
@@ -32,16 +33,18 @@ import ai.grakn.graql.internal.reasoner.query.ReasonerQueryImpl;
  * @author Kasper Piskorski
  *
  */
-class CacheEntry<Q extends ReasonerQueryImpl, T> {
+class CacheEntryImpl<Q extends ReasonerQuery, T> implements CacheEntry<Q, T> {
 
     private final Q query;
     private final T cachedElement;
 
-    CacheEntry(Q query, T element){
+    CacheEntryImpl(Q query, T element){
         this.query = query;
         this.cachedElement = element;
     }
 
+    @Override
     public Q query(){ return query;}
+    @Override
     public T cachedElement(){ return cachedElement;}
 }

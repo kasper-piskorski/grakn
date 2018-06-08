@@ -289,10 +289,32 @@ public class GenealogyTest {
         assertThat(answers2, empty());
     }
 
+    @Test
+    public void grandDaughters(){
+        String queryString = "match (granddaughter: $x);get;";
+        GetQuery query = iqb.parse(queryString);
+        List<Answer> answers = query.execute();
+        assertEquals(answers.size(), 18);
+    }
+
+    @Test
+    public void grandDaughter(){
+        String queryString = "match (granddaughter: $x); $x id V3143; get;";
+        GetQuery query = iqb.parse(queryString);
+        List<Answer> answers = query.execute();
+        System.out.println();
+    }
+
     //TODO flaky! will fix in another PR
-    @Ignore
+    //@Ignore
     @Test
     public void grandChildrenThatAreGrandDaughters(){
+        String grandChildQuery = "match (grandchild: $x); get;";
+        String grandDaughterQuery = "match (granddaughter: $x); get;";
+
+        //List<Answer> grandChildren = iqb.<GetQuery>parse(grandChildQuery).execute();
+        //List<Answer> grandDaughter = iqb.<GetQuery>parse(grandDaughterQuery).execute();
+
         String queryString = "match "+
                 "(grandchild: $x);" +
                 "(granddaughter: $x);" +

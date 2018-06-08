@@ -19,7 +19,9 @@
 package ai.grakn.graql.internal.reasoner.cache;
 
 import ai.grakn.graql.admin.Answer;
+import ai.grakn.graql.admin.CacheEntry;
 import ai.grakn.graql.admin.MultiUnifier;
+import ai.grakn.graql.admin.QueryCache;
 import ai.grakn.graql.internal.reasoner.query.ReasonerQueryImpl;
 import ai.grakn.graql.internal.reasoner.utils.Pair;
 
@@ -48,19 +50,19 @@ import java.util.stream.Stream;
  * @author Kasper Piskorski
  *
  */
-public abstract class Cache<Q extends ReasonerQueryImpl, T extends Iterable<Answer>>{
+public abstract class QueryCacheBase<Q extends ReasonerQueryImpl, T extends Iterable<Answer>> implements QueryCache<Q, T> {
 
     private final Map<Q, CacheEntry<Q, T>> cache = new HashMap<>();
-    private final StructuralCache<Q> sCache;
+    private final StructuralQueryCache<Q> sCache;
 
-    Cache(){
-        this.sCache = new StructuralCache<>();
+    QueryCacheBase(){
+        this.sCache = new StructuralQueryCacheImpl<>();
     }
 
     /**
      * @return structural cache of this cache
      */
-    StructuralCache<Q> structuralCache(){ return sCache;}
+    StructuralQueryCache<Q> structuralCache(){ return sCache;}
 
     /**
      * @param query for which the entry is to be retrieved
@@ -74,14 +76,15 @@ public abstract class Cache<Q extends ReasonerQueryImpl, T extends Iterable<Answ
      * @param answers of the association
      * @return previous value if any or null
      */
-    CacheEntry<Q, T> putEntry(Q query, T answers){ return cache.put(query, new CacheEntry<>(query, answers));}
+    CacheEntry<Q, T> putEntry(Q query, T answers){ return cache.put(query, new CacheEntryImpl<>(query, answers));}
 
     /**
      * Perform cache union
      * @param c2 union right operand
      */
-    public void add(Cache<Q, T> c2){
-        c2.cache.keySet().forEach( q -> this.record(q, c2.getAnswers(q)));
+    @Override
+    public void add(QueryCache<Q, T> c2){
+        c2.queries().forEach( q -> this.record(q, c2.getAnswers(q)));
     }
 
     /**
@@ -89,63 +92,36 @@ public abstract class Cache<Q extends ReasonerQueryImpl, T extends Iterable<Answ
      * @param query to be checked for containment
      * @return true if cache contains the query
      */
+    @Override
     public boolean contains(Q query){ return cache.containsKey(query);}
 
     /**
      * @return all queries constituting this cache
      */
-    public Set<Q> getQueries(){ return cache.keySet();}
+    @Override
+    public Set<Q> queries(){ return cache.keySet();}
 
     /**
      * @return all (query) -> (answers) mappings
      */
+    @Override
     public Collection<CacheEntry<Q, T>> entries(){ return cache.values();}
 
     /**
      * Perform cache difference
      * @param c2 cache which mappings should be removed from this cache
      */
-    public void remove(Cache<Q, T> c2){ remove(c2, getQueries());}
+    @Override
+    public void remove(QueryCache<Q, T> c2){ remove(c2, queries());}
 
     /**
      * Clear the cache
      */
+    @Override
     public void clear(){ cache.clear();}
-
-    /**
-     * record answer iterable for a specific query and retrieve the updated answers
-     * @param query to be recorded
-     * @param answers to this query
-     * @return updated answer iterable
-     */
-    public abstract T record(Q query, T answers);
-
-    /**
-     * record answer stream for a specific query and retrieve the updated stream
-     * @param query to be recorded
-     * @param answers answer stream of the query
-     * @return updated answer stream
-     */
-    public abstract Stream<Answer> record(Q query, Stream<Answer> answers);
-
-    /**
-     * retrieve (possibly) cached answers for provided query
-     * @param query for which to retrieve answers
-     * @return unified cached answers
-     */
-    public abstract T getAnswers(Q query);
 
     public abstract Pair<T, MultiUnifier> getAnswersWithUnifier(Q query);
 
-    public abstract Stream<Answer> getAnswerStream(Q query);
-
     public abstract Pair<Stream<Answer>, MultiUnifier> getAnswerStreamWithUnifier(Q query);
-
-    /**
-     * cache subtraction of specified queries
-     * @param c2 subtraction right operand
-     * @param queries to which answers shall be subtracted
-     */
-    public abstract void remove(Cache<Q, T> c2, Set<Q> queries);
 
 }
