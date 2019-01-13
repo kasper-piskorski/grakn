@@ -68,6 +68,13 @@ public interface ValuePredicate {
     Optional<P<Object>> getPredicate();
 
     /**
+     * Get the value this predicate refers to if one is present
+     * @return the value that this predicate refers to, if one is present
+     */
+    @CheckReturnValue
+    default Optional<Object> value(){ return Optional.empty();}
+
+    /**
      * Get the inner variable that this predicate refers to, if one is present
      * @return the inner variable that this predicate refers to, if one is present
      */

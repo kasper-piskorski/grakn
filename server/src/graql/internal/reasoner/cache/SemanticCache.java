@@ -284,6 +284,7 @@ public abstract class SemanticCache<
     @Override
     public ConceptMap findAnswer(ReasonerAtomicQuery query, ConceptMap ans) {
         if(ans.isEmpty()) return ans;
+        System.out.println("Find answer for: " + ReasonerQueries.atomic(query, ans));
         ConceptMap answer = getAnswerStreamWithUnifier(ReasonerQueries.atomic(query, ans)).getKey().findFirst().orElse(null);
         if (answer != null) return answer;
 

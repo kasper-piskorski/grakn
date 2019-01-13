@@ -20,6 +20,7 @@ package grakn.core.graql.reasoner.reasoning;
 
 import com.google.common.collect.Sets;
 import grakn.core.graql.answer.ConceptMap;
+import grakn.core.graql.internal.reasoner.utils.ReasonerUtils;
 import grakn.core.graql.query.GetQuery;
 import grakn.core.graql.query.Graql;
 import grakn.core.graql.query.pattern.Statement;
@@ -41,11 +42,13 @@ import static grakn.core.graql.internal.Schema.ImplicitType.HAS_OWNER;
 import static grakn.core.graql.internal.Schema.ImplicitType.HAS_VALUE;
 import static grakn.core.graql.query.Graql.type;
 import static grakn.core.graql.query.Graql.var;
+import static grakn.core.util.GraqlTestUtil.assertCollectionsEqual;
 import static grakn.core.util.GraqlTestUtil.loadFromFileAndCommit;
 import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -218,6 +221,16 @@ public class ResourceAttachmentIT {
 
     @Test
     //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
+    public void reusingResources_attachingStrayResourceToEntityDoesntThrowErrors() {
+        try(Transaction tx = resourceAttachmentSession.transaction(Transaction.Type.WRITE)) {
+            String queryString = "match $x isa yetAnotherEntity, has derived-resource-string 'unattached'; get;";
+            List<ConceptMap> answers = tx.execute(Graql.<GetQuery>parse(queryString));
+            assertEquals(2, answers.size());
+        }
+    }
+
+    @Test
+    //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
     public void derivingResourceWithSpecificValue() {
         try(Transaction tx = resourceAttachmentSession.transaction(Transaction.Type.WRITE)) {
                         String queryString = "match $x has derived-resource-string 'value'; get;";
@@ -234,14 +247,66 @@ public class ResourceAttachmentIT {
         }
     }
 
-    @Test
-    //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
-    public void reusingResources_attachingStrayResourceToEntityDoesntThrowErrors() {
+    @Test //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
+    public void derivingResources_requireNotHavingSpecificValue() {
         try(Transaction tx = resourceAttachmentSession.transaction(Transaction.Type.WRITE)) {
-                        String queryString = "match $x isa yetAnotherEntity, has derived-resource-string 'unattached'; get;";
-            List<ConceptMap> answers = tx.execute(Graql.<GetQuery>parse(queryString));
-            assertEquals(2, answers.size());
+            String queryString = "match " +
+                    "$x has derived-resource-string $val !== 'unattached';" +
+                    "get;";
+            String queryStringVariant1 = "match " +
+                    "$x has derived-resource-string $val;" +
+                    "$val !== 'unattached'; get;";
+            String queryStringVariant2 = "match " +
+                    "$x has derived-resource-string $val;" +
+                    "$unwanted 'unattached';" +
+                    "$val !== $unwanted; get;";
+
+            String complementQueryString = "match $x has derived-resource-string $val 'unattached'; get;";
+            String completeQuerssyString = "match $x has derived-resource-string $val; get;";
+
+            //List<ConceptMap> answers = tx.execute(Graql.<GetQuery>parse(queryString));
+            //List<ConceptMap> answersPrime = tx.execute(Graql.<GetQuery>parse(queryStringVariant1));
+            List<ConceptMap> answersBis = tx.execute(Graql.<GetQuery>parse(queryStringVariant2));
+
+            ///List<ConceptMap> complement = tx.execute(Graql.<GetQuery>parse(complementQueryString));
+            //List<ConceptMap> complete = tx.execute(Graql.<GetQuery>parse(completeQueryString));
+            //List<ConceptMap> expectedAnswers = ReasonerUtils.listDifference(complete, complement);
+
+           // assertCollectionsEqual(expectedAnswers, answers);
+            //assertCollectionsEqual(expectedAnswers, answersPrime);
+            //assertCollectionsEqual(expectedAnswers, answersBis);
         }
     }
 
+    @Test //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
+    public void derivingResources_requireValuesToBeDifferent() {
+        try(Transaction tx = resourceAttachmentSession.transaction(Transaction.Type.WRITE)) {
+            String queryString = "match " +
+                    "$x has derived-resource-string $val;" +
+                    "$y has reattachable-resource-string $anotherVal;" +
+                    "$val !== $anotherVal;" +
+                    "get;";
+
+            tx.stream(Graql.<GetQuery>parse(queryString)).forEach(ans -> assertNotEquals(ans.get("val"), ans.get("anotherVal")));
+        }
+    }
+
+    //TODO another bug here
+    //@Ignore
+    @Test //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
+    public void derivingResources_requireAnEntityToHaveTwoDistinctResourcesOfNotAbstractType() {
+        try(Transaction tx = resourceAttachmentSession.transaction(Transaction.Type.WRITE)) {
+            String queryString = "match " +
+                    "$x has derivable-resource-string $value;" +
+                    "$x has derivable-resource-string $unwantedValue;" +
+                    "$unwantedValue 'unattached';" +
+                    "$value !== $unwantedValue;" +
+                    "$value isa $type;" +
+                    "$unwantedValue isa $type;" +
+                    "$type != $unwantedType;" +
+                    "$unwantedType label 'derivable-resource-string';" +
+                    "get;";
+            List<ConceptMap> execute = tx.execute(Graql.<GetQuery>parse(queryString));
+        }
+    }
 }

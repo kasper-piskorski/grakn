@@ -35,7 +35,6 @@ import grakn.core.graql.concept.Type;
 import grakn.core.graql.internal.Schema;
 import grakn.core.graql.internal.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.internal.reasoner.atom.predicate.IdPredicate;
-import grakn.core.graql.internal.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.graql.internal.reasoner.utils.conversion.RoleConverter;
 import grakn.core.graql.internal.reasoner.utils.conversion.SchemaConceptConverter;
 import grakn.core.graql.internal.reasoner.utils.conversion.TypeConverter;
@@ -43,7 +42,6 @@ import grakn.core.graql.query.pattern.Statement;
 import grakn.core.graql.query.pattern.Variable;
 import grakn.core.graql.query.pattern.property.IdProperty;
 import grakn.core.graql.query.pattern.property.TypeProperty;
-import grakn.core.graql.query.pattern.property.ValueProperty;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -107,28 +105,6 @@ public class ReasonerUtils {
             if (nameProp != null) predicate = IdPredicate.create(typeVariable, Label.of(nameProp.name()), parent);
         }
         return predicate;
-    }
-
-    /**
-     * looks for appropriate var properties with a specified name among the vars and maps them to ValuePredicates,
-     * covers both the case when variable is and isn't user defined
-     * @param valueVariable variable name of interest
-     * @param valueVar {@link Statement} to look for in case the variable name is not user defined
-     * @param vars VarAdmins to look for properties
-     * @param parent reasoner query the mapped predicate should belong to
-     * @return stream of mapped ValuePredicates
-     */
-    public static Stream<ValuePredicate> getValuePredicates(Variable valueVariable, Statement valueVar, Set<Statement> vars, ReasonerQuery parent){
-        Stream<Statement> sourceVars;
-        if (valueVar.var().isUserDefinedName()) {
-            sourceVars = vars.stream()
-                    .filter(v -> v.var().equals(valueVariable))
-                    .filter(v -> v.sign() == valueVar.sign());
-        }
-        else {
-            sourceVars = Stream.of(valueVar);
-        }
-        return sourceVars.flatMap(v -> v.getProperties(ValueProperty.class).map(vp -> ValuePredicate.create(valueVariable, vp.predicate(), parent)));
     }
 
     /**
@@ -360,11 +336,11 @@ public class ReasonerUtils {
     /**
      * @param a subtraction left operand
      * @param b subtraction right operand
-     * @param <T> collection type
-     * @return new Collection containing a minus a - b.
+     * @param <T> list type
+     * @return new List containing a minus a - b.
      * The cardinality of each element e in the returned Collection will be the cardinality of e in a minus the cardinality of e in b, or zero, whichever is greater.
      */
-    public static <T> Collection<T> subtract(Collection<T> a, Collection<T> b){
+    public static <T> List<T> listDifference(List<T> a, List<T> b){
         ArrayList<T> list = new ArrayList<>(a);
         b.forEach(list::remove);
         return list;

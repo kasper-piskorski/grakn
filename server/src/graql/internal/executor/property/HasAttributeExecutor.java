@@ -28,6 +28,7 @@ import grakn.core.graql.concept.Thing;
 import grakn.core.graql.internal.Schema;
 import grakn.core.graql.internal.executor.WriteExecutor;
 import grakn.core.graql.internal.gremlin.EquivalentFragmentSet;
+import grakn.core.graql.internal.reasoner.atom.AtomicFactory;
 import grakn.core.graql.internal.reasoner.atom.binary.AttributeAtom;
 import grakn.core.graql.internal.reasoner.atom.predicate.IdPredicate;
 import grakn.core.graql.internal.reasoner.atom.predicate.ValuePredicate;
@@ -45,7 +46,6 @@ import java.util.stream.Collectors;
 import static grakn.core.graql.internal.gremlin.sets.EquivalentFragmentSets.neq;
 import static grakn.core.graql.internal.gremlin.sets.EquivalentFragmentSets.rolePlayer;
 import static grakn.core.graql.internal.reasoner.utils.ReasonerUtils.getIdPredicate;
-import static grakn.core.graql.internal.reasoner.utils.ReasonerUtils.getValuePredicates;
 
 public class HasAttributeExecutor implements PropertyExecutor.Insertable {
 
@@ -91,7 +91,7 @@ public class HasAttributeExecutor implements PropertyExecutor.Insertable {
         Variable relationVariable = property.relationship().var();
         Variable attributeVariable = property.attribute().var().asUserDefined();
         Variable predicateVariable = new Variable();
-        Set<ValuePredicate> predicates = getValuePredicates(attributeVariable, property.attribute(), otherStatements, parent).collect(Collectors.toSet());
+        Set<ValuePredicate> predicates = AtomicFactory.createValuePredicates(attributeVariable, property.attribute(), otherStatements, parent).collect(Collectors.toSet());
 
         IsaProperty isaProp = property.attribute().getProperties(IsaProperty.class).findFirst().orElse(null);
         Statement typeVar = isaProp != null ? isaProp.type() : null;

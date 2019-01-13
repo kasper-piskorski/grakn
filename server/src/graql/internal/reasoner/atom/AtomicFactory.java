@@ -21,10 +21,16 @@ package grakn.core.graql.internal.reasoner.atom;
 import grakn.core.graql.admin.Atomic;
 import grakn.core.graql.admin.ReasonerQuery;
 import grakn.core.graql.internal.executor.property.PropertyExecutor;
+import grakn.core.graql.internal.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.graql.query.pattern.Conjunction;
 import grakn.core.graql.query.pattern.Statement;
+import grakn.core.graql.query.pattern.Variable;
+import grakn.core.graql.query.pattern.property.HasAttributeProperty;
+import grakn.core.graql.query.pattern.property.ValueProperty;
 import grakn.core.graql.query.pattern.property.VarProperty;
 
+import grakn.core.graql.query.predicate.NeqPredicate;
+import grakn.core.graql.query.predicate.Predicates;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,6 +76,48 @@ public class AtomicFactory {
                 .atomic(parent, statement, statements);
         if (atomic == null) return null;
         return statement.isPositive() ? atomic : NegatedAtomic.create(atomic);
+    }
+
+    /**
+     *
+     * @param property
+     * @param statement
+     * @param parent
+     * @return
+     */
+    public static Atomic valuePredicate(ValueProperty property, Statement statement, ReasonerQuery parent){
+        HasAttributeProperty has = statement.getProperties(HasAttributeProperty.class).findFirst().orElse(null);
+        Variable var = has != null? has.attribute().var() : statement.var();
+
+        boolean isPositive = !(property.predicate() instanceof NeqPredicate);
+        Statement innerStatement = property.predicate().getInnerVar().orElse(null);
+        Object value = innerStatement != null? innerStatement : property.predicate().value().orElse(null);
+
+        if (value == null && !isPositive){
+            System.out.println();
+        }
+        Atomic atomic = ValuePredicate.create(var.asUserDefined(), isPositive? property.predicate() : Predicates.eq(value), parent);
+        return isPositive? atomic : NegatedAtomic.create(atomic);
+    }
+
+    /**
+     * looks for appropriate var properties with a specified name among the vars and maps them to ValuePredicates,
+     * covers both the case when variable is and isn't user defined
+     * @param valueVariable variable name of interest
+     * @param valueVar {@link Statement} to look for in case the variable name is not user defined
+     * @param vars VarAdmins to look for properties
+     * @param parent reasoner query the mapped predicate should belong to
+     * @return stream of mapped ValuePredicates
+     */
+    public static Stream<ValuePredicate> createValuePredicates(Variable valueVariable, Statement valueVar, Set<Statement> vars, ReasonerQuery parent){
+        Stream<Statement> sourceVars = valueVar.var().isUserDefinedName()?
+                vars.stream().filter(v -> v.var().equals(valueVariable)).filter(v -> v.isPositive() == valueVar.isPositive()) :
+                Stream.of(valueVar);
+        return sourceVars.flatMap(v -> v.getProperties(ValueProperty.class)
+                .map(vp -> createAtom(vp, valueVar, vars, parent))
+                .filter(Objects::nonNull)
+                .filter(Atomic::isPositive))
+                .map( at -> (ValuePredicate) at);
     }
 
 }

@@ -61,7 +61,7 @@ public abstract class ValuePredicate extends Predicate<grakn.core.graql.query.pr
         return create(pred.getPattern(), parent);
     }
 
-    public static Statement createValueVar(Variable name, grakn.core.graql.query.predicate.ValuePredicate pred) {
+    private static Statement createValueVar(Variable name, grakn.core.graql.query.predicate.ValuePredicate pred) {
         return new Statement(name).val(pred);
     }
 
@@ -80,7 +80,7 @@ public abstract class ValuePredicate extends Predicate<grakn.core.graql.query.pr
     }
 
     @Override
-    public String toString(){ return "[" + getVarName() + " val " + getPredicate() + "]"; }
+    public String toString(){ return "[" + getVarName() + " " + getPredicate() + "]"; }
 
     public Set<ValuePredicate> unify(Unifier u){
         Collection<Variable> vars = u.get(getVarName());

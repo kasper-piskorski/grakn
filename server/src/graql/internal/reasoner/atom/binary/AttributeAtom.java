@@ -133,10 +133,10 @@ public abstract class AttributeAtom extends Binary{
 
     @Override
     public String toString(){
-        String multiPredicateString = getMultiPredicate().isEmpty()?
-                getAttributeVariable().toString() :
-                getMultiPredicate().stream().map(Predicate::getPredicate).collect(Collectors.toSet()).toString();
-        return getVarName() + " has " + getSchemaConcept().label() + " " +
+        String multiPredicateString = getMultiPredicate().stream().map(Predicate::getPredicate).collect(Collectors.toSet()).toString();
+        return getVarName() +
+                " has " + getSchemaConcept().label() + " " +
+                getAttributeVariable().toString() + " " +
                 multiPredicateString +
                 getPredicates(Predicate.class).map(Predicate::toString).collect(Collectors.joining(""))  +
                 (getRelationVariable().isUserDefinedName()? "(" + getRelationVariable() + ")" : "");

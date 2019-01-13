@@ -30,7 +30,7 @@ import java.util.Set;
 
 /**
  *
- * Corresponds to a negative literal: ¬atomic;
+ * Corresponds to a negative literal: ¬Atomic;
  *
  */
 @AutoValue

@@ -96,9 +96,8 @@ public abstract class ComparatorPredicate implements ValuePredicate {
         });
     }
 
-    final Optional<Object> value() {
-        return value;
-    }
+    @Override
+    public Optional<Object> value() { return value; }
 
     public String toString() {
         // If there is no value, then there must be a var
