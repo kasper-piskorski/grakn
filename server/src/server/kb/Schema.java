@@ -18,6 +18,8 @@
 
 package grakn.core.server.kb;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import grakn.core.concept.Concept;
 import grakn.core.concept.Label;
 import grakn.core.concept.LabelId;
@@ -32,6 +34,7 @@ import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.concept.type.Type;
 import graql.lang.Graql;
+import java.util.Arrays;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import javax.annotation.CheckReturnValue;
@@ -146,6 +149,11 @@ public final class Schema {
         SHARD(Vertex.class),
         CONCEPT(Concept.class);//No concept actually has this base type. This is used to prevent string hardcoding
 
+        private static final Map<String, BaseType> LOOKUP = Maps.uniqueIndex(
+                Arrays.asList(BaseType.values()),
+                BaseType::name
+        );
+
         private final Class classType;
 
         BaseType(Class classType) {
@@ -155,6 +163,10 @@ public final class Schema {
         @CheckReturnValue
         public Class getClassType() {
             return classType;
+        }
+
+        public static BaseType fromString(String name){
+            return LOOKUP.get(name);
         }
     }
 

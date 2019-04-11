@@ -20,6 +20,7 @@ package grakn.core.graql.gremlin.fragment;
 
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import grakn.core.graql.gremlin.spanningtree.graph.DirectedEdge;
 import grakn.core.graql.gremlin.spanningtree.graph.Node;
 import grakn.core.graql.gremlin.spanningtree.graph.NodeId;
@@ -57,10 +58,16 @@ public abstract class OutIsaFragment extends Fragment {
             GraphTraversal<Vertex, ? extends Element> traversal, TransactionOLTP graph, Collection<Variable> vars) {
 
         // from the traversal, branch to take either of these paths
+
+        //return traversal.out(ISA.getLabel()).out(SHARD.getLabel());
+        return Fragments.isVertex(traversal).out(ISA.getLabel()).out(SHARD.getLabel());
+
+        /*
         return Fragments.union(traversal, ImmutableSet.of(
                 Fragments.isVertex(__.identity()).out(ISA.getLabel()).out(SHARD.getLabel()),
                 edgeTraversal() // what is this doing?
         ));
+        */
     }
 
     private GraphTraversal<Element, Vertex> edgeTraversal() {
@@ -83,7 +90,7 @@ public abstract class OutIsaFragment extends Fragment {
         Node end = new Node(NodeId.of(NodeId.NodeType.VAR, end()));
         Node middle = new Node(NodeId.of(NodeId.NodeType.ISA, new HashSet<>(Arrays.asList(start(), end()))));
         middle.setInvalidStartingPoint();
-        return new HashSet<>(Arrays.asList(start, end, middle));
+        return Sets.newHashSet(start, end, middle);
     }
 
     @Override

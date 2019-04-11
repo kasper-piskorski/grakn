@@ -68,7 +68,7 @@ class ConjunctionQuery {
         }
 
         ImmutableSet<EquivalentFragmentSet> fragmentSets =
-                statements.stream().flatMap(statements -> equivalentFragmentSetsRecursive(statements)).collect(toImmutableSet());
+                statements.stream().flatMap(ConjunctionQuery::equivalentFragmentSetsRecursive).collect(toImmutableSet());
 
         // Get all variable names mentioned in non-starting fragments
         Set<Variable> names = fragmentSets.stream()
@@ -119,7 +119,7 @@ class ConjunctionQuery {
     }
 
     private static Stream<EquivalentFragmentSet> equivalentFragmentSetsRecursive(Statement statement) {
-        return statement.innerStatements().stream().flatMap(s -> equivalentFragmentSets(s));
+        return statement.innerStatements().stream().flatMap(ConjunctionQuery::equivalentFragmentSets);
     }
 
     private static Stream<EquivalentFragmentSet> equivalentFragmentSets(Statement statement) {
@@ -127,16 +127,18 @@ class ConjunctionQuery {
 
         Variable start = statement.var();
 
-        statement.properties().stream().forEach(property -> {
+        statement.properties().forEach(property -> {
             Collection<EquivalentFragmentSet> newTraversals = PropertyExecutor.create(start, property).matchFragments();
             traversals.addAll(newTraversals);
         });
 
-        if (!traversals.isEmpty()) {
-            return traversals.stream();
-        } else {
+        if (traversals.isEmpty() && start.isUserDefinedName()){
             // If this variable has no properties, only confirm that it is not internal and nothing else.
             return Stream.of(EquivalentFragmentSets.notInternalFragmentSet(null, start));
+            //return Stream.empty();
+        }
+        else{
+            return traversals.stream();
         }
     }
 }

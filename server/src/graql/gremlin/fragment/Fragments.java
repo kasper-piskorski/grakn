@@ -94,6 +94,14 @@ public class Fragments {
         return new AutoValue_OutIsaFragment(varProperty, start, end);
     }
 
+    public static Fragment inAttribute(VarProperty varProperty, Variable start, Variable end) {
+        return new AutoValue_InAttributeFragment(varProperty, start, end);
+    }
+
+    public static Fragment outAttribute(VarProperty varProperty, Variable start, Variable end) {
+        return new AutoValue_OutAttributeFragment(varProperty, start, end);
+    }
+
     public static Fragment dataType(VarProperty varProperty, Variable start, AttributeType.DataType dataType) {
         return new AutoValue_DataTypeFragment(varProperty, start, dataType);
     }

@@ -331,6 +331,7 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
             throw TransactionException.hasNotAllowed(this, attribute);
         }
 
+        //shortcut edge from this concept to the attribute concept
         EdgeElement attributeEdge = addEdge(AttributeImpl.from(attribute), Schema.EdgeLabel.ATTRIBUTE);
         if (isInferred) attributeEdge.property(Schema.EdgeProperty.IS_INFERRED, true);
         return vertex().tx().factory().buildRelation(attributeEdge, hasAttribute, hasAttributeOwner, hasAttributeValue);

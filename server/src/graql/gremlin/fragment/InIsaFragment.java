@@ -83,6 +83,7 @@ public abstract class InIsaFragment extends Fragment {
                     toVertexInstances(__.identity())
             );
         } else {
+            //return traversal.in(SHARD.getLabel()).in(ISA.getLabel());
             return toVertexInstances(vertexTraversal);
         }
     }

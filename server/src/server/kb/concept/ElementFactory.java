@@ -146,14 +146,28 @@ public final class ElementFactory {
 
     public <X extends Concept> X buildConcept(VertexElement vertexElement) {
 
+        long start2 = System.currentTimeMillis();
         ConceptId conceptId = ConceptId.of(vertexElement.property(Schema.VertexProperty.ID));
-        if (!tx.cache().isConceptCached(conceptId)) {
+        getConceptIdTime += System.currentTimeMillis() - start2;
+        //X cachedConcept = null;
+        start2 = System.currentTimeMillis();
+        X cachedConcept = tx.cache().getCachedConcept(conceptId);
+        getCachedConceptTime += System.currentTimeMillis() - start2;
+
+        if (cachedConcept == null) {
+            long start = System.currentTimeMillis();
             Schema.BaseType type;
             try {
-                type = getBaseType(vertexElement);
+                String label = vertexElement.label();
+                getVertexLabel += System.currentTimeMillis() - start;
+                type = Schema.BaseType.fromString(label);
+
             } catch (IllegalStateException e) {
                 throw TemporaryWriteException.indexOverlap(vertexElement.element(), e);
             }
+
+            baseTypeValueOfTime += System.currentTimeMillis() - start;
+            start = System.currentTimeMillis();
             Concept concept;
             switch (type) {
                 case RELATION:
@@ -186,10 +200,18 @@ public final class ElementFactory {
                 default:
                     throw TransactionException.unknownConcept(type.name());
             }
+            conceptBuildTime += System.currentTimeMillis() - start;
             tx.cache().cacheConcept(concept);
+            return (X) concept;
         }
-        return tx.cache().getCachedConcept(conceptId);
+        return cachedConcept;
     }
+
+    public static long getVertexLabel = 0;
+    public static long getConceptIdTime = 0;
+    public static long getCachedConceptTime = 0;
+    public static long baseTypeRetrieveTime = 0;
+    public static long conceptBuildTime = 0;
 
     /**
      * Constructors are called directly because this is only called when reading a known Edge or Concept.
@@ -230,7 +252,13 @@ public final class ElementFactory {
      */
     private Schema.BaseType getBaseType(VertexElement vertex) {
         try {
-            return Schema.BaseType.valueOf(vertex.label());
+            long start = System.currentTimeMillis();
+            Schema.BaseType baseType = Schema.BaseType.valueOf(vertex.label());
+            //Schema.BaseType baseType = Schema.BaseType.fromString(vertex.label());
+            //Schema.BaseType baseType = Schema.BaseType.get(vertex.label());
+            baseTypeValueOfTime += System.currentTimeMillis() - start;
+            baseTypeCalls++;
+            return baseType;
         } catch (IllegalArgumentException e) {
             //Base type appears to be invalid. Let's try getting the type via the shard edge
             Optional<VertexElement> type = vertex.getEdgesOfType(Direction.OUT, Schema.EdgeLabel.SHARD).
@@ -242,9 +270,13 @@ public final class ElementFactory {
                 if (label.equals(RELATION_TYPE.name())) return Schema.BaseType.RELATION;
                 if (label.equals(Schema.BaseType.ATTRIBUTE_TYPE.name())) return Schema.BaseType.ATTRIBUTE;
             }
+
         }
         throw new IllegalStateException("Could not determine the base type of vertex [" + vertex + "]");
     }
+
+    public static long baseTypeCalls = 0;
+    public static long baseTypeValueOfTime = 0;
 
     // ---------------------------------------- Non Concept Construction -----------------------------------------------
     public EdgeElement buildEdgeElement(Edge edge) {
@@ -272,12 +304,17 @@ public final class ElementFactory {
      * @return A VertexElement of
      */
     public VertexElement buildVertexElement(Vertex vertex) {
+        long start = System.currentTimeMillis();
         if (!tx.isValidElement(vertex)) {
             Objects.requireNonNull(vertex);
             throw TransactionException.invalidElement(vertex);
         }
-        return new VertexElement(tx, vertex);
+        VertexElement vertexElement = new VertexElement(tx, vertex);
+        buildVertexElementTime += System.currentTimeMillis() - start;
+        return vertexElement;
     }
+
+    public static long buildVertexElementTime = 0;
 
     /**
      * Creates a new Vertex in the graph and builds a VertexElement which wraps the newly created vertex

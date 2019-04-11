@@ -130,6 +130,7 @@ public class RelationReified extends ThingImpl<Relation, RelationType> implement
         }
 
         //Role player edge does not exist create a new one
+        //edge from relation concept to roleplayer concept
         EdgeElement edge = this.addEdge(ConceptVertex.from(toThing), Schema.EdgeLabel.ROLE_PLAYER);
         edge.property(Schema.EdgeProperty.RELATION_TYPE_LABEL_ID, this.type().labelId().getValue());
         edge.property(Schema.EdgeProperty.ROLE_LABEL_ID, role.labelId().getValue());

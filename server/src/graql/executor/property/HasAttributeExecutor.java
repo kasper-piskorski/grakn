@@ -25,6 +25,7 @@ import grakn.core.concept.thing.Attribute;
 import grakn.core.concept.thing.Thing;
 import grakn.core.graql.executor.WriteExecutor;
 import grakn.core.graql.gremlin.EquivalentFragmentSet;
+import grakn.core.graql.gremlin.sets.EquivalentFragmentSets;
 import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.atom.binary.AttributeAtom;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
@@ -61,6 +62,8 @@ public class HasAttributeExecutor implements PropertyExecutor.Insertable {
 
     @Override
     public Set<EquivalentFragmentSet> matchFragments() {
+
+        /*
         Label has = Schema.ImplicitType.HAS.getLabel(type);
         Label key = Schema.ImplicitType.KEY.getLabel(type);
 
@@ -81,6 +84,9 @@ public class HasAttributeExecutor implements PropertyExecutor.Insertable {
                            ImmutableSet.of(hasValueRole, keyValueRole), ImmutableSet.of(has, key)),
                 neq(property, edge1, edge2)
         );
+        */
+
+        return ImmutableSet.of(EquivalentFragmentSets.attribute(property, var, property.attribute().var()));
     }
 
     @Override

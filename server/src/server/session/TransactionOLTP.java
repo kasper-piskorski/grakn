@@ -367,13 +367,17 @@ public class TransactionOLTP implements Transaction {
         return this.txType;
     }
 
+    public static long buildConceptTime = 0;
     /**
      * @param <T>    The type of the concept being built
      * @param vertex A vertex which contains properties necessary to build a concept from.
      * @return A concept built using the provided vertex
      */
     public <T extends Concept> T buildConcept(Vertex vertex) {
-        return factory().buildConcept(vertex);
+        long start = System.currentTimeMillis();
+        Concept concept = factory().buildConcept(vertex);
+        buildConceptTime += System.currentTimeMillis() - start;
+        return (T) concept;
     }
 
     /**

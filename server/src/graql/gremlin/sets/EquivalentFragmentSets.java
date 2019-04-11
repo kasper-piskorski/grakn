@@ -115,6 +115,11 @@ public class EquivalentFragmentSets {
         return new AutoValue_IsaFragmentSet(varProperty, instance, type, mayHaveEdgeInstances);
     }
 
+    public static EquivalentFragmentSet attribute(
+            VarProperty varProperty, Variable owner, Variable value) {
+        return new AutoValue_AttributeFragmentSet(varProperty, owner, value);
+    }
+
     /**
      * An {@link EquivalentFragmentSet} that indicates a variable is not equal to another variable.
      */
