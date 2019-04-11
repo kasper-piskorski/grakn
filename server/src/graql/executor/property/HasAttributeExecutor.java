@@ -63,7 +63,6 @@ public class HasAttributeExecutor implements PropertyExecutor.Insertable {
     @Override
     public Set<EquivalentFragmentSet> matchFragments() {
 
-        /*
         Label has = Schema.ImplicitType.HAS.getLabel(type);
         Label key = Schema.ImplicitType.KEY.getLabel(type);
 
@@ -84,9 +83,9 @@ public class HasAttributeExecutor implements PropertyExecutor.Insertable {
                            ImmutableSet.of(hasValueRole, keyValueRole), ImmutableSet.of(has, key)),
                 neq(property, edge1, edge2)
         );
-        */
 
-        return ImmutableSet.of(EquivalentFragmentSets.attribute(property, var, property.attribute().var()));
+
+        //return ImmutableSet.of(EquivalentFragmentSets.attribute(property, var, property.attribute().var()));
     }
 
     @Override

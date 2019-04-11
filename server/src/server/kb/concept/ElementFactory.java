@@ -161,6 +161,7 @@ public final class ElementFactory {
                 String label = vertexElement.label();
                 getVertexLabel += System.currentTimeMillis() - start;
                 type = Schema.BaseType.fromString(label);
+                baseTypeCalls++;
 
             } catch (IllegalStateException e) {
                 throw TemporaryWriteException.indexOverlap(vertexElement.element(), e);

@@ -57,8 +57,6 @@ public class DisjunctionIterator extends ReasonerQueryIterator {
         //clear cache for now so that it only applies to this disjunction
         tx.queryCache().clear();
 
-
-
         int conjunctionIterSpanId = ServerTracing.startScopedChildSpan("DisjunctionIterator() create DNF, conjunction iterator");
 
         this.conjIterator = matchClause.getPatterns().getNegationDNF().getPatterns().stream().iterator();
@@ -67,11 +65,15 @@ public class DisjunctionIterator extends ReasonerQueryIterator {
         ServerTracing.closeScopedChildSpan(conjunctionIterSpanId);
     }
 
+    public static long resolvabilityCheckTime = 0;
+
     private Iterator<ConceptMap> conjunctionIterator(Conjunction<Pattern> conj, TransactionOLTP tx) {
+        long start = System.currentTimeMillis();
         ResolvableQuery query = ReasonerQueries.resolvable(conj, tx).rewrite();
 
         boolean doNotResolve = query.getAtoms().isEmpty()
                 || (query.isPositive() && !query.isRuleResolvable());
+        resolvabilityCheckTime += System.currentTimeMillis() - start;
 
         LOG.trace("Resolving conjunctive query ({}): {}", doNotResolve, query);
 

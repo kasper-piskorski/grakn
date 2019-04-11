@@ -96,7 +96,6 @@ public class QueryExecutor {
 
         int createStreamSpanId = ServerTracing.startScopedChildSpan("QueryExecutor.match create stream");
 
-
         Stream<ConceptMap> answerStream;
 
         validateClause(matchClause);
@@ -130,8 +129,11 @@ public class QueryExecutor {
         return answerStream;
     }
 
+    public static long validateClauseTime = 0;
+
     //TODO this should go into MatchClause
     private void validateClause(MatchClause matchClause){
+        long start = System.currentTimeMillis();
         Disjunction<Conjunction<Pattern>> negationDNF = matchClause.getPatterns().getNegationDNF();
         negationDNF.getPatterns().stream()
                 .flatMap(p -> p.statements().stream())
@@ -145,6 +147,7 @@ public class QueryExecutor {
                 throw GraqlQueryException.usingNegationWithReasoningOff(matchClause.getPatterns());
             }
         }
+        validateClauseTime += System.currentTimeMillis() - start;
     }
 
     /**

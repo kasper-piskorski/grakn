@@ -30,9 +30,11 @@ import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
 import grakn.core.graql.exception.GraqlQueryException;
+import grakn.core.graql.executor.QueryExecutor;
 import grakn.core.graql.gremlin.GraqlTraversal;
 import grakn.core.graql.gremlin.GreedyTraversalPlan;
 import grakn.core.graql.gremlin.fragment.Fragments;
+import grakn.core.graql.reasoner.DisjunctionIterator;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
 import grakn.core.graql.reasoner.graph.PathTreeGraph;
@@ -46,6 +48,7 @@ import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.MatchClause;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
 import java.util.Collections;
@@ -108,14 +111,12 @@ public class BenchmarkSmallIT {
 
                 zeroTimes();
 
-                GraqlTraversal traversal = GreedyTraversalPlan.createTraversal(pattern, tx);
-
-                System.out.println("traversal:\n" + traversal.fragments());
-
-                System.out.println("traversal:\n" + traversal.getGraphTraversal(tx, vars));
+                //GraqlTraversal traversal = GreedyTraversalPlan.createTraversal(pattern, tx);
+                //System.out.println("traversal:\n" + traversal.fragments());
+                //System.out.println("traversal:\n" + traversal.getGraphTraversal(tx, vars));
 
                 long start = System.currentTimeMillis();
-                List<ConceptMap> answers = tx.execute(Graql.match(pattern));
+                List<ConceptMap> answers = tx.execute(Graql.match(pattern), false);
                 System.out.println("exec time via graql; " + (System.currentTimeMillis() - start));
                 printTimes();
                 assertEquals(N, answers.size());
@@ -264,6 +265,9 @@ public class BenchmarkSmallIT {
     }
 
     private void zeroTimes(){
+        DisjunctionIterator.resolvabilityCheckTime = 0;
+        QueryExecutor.validateClauseTime = 0;
+        GreedyTraversalPlan.planTime = 0;
         TransactionOLTP.buildConceptTime = 0;
         ElementFactory.buildVertexElementTime = 0;
         ElementFactory.conceptBuildTime = 0;
@@ -276,6 +280,9 @@ public class BenchmarkSmallIT {
     }
 
     private void printTimes(){
+        System.out.println("DisjunctionIterator.resolvabilityCheckTime: " + DisjunctionIterator.resolvabilityCheckTime);
+        System.out.println("QueryExecutor.validateClauseTime: " + QueryExecutor.validateClauseTime);
+        System.out.println("GreedyTraversalPlan.planTime: " + GreedyTraversalPlan.planTime);
         System.out.println("TransactionOLTP.buildConceptTime: " + TransactionOLTP.buildConceptTime);
         System.out.println("ElementFactory.buildVertexElementTime: " + ElementFactory.buildVertexElementTime);
         System.out.println("ElementFactory.conceptBuildTime: " + ElementFactory.conceptBuildTime);

@@ -73,6 +73,7 @@ public class GreedyTraversalPlan {
      * @return a semi-optimal traversal plan
      */
     public static GraqlTraversal createTraversal(Pattern pattern, TransactionOLTP tx) {
+        long start = System.currentTimeMillis();
         Collection<Conjunction<Statement>> patterns = pattern.getDisjunctiveNormalForm().getPatterns();
 
         Set<? extends List<Fragment>> fragments = patterns.stream()
@@ -80,8 +81,12 @@ public class GreedyTraversalPlan {
                 .map((ConjunctionQuery query) -> planForConjunction(query, tx))
                 .collect(toImmutableSet());
 
-        return GraqlTraversal.create(fragments);
+        GraqlTraversal graqlTraversal = GraqlTraversal.create(fragments);
+        planTime += System.currentTimeMillis() - start;
+        return graqlTraversal;
     }
+
+    public static long planTime = 0;
 
     /**
      * Create a plan using Edmonds' algorithm with greedy approach to execute a single conjunction
