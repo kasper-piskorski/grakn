@@ -66,11 +66,17 @@ abstract class IdFragment extends Fragment {
         
         // We know only vertices have this property, so the cast is safe
         //noinspection unchecked
-        return (GraphTraversal<Vertex, Vertex>) traversal.has(Schema.VertexProperty.ID.name(), id().getValue());
+        //return (GraphTraversal<Vertex, Vertex>) traversal.has(Schema.VertexProperty.ID.name(), id().getValue());
+        return (GraphTraversal<Vertex, Vertex>) traversal.hasId(janusVertexId());
+        //return (GraphTraversal<Vertex, Vertex>) traversal.is(janusVertexId());
+    }
+
+    private String janusVertexId(){
+        return id().getValue().substring(1);
     }
 
     private GraphTraversal<Edge, Edge> edgeTraversal() {
-        return __.hasId(id().getValue().substring(1));
+        return __.hasId(janusVertexId());
     }
 
     @Override

@@ -99,7 +99,8 @@ final public class JanusGraphFactory {
     private static final Map<String, String> janusConfig = ImmutableMap.of(
             STORAGE_BACKEND, JANUS_PREFIX + STORAGE_BACKEND,
             STORAGE_HOSTNAME, JANUS_PREFIX + STORAGE_HOSTNAME,
-            STORAGE_REPLICATION_FACTOR, JANUS_PREFIX + STORAGE_REPLICATION_FACTOR
+            STORAGE_REPLICATION_FACTOR, JANUS_PREFIX + STORAGE_REPLICATION_FACTOR,
+            "storage.batch-loading", "true"
     );
 
     //This maps the storage backend to the needed value
@@ -118,6 +119,7 @@ final public class JanusGraphFactory {
             TraversalStrategies.GlobalCache.registerStrategies(StandardJanusGraph.class, strategies);
             TraversalStrategies.GlobalCache.registerStrategies(StandardJanusGraphTx.class, strategies);
         }
+
 
         return JanusGraph;
     }

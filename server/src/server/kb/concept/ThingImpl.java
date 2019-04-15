@@ -296,21 +296,26 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
 
     @Override
     public T has(Attribute attribute) {
-        relhas(attribute);
+        EdgeElement attributeEdge = addEdge(AttributeImpl.from(attribute), Schema.EdgeLabel.ATTRIBUTE);
+        attributeRelation(attribute, attributeEdge);
         return getThis();
     }
 
     public T attributeInferred(Attribute attribute) {
-        attributeRelation(attribute, true);
+        //shortcut edge from this concept to the attribute concept
+        EdgeElement attributeEdge = addEdge(AttributeImpl.from(attribute), Schema.EdgeLabel.ATTRIBUTE);
+        attributeEdge.property(Schema.EdgeProperty.IS_INFERRED, true);
+
+        attributeRelation(attribute, attributeEdge);
         return getThis();
     }
 
     @Override
     public Relation relhas(Attribute attribute) {
-        return attributeRelation(attribute, false);
+        return attributeRelation(attribute, null);
     }
 
-    private Relation attributeRelation(Attribute attribute, boolean isInferred) {
+    private Relation attributeRelation(Attribute attribute, EdgeElement attributeEdge) {
         Schema.ImplicitType has = Schema.ImplicitType.HAS;
         Schema.ImplicitType hasValue = Schema.ImplicitType.HAS_VALUE;
         Schema.ImplicitType hasOwner = Schema.ImplicitType.HAS_OWNER;
@@ -331,9 +336,7 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
             throw TransactionException.hasNotAllowed(this, attribute);
         }
 
-        //shortcut edge from this concept to the attribute concept
-        EdgeElement attributeEdge = addEdge(AttributeImpl.from(attribute), Schema.EdgeLabel.ATTRIBUTE);
-        if (isInferred) attributeEdge.property(Schema.EdgeProperty.IS_INFERRED, true);
+        if (attributeEdge == null) attributeEdge = addEdge(AttributeImpl.from(attribute), Schema.EdgeLabel.ATTRIBUTE);
         return vertex().tx().factory().buildRelation(attributeEdge, hasAttribute, hasAttributeOwner, hasAttributeValue);
     }
 
@@ -368,16 +371,19 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
         return cachedType.get();
     }
 
+    public static long setTypeTime = 0;
     /**
      * @param type The type of this concept
      */
     private void type(TypeImpl type) {
+        long start = System.currentTimeMillis();
         if (type != null) {
             //noinspection unchecked
             cachedType.set((V) type); //We cache the type early because it turns out we use it EVERY time. So this prevents many db reads
             type.currentShard().link(this);
             setInternalType(type);
         }
+        setTypeTime += System.currentTimeMillis() - start;
     }
 
     /**

@@ -60,14 +60,14 @@ public abstract class OutIsaFragment extends Fragment {
         // from the traversal, branch to take either of these paths
 
         //return traversal.out(ISA.getLabel()).out(SHARD.getLabel());
-        return Fragments.isVertex(traversal).out(ISA.getLabel()).out(SHARD.getLabel());
+        //return Fragments.isVertex(traversal).out(ISA.getLabel()).out(SHARD.getLabel());
 
-        /*
+
         return Fragments.union(traversal, ImmutableSet.of(
                 Fragments.isVertex(__.identity()).out(ISA.getLabel()).out(SHARD.getLabel()),
-                edgeTraversal() // what is this doing?
+                edgeTraversal() // this is to handle the type of edge attribute relation concept
         ));
-        */
+
     }
 
     private GraphTraversal<Element, Vertex> edgeTraversal() {

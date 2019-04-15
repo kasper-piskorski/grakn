@@ -18,6 +18,7 @@
 
 package grakn.core.server.kb.concept;
 
+import grakn.core.concept.Concept;
 import grakn.core.concept.thing.Attribute;
 import grakn.core.concept.type.AttributeType;
 import grakn.core.server.exception.TransactionException;
@@ -164,10 +165,14 @@ public class AttributeTypeImpl<D> extends TypeImpl<AttributeType<D>, Attribute<D
         });
     }
 
+    public static long fetchAttributeTime = 0;
     @Override
     public Attribute<D> attribute(D value) {
+        long start = System.currentTimeMillis();
         String index = Schema.generateAttributeIndex(label(), value.toString());
-        return vertex().tx().getConcept(Schema.VertexProperty.INDEX, index);
+        Attribute<D> concept = vertex().tx().getConcept(Schema.VertexProperty.INDEX, index);
+        fetchAttributeTime += System.currentTimeMillis() - start;
+        return concept;
     }
 
     /**

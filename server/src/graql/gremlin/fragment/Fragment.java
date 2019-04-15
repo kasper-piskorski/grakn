@@ -21,16 +21,20 @@ package grakn.core.graql.gremlin.fragment;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import grakn.core.concept.ConceptId;
+import grakn.core.concept.Label;
 import grakn.core.concept.type.AttributeType;
+import grakn.core.concept.type.Role;
 import grakn.core.graql.gremlin.spanningtree.graph.DirectedEdge;
 import grakn.core.graql.gremlin.spanningtree.graph.Node;
 import grakn.core.graql.gremlin.spanningtree.graph.NodeId;
 import grakn.core.graql.gremlin.spanningtree.util.Weighted;
+import grakn.core.server.kb.Schema;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Variable;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Element;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -42,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static grakn.core.graql.gremlin.spanningtree.util.Weighted.weighted;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * represents a graph traversal, with one start point and optionally an end point
@@ -239,6 +244,35 @@ public abstract class Fragment {
         } else {
             // This variable name has been encountered before, confirm it is the same
             return traversal.where(P.eq(var.symbol()));
+        }
+    }
+
+    static void applyLabelsToTraversal(
+            GraphTraversal<?, Edge> traversal, Schema.EdgeProperty property,
+            @Nullable Set<Label> typeLabels, TransactionOLTP tx) {
+
+        if (typeLabels != null) {
+            Set<Integer> typeIds =
+                    typeLabels.stream().map(label -> tx.convertToId(label).getValue()).collect(toSet());
+            traversal.has(property.name(), P.within(typeIds));
+        }
+    }
+
+    /**
+     * Optionally traverse from a {@link Schema.EdgeLabel#ROLE_PLAYER} edge to the {@link Role} it mentions, plus any super-types.
+     *
+     * @param traversal the traversal, starting from the {@link Schema.EdgeLabel#ROLE_PLAYER}  edge
+     * @param role the variable to assign to the role. If not present, do nothing
+     * @param edgeProperty the edge property to look up the role label ID
+     */
+    static void traverseToRole(
+            GraphTraversal<?, Edge> traversal, @Nullable Variable role, Schema.EdgeProperty edgeProperty,
+            Collection<Variable> vars) {
+        if (role != null) {
+            Variable edge = new Variable();
+            traversal.as(edge.symbol());
+            Fragments.outSubs(Fragments.traverseSchemaConceptFromEdge(traversal, edgeProperty));
+            assignVar(traversal, role, vars).select(edge.symbol());
         }
     }
 

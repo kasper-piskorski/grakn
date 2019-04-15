@@ -81,16 +81,23 @@ public abstract class AbstractElement<E extends Element, P extends Enum> {
         }
     }
 
+    public static long getPropertyTime = 0;
+
     /**
      * @param key The key of the non-unique property to retrieve
      * @return The value stored in the property
      */
     @Nullable
     public <X> X property(P key) {
+        long start = System.currentTimeMillis();
         Property<X> property = element().property(key.name());
         if (property != null && property.isPresent()) {
-            return property.value();
+            X value = property.value();
+
+            getPropertyTime += System.currentTimeMillis() - start;
+            return value;
         }
+        getPropertyTime += System.currentTimeMillis() - start;
         return null;
     }
 
@@ -167,11 +174,16 @@ public abstract class AbstractElement<E extends Element, P extends Enum> {
         propertyImmutable(property, newValue, foundValue, Function.identity());
     }
 
+    public static long getLabelTime = 0;
+
     /**
      * @return the label of the element in the graph.
      */
     public String label() {
-        return element().label();
+        long start = System.currentTimeMillis();
+        String label = element().label();
+        getLabelTime += System.currentTimeMillis() - start;
+        return label;
     }
 
     public final boolean isDeleted() {

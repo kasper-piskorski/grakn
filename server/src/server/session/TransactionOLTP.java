@@ -821,6 +821,8 @@ public class TransactionOLTP implements Transaction {
         closeTransaction(closeMessage);
     }
 
+    public static long validationTime = 0;
+    public static long cacheFlushTime = 0;
     /**
      * Commits and closes the transaction without returning CommitLog
      *
@@ -833,12 +835,19 @@ public class TransactionOLTP implements Transaction {
         }
         try {
             checkMutationAllowed();
+
+            long start = System.currentTimeMillis();
             validateGraph();
+
+            validationTime += System.currentTimeMillis() - start;
             // lock on the keyspace cache shared between concurrent tx's to the same keyspace
             // force serialization & atomic updates, keeping Janus and our KeyspaceCache in sync
             synchronized (keyspaceCache) {
                 commitTransactionInternal();
+
+                start = System.currentTimeMillis();
                 transactionCache.flushToKeyspaceCache();
+                cacheFlushTime += System.currentTimeMillis() - start;
             }
         } finally {
             String closeMessage = ErrorMessage.TX_CLOSED_ON_ACTION.getMessage("committed", keyspace());

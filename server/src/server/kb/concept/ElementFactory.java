@@ -64,6 +64,7 @@ public final class ElementFactory {
     }
 
     private <X extends Concept, E extends AbstractElement> X getOrBuildConcept(E element, ConceptId conceptId, Function<E, X> conceptBuilder) {
+        //TODO this does a get twice
         if (!tx.cache().isConceptCached(conceptId)) {
             X newConcept = conceptBuilder.apply(element);
             tx.cache().cacheConcept(newConcept);
@@ -141,7 +142,10 @@ public final class ElementFactory {
      * @return A concept built to the correct type
      */
     public <X extends Concept> X buildConcept(Vertex vertex) {
-        return buildConcept(buildVertexElement(vertex));
+        long start2 = System.currentTimeMillis();
+        Concept concept = buildConcept(buildVertexElement(vertex));
+        buildConceptFromVertexTime += System.currentTimeMillis() - start2;
+        return (X) concept;
     }
 
     public <X extends Concept> X buildConcept(VertexElement vertexElement) {
@@ -201,7 +205,7 @@ public final class ElementFactory {
                 default:
                     throw TransactionException.unknownConcept(type.name());
             }
-            conceptBuildTime += System.currentTimeMillis() - start;
+            buildConceptFromVElementTime += System.currentTimeMillis() - start;
             tx.cache().cacheConcept(concept);
             return (X) concept;
         }
@@ -212,7 +216,8 @@ public final class ElementFactory {
     public static long getConceptIdTime = 0;
     public static long getCachedConceptTime = 0;
     public static long baseTypeRetrieveTime = 0;
-    public static long conceptBuildTime = 0;
+    public static long buildConceptFromVertexTime = 0;
+    public static long buildConceptFromVElementTime = 0;
 
     /**
      * Constructors are called directly because this is only called when reading a known Edge or Concept.
@@ -316,6 +321,9 @@ public final class ElementFactory {
     }
 
     public static long buildVertexElementTime = 0;
+    public static long assignVertexIdTime = 0;
+    public static long addVertexTime = 0;
+    public static long vertexAdditions = 0;
 
     /**
      * Creates a new Vertex in the graph and builds a VertexElement which wraps the newly created vertex
@@ -323,9 +331,17 @@ public final class ElementFactory {
      * @return a new VertexElement
      */
     public VertexElement addVertexElement(Schema.BaseType baseType) {
+        long start = System.currentTimeMillis();
         Vertex vertex = graph.addVertex(baseType.name());
+        vertexAdditions++;
+        addVertexTime += System.currentTimeMillis() - start;
+
         String newConceptId = Schema.PREFIX_VERTEX + vertex.id().toString();
+
+        start = System.currentTimeMillis();
         vertex.property(Schema.VertexProperty.ID.name(), newConceptId);
+        assignVertexIdTime += System.currentTimeMillis() - start;
+
         tx.cache().writeOccurred();
         return new VertexElement(tx, vertex);
     }

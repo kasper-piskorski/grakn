@@ -23,9 +23,8 @@ import grakn.core.concept.type.AttributeType;
 import grakn.core.concept.type.Role;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.Type;
-
-import javax.annotation.CheckReturnValue;
 import java.util.stream.Stream;
+import javax.annotation.CheckReturnValue;
 
 /**
  * A data instance in the graph belonging to a specific Type
