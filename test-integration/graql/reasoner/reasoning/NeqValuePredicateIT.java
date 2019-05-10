@@ -20,6 +20,8 @@
 package grakn.core.graql.reasoner.reasoning;
 
 import com.google.common.collect.Iterables;
+import grakn.core.concept.Concept;
+import grakn.core.concept.Label;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQueryEquivalence;
@@ -178,23 +180,29 @@ public class NeqValuePredicateIT {
         }
     }
 
-    //TODO another bug here
-    @Ignore
     @Test //Expected result: When the head of a rule contains resource assertions, the respective unique resources should be generated or reused.
     public void derivingResources_requireAnEntityToHaveTwoDistinctResourcesOfNotAbstractType() {
-        try(TransactionOLTP tx = attributeAttachmentSession.transaction().write()) {
+        try (TransactionOLTP tx = attributeAttachmentSession.transaction().write()) {
             String queryString = "match " +
                     "$x has derivable-resource-string $value;" +
                     "$x has derivable-resource-string $unwantedValue;" +
                     "$unwantedValue 'unattached';" +
-                    "$value !== $unwantedValue;" +
                     "$value isa $type;" +
                     "$unwantedValue isa $type;" +
-                    "$type != $unwantedType;" +
-                    "$unwantedType type 'derivable-resource-string';" +
+                    "$value !== $unwantedValue;" +
+                    "$type != $unwantedType;$unwantedType type derivable-resource-string;" +
                     "get;";
             GraqlGet query = Graql.parse(queryString).asGet();
-            tx.execute(query);
+            List<ConceptMap> answers = tx.execute(query);
+            answers.forEach(ans -> {
+                Object value = ans.get("value").asAttribute().value();
+                Object unwantedValue = ans.get("unwantedValue").asAttribute().value();
+                assertNotEquals(unwantedValue, value);
+                Label type = ans.get("type").asType().label();
+                //Label unwantedType = ans.get("unwantedType").asType().label();
+                assertNotEquals(Label.of("derivable-resource-string"), type);
+            });
+            System.out.println();
         }
     }
 }
