@@ -41,6 +41,7 @@ import grakn.core.concept.type.Role;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.graql.executor.QueryExecutor;
+import grakn.core.graql.reasoner.Profiler;
 import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.server.exception.GraknServerException;
 import grakn.core.server.exception.InvalidKBException;
@@ -119,6 +120,7 @@ public class TransactionOLTP implements Transaction {
     private final RuleCache ruleCache;
     private final KeyspaceCache keyspaceCache;
     private final TransactionCache transactionCache;
+    private final Profiler profiler;
 
     // TransactionOLTP Specific
     private final org.apache.tinkerpop.gremlin.structure.Transaction janusTransaction;
@@ -165,6 +167,7 @@ public class TransactionOLTP implements Transaction {
 
         this.queryCache = new MultilevelSemanticCache();
         this.ruleCache = new RuleCache(this);
+        this.profiler = new Profiler();
 
         this.keyspaceCache = keyspaceCache;
         this.transactionCache = new TransactionCache(keyspaceCache);
@@ -177,6 +180,8 @@ public class TransactionOLTP implements Transaction {
         this.janusTransaction.open();
         this.transactionCache.updateSchemaCacheFromKeyspaceCache();
     }
+
+    public Profiler profiler(){ return profiler;}
 
 
     private void commitTransactionInternal() {

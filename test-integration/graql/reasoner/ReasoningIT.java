@@ -25,11 +25,16 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Attribute;
 import grakn.core.concept.type.AttributeType;
 import grakn.core.concept.type.RelationType;
+import grakn.core.graql.gremlin.GraqlTraversal;
+import grakn.core.graql.gremlin.TraversalPlanner;
+import grakn.core.graql.reasoner.plan.GraqlTraversalPlanner;
 import grakn.core.rule.GraknTestServer;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
+import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Variable;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -66,6 +71,82 @@ public class ReasoningIT {
     //The tests validate the correctness of the rule reasoning implementation w.r.t. the intended semantics of rules.
     //The ignored tests reveal some bugs in the reasoning algorithm, as they don't return the expected results,
     //as specified in the respective comments below.
+
+    @Test
+    public void test2(){
+        try(SessionImpl session = server.sessionWithNewKeyspace()) {
+            try (TransactionOLTP tx = session.transaction().write()) {
+                tx.execute(Graql.parse("define\n" +
+                        "person sub entity,\n" +
+                        "  has name,\n" +
+                        "  plays owner;\n" +
+
+                        "owned-object sub entity,\n" +
+                        "  has name,\n" +
+                        "  plays owned-object-test;\n" +
+
+                        "ownership sub relation,\n" +
+                        "  relates owner,\n" +
+                        "  relates owned-object-test;\n" +
+
+                        "name sub attribute,\n" +
+                        "  datatype string;").asDefine());
+                tx.commit();
+            }
+            try (TransactionOLTP tx = session.transaction().write()) {
+                tx.execute(Graql.parse("undefine owned-object sub entity;").asUndefine());
+                tx.execute(Graql.parse("define\n" +
+                        "ownership sub relation,\n" +
+                        "  relates owner,\n" +
+                        "  relates owned-object;" +
+
+                        "object sub entity,\n" +
+                        "  has name,\n" +
+                        "  plays owned-object;\n").asDefine());
+                tx.commit();
+            }
+            try (TransactionOLTP tx = session.transaction().write()) {
+                System.out.println();
+            }
+
+
+        }
+    }
+
+    @Test
+    public void test(){
+        try(SessionImpl session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "implicitRole.gql", session);
+            try(TransactionOLTP tx = session.transaction().write()){
+                tx.stream(Graql.parse("match $relationship isa @has-job-title; get;").asGet())
+                        .map(ans -> ans.get("relationship"))
+                        .forEach(concept -> {
+                            Pattern pattern = Graql.parsePattern(
+                                    "{$relationship id " + concept.id().getValue() + ";" +
+                                            "$relationship($role: $x) isa @has-job-title;};");
+                            GraqlTraversal traversal = TraversalPlanner.createTraversal(pattern, tx);
+                            List<ConceptMap> answers = tx.execute(Graql.match(pattern));
+
+                            Pattern pattern2 = Graql.parsePattern(
+                                    "{$relationship id " + concept.id().getValue() + ";" +
+                                            "$relationship isa @has-job-title;};");
+                            GraqlTraversal traversal2 = TraversalPlanner.createTraversal(pattern2, tx);
+                            List<ConceptMap> answers22 = tx.execute(Graql.match(pattern2));
+
+                            List<ConceptMap> answers3 = tx.execute(Graql.parse("match " +
+                                    "$relationship id " + concept.id().getValue() + ";" +
+                                    "$relationship($role: $x);" +
+                                    "$relationship isa @has-job-title; get $x, $role;").asGet());
+
+                            //TraversalPlanner.createTraversal()
+                            List<ConceptMap> answers2 = tx.execute(Graql.parse("match " +
+                                    "$relationship id " + concept.id().getValue() + ";" +
+                                    "$relationship($role: $x); get;").asGet());
+                            System.out.println();
+                        });
+            }
+        }
+    }
 
     @Test
     public void attributeOwnerResultsAreConsistentBetweenDifferentAccessPoints(){

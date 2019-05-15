@@ -135,6 +135,7 @@ public class ConceptUtils {
         if (answerB.isEmpty()) return answerA;
         if (answerA.isEmpty()) return answerB;
 
+        long start = System.currentTimeMillis();
         Sets.SetView<Variable> varUnion = Sets.union(answerA.vars(), answerB.vars());
         Set<Variable> varIntersection = Sets.intersection(answerA.vars(), answerB.vars());
         Map<Variable, Concept> entryMap = Sets.union(
@@ -165,7 +166,14 @@ public class ConceptUtils {
                         }
                     }
                 });
-        if (!entryMap.keySet().equals(varUnion)) return new ConceptMap();
-        return new ConceptMap(entryMap, answerA.explanation());
+        if (!entryMap.keySet().equals(varUnion)){
+            mergeTime += System.currentTimeMillis() - start;
+            return new ConceptMap();
+        }
+        ConceptMap conceptMap = new ConceptMap(entryMap, answerA.explanation());
+        mergeTime += System.currentTimeMillis() - start;
+        return conceptMap;
     }
+
+    public static long mergeTime = 0;
 }

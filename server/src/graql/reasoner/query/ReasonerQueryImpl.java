@@ -202,13 +202,20 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     public boolean equals(Object obj) {
         if (obj == null || this.getClass() != obj.getClass()) return false;
         if (obj == this) return true;
+        long start = System.currentTimeMillis();
+        tx().profiler().updateCallCount(getClass().getSimpleName()+"::equalsCount");
         ReasonerQueryImpl q2 = (ReasonerQueryImpl) obj;
-        return this.isEquivalent(q2);
+        boolean equivalent = this.isEquivalent(q2);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::equalsTime", System.currentTimeMillis() - start);
+        return equivalent;
     }
 
     @Override
     public int hashCode() {
-        return ReasonerQueryEquivalence.AlphaEquivalence.hash(this);
+        long start = System.currentTimeMillis();
+        int hash = ReasonerQueryEquivalence.AlphaEquivalence.hash(this);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::hashCode", System.currentTimeMillis() - start);
+        return hash;
     }
 
     @Override
@@ -221,12 +228,15 @@ public class ReasonerQueryImpl implements ResolvableQuery {
 
     @Override
     public Conjunction<Pattern> getPattern() {
-        return Graql.and(
+        long start = System.currentTimeMillis();
+        Conjunction<Pattern> and = Graql.and(
                 getAtoms().stream()
                         .map(Atomic::getCombinedPattern)
                         .flatMap(p -> p.statements().stream())
                         .collect(Collectors.toSet())
         );
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getPattern", System.currentTimeMillis() - start);
+        return and;
     }
 
     @Override
@@ -301,8 +311,10 @@ public class ReasonerQueryImpl implements ResolvableQuery {
 
     @Override
     public Set<Variable> getVarNames() {
+        long start = System.currentTimeMillis();
         Set<Variable> vars = new HashSet<>();
         getAtoms().forEach(atom -> vars.addAll(atom.getVarNames()));
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getVarNames", System.currentTimeMillis() - start);
         return vars;
     }
 

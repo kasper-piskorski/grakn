@@ -820,6 +820,8 @@ public abstract class RelationAtom extends IsaAtomBase {
      * @return set of possible COMPLETE mappings between this (child) and parent relation players
      */
     private Set<List<Pair<RelationProperty.RolePlayer, RelationProperty.RolePlayer>>> getRelationPlayerMappings(RelationAtom parentAtom, UnifierType unifierType) {
+        long start = System.currentTimeMillis();
+        tx().profiler().updateCallCount(getClass().getSimpleName()+"::rpMappingCount");
         SetMultimap<Variable, Type> childVarTypeMap = this.getParentQuery().getVarTypeMap(unifierType.inferTypes());
         SetMultimap<Variable, Type> parentVarTypeMap = parentAtom.getParentQuery().getVarTypeMap(unifierType.inferTypes());
 
@@ -890,7 +892,7 @@ public abstract class RelationAtom extends IsaAtomBase {
                     }
                 });
 
-        return Sets.cartesianProduct(compatibleMappingsPerParentRP).stream()
+        Set<List<Pair<RelationProperty.RolePlayer, RelationProperty.RolePlayer>>> rpMappings = Sets.cartesianProduct(compatibleMappingsPerParentRP).stream()
                 .filter(list -> !list.isEmpty())
                 //check the same child rp is not mapped to multiple parent rps
                 .filter(list -> {
@@ -904,6 +906,9 @@ public abstract class RelationAtom extends IsaAtomBase {
                     return listParentRps.containsAll(parentAtom.getRelationPlayers());
                 })
                 .collect(toSet());
+
+        tx().profiler().updateTime(getClass().getSimpleName() + "::rpMappingTime", System.currentTimeMillis() - start);
+        return rpMappings;
     }
 
     @Override

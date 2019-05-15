@@ -24,12 +24,17 @@ import grakn.core.concept.thing.Entity;
 import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
+import grakn.core.graql.reasoner.atom.binary.RelationAtom;
+import grakn.core.graql.reasoner.cache.SemanticCache;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
 import grakn.core.graql.reasoner.graph.PathTreeGraph;
 import grakn.core.graql.reasoner.graph.TransitivityChainGraph;
 import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
+import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.server.kb.concept.ConceptUtils;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
@@ -176,6 +181,11 @@ public class BenchmarkSmallIT {
         session.close();
     }
 
+    public void printTimes(){
+        System.out.println("UnifierImpl::apply: " + UnifierImpl.unifyTime);
+        System.out.println("ConceptUtils::merge: " + ConceptUtils.mergeTime);
+    }
+
     /**
      * single-rule transitivity test with initial data arranged in a chain of length N
      * The rule is given as:
@@ -193,7 +203,7 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        int N = 100;
+        int N = 200;
         int limit = 10;
         int answers = (N+1)*N/2;
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -209,10 +219,13 @@ public class BenchmarkSmallIT {
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
         assertEquals(executeQuery(query, tx, "full").size(), answers);
-        assertEquals(executeQuery(query2, tx, "With specific resource").size(), N);
+        //executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
+        tx.profiler().print();
+        printTimes();
 
-        executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
-        executeQuery(query2.match().get().limit(limit), tx, "limit " + limit);
+        //assertEquals(executeQuery(query2, tx, "With specific resource").size(), N);
+        //executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
+        //executeQuery(query2.match().get().limit(limit), tx, "limit " + limit);
         tx.close();
         session.close();
     }

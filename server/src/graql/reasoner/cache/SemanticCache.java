@@ -228,6 +228,9 @@ public abstract class SemanticCache<
             @Nullable CacheEntry<ReasonerAtomicQuery, SE> entry,
             @Nullable MultiUnifier unifier) {
 
+        long start = System.currentTimeMillis();
+        query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::recordCalls");
+
         assert(query.isPositive());
         validateAnswer(answer, query, query.getVarNames());
 
@@ -247,9 +250,13 @@ public abstract class SemanticCache<
                     .apply(answer)
                     .peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
                     .forEach(answerSet::add);
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
             return match;
         }
-        return addEntry(createEntry(query, Sets.newHashSet(answer)));
+        CacheEntry<ReasonerAtomicQuery, SE> reasonerAtomicQuerySECacheEntry = addEntry(createEntry(query, Sets.newHashSet(answer)));
+
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
+        return reasonerAtomicQuerySECacheEntry;
     }
 
     @Override
@@ -277,6 +284,9 @@ public abstract class SemanticCache<
 
     @Override
     public Pair<Stream<ConceptMap>, MultiUnifier> getAnswerStreamWithUnifier(ReasonerAtomicQuery query) {
+        long start = System.currentTimeMillis();
+        query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::getCalls");
+
         assert(query.isPositive());
         CacheEntry<ReasonerAtomicQuery, SE> match = getEntry(query);
         boolean queryGround = query.isGround();
@@ -296,12 +306,14 @@ public abstract class SemanticCache<
             if (queryDBComplete || answersToGroundQuery) return cachePair;
 
             //otherwise lookup and add inferred answers on top
-            return new Pair<>(
-                            Stream.concat(
-                                    getDBAnswerStreamWithUnifier(query).getKey(),
-                                    cachePair.getKey().filter(ans -> ans.explanation().isRuleExplanation())
-                            ),
-                            cachePair.getValue());
+            Pair<Stream<ConceptMap>, MultiUnifier> streamMultiUnifierPair = new Pair<>(
+                    Stream.concat(
+                            getDBAnswerStreamWithUnifier(query).getKey(),
+                            cachePair.getKey().filter(ans -> ans.explanation().isRuleExplanation())
+                    ),
+                    cachePair.getValue());
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "getTime", System.currentTimeMillis() - start);
+            return streamMultiUnifierPair;
         }
 
         //if no match but db-complete parent exists, use parent to create entry
@@ -312,9 +324,14 @@ public abstract class SemanticCache<
         if (fetchFromParent){
             LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
             CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
-            return new Pair<>(entryToAnswerStream(newEntry), MultiUnifierImpl.trivial());
+            Pair<Stream<ConceptMap>, MultiUnifier> streamMultiUnifierPair = new Pair<>(entryToAnswerStream(newEntry), MultiUnifierImpl.trivial());
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "getTime", System.currentTimeMillis() - start);
+            return streamMultiUnifierPair;
         }
-        return getDBAnswerStreamWithUnifier(query);
+
+        Pair<Stream<ConceptMap>, MultiUnifier> dbAnswerStreamWithUnifier = getDBAnswerStreamWithUnifier(query);
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "getTime", System.currentTimeMillis() - start);
+        return dbAnswerStreamWithUnifier;
     }
 
     @Override
