@@ -184,6 +184,8 @@ public class BenchmarkSmallIT {
     public void printTimes(){
         System.out.println("UnifierImpl::apply: " + UnifierImpl.unifyTime);
         System.out.println("ConceptUtils::merge: " + ConceptUtils.mergeTime);
+        System.out.println("ConceptUtils::disjointSet: " + ConceptUtils.disjointSetTime);
+        System.out.println("ConceptUtils::disjointType: " + ConceptUtils.disjointTypeTime);
     }
 
     /**
@@ -203,7 +205,7 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        int N = 200;
+        int N = 800;
         int limit = 10;
         int answers = (N+1)*N/2;
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -214,12 +216,11 @@ public class BenchmarkSmallIT {
 
         String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
         GraqlGet query = Graql.parse(queryString).asGet();
-
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
-        assertEquals(executeQuery(query, tx, "full").size(), answers);
-        //executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
+        //assertEquals(executeQuery(query, tx, "full").size(), answers);
+        executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
         tx.profiler().print();
         printTimes();
 

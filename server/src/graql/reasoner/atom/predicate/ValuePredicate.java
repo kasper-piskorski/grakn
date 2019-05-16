@@ -103,12 +103,18 @@ public class ValuePredicate extends Predicate<ValueProperty.Operation> {
 
     @Override
     public boolean isCompatibleWith(Object obj) {
-        if (this.isAlphaEquivalent(obj)) return true;
+        long start = System.currentTimeMillis();
+        if (this.isAlphaEquivalent(obj)){
+            tx().profiler().updateTime(getClass().getSimpleName() + "::isCompatibleWith", System.currentTimeMillis() - start);
+            return true;
+        }
         if (obj == null || this.getClass() != obj.getClass()) return false;
         if (obj == this) return true;
         ValuePredicate that = (ValuePredicate) obj;
-        return ValueExecutor.Operation.of(this.getPredicate())
+        boolean compatible = ValueExecutor.Operation.of(this.getPredicate())
                 .isCompatible(ValueExecutor.Operation.of(that.getPredicate()));
+        tx().profiler().updateTime(getClass().getSimpleName() + "::isCompatibleWith", System.currentTimeMillis() - start);
+        return compatible;
     }
 
     @Override

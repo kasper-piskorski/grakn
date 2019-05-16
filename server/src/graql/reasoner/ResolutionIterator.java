@@ -44,6 +44,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
     private long oldAns = 0;
     private final ResolvableQuery query;
     private final Set<ConceptMap> answers = new HashSet<>();
+    private final Set<ReasonerAtomicQuery> subGoals;
 
     private final Stack<ResolutionState> states = new Stack<>();
 
@@ -57,6 +58,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
     public ResolutionIterator(ResolvableQuery q, Set<ReasonerAtomicQuery> subGoals, boolean reiterate){
         this.query = q;
         this.reiterationRequired = reiterate;
+        this.subGoals = subGoals;
         states.push(query.subGoal(new ConceptMap(), new UnifierImpl(), null, subGoals));
     }
 
@@ -70,7 +72,12 @@ public class ResolutionIterator extends ReasonerQueryIterator {
                 return state.getSubstitution();
             }
 
+            /*
+            long start = System.currentTimeMillis();
             state.completionQueries().forEach(toComplete::add);
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::toComplete", System.currentTimeMillis() - start);
+            query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::processedStates");
+            */
 
             ResolutionState newState = state.generateSubGoal();
             if (newState != null) {
@@ -111,7 +118,8 @@ public class ResolutionIterator extends ReasonerQueryIterator {
             }
         }
 
-        toComplete.forEach(query.tx().queryCache()::ackCompleteness);
+        subGoals.forEach(query.tx().queryCache()::ackCompleteness);
+        //toComplete.forEach(query.tx().queryCache()::ackCompleteness);
         query.tx().queryCache().propagateAnswers();
 
         return false;

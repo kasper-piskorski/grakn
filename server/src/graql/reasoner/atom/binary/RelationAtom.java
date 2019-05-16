@@ -283,8 +283,9 @@ public abstract class RelationAtom extends IsaAtomBase {
     private boolean isBaseEquivalent(Object obj){
         if (obj == null || this.getClass() != obj.getClass()) return false;
         if (obj == this) return true;
+        long start =System.currentTimeMillis();
         RelationAtom that = (RelationAtom) obj;
-        return this. isUserDefined() == that.isUserDefined()
+        boolean equivalent = this.isUserDefined() == that.isUserDefined()
                 && this.getPredicateVariable().isReturned() == that.getPredicateVariable().isReturned()
                 && this.isDirect() == that.isDirect()
                 && Objects.equals(this.getTypeId(), that.getTypeId())
@@ -292,6 +293,9 @@ public abstract class RelationAtom extends IsaAtomBase {
                 && this.getRolePlayers().size() == that.getRolePlayers().size()
                 && this.getRelationPlayers().size() == that.getRelationPlayers().size()
                 && this.getRoleLabels().equals(that.getRoleLabels());
+
+        tx().profiler().updateTime(getClass().getSimpleName() + "::isBaseEquivalent", System.currentTimeMillis() - start);
+        return equivalent;
     }
 
     private int baseHashCode(){
@@ -303,21 +307,28 @@ public abstract class RelationAtom extends IsaAtomBase {
 
     @Override
     public boolean isAlphaEquivalent(Object obj) {
+        long start =System.currentTimeMillis();
         if (!isBaseEquivalent(obj)) return false;
         RelationAtom that = (RelationAtom) obj;
-        return !this.getMultiUnifier(that, UnifierType.EXACT).equals(MultiUnifierImpl.nonExistent());
+        boolean equivalent = !this.getMultiUnifier(that, UnifierType.EXACT).equals(MultiUnifierImpl.nonExistent());
+        tx().profiler().updateTime(getClass().getSimpleName() + "::isAlphaEquivalent", System.currentTimeMillis() - start);
+        return equivalent;
     }
 
     @Override
     public boolean isStructurallyEquivalent(Object obj) {
+        long start =System.currentTimeMillis();
         if (!isBaseEquivalent(obj)) return false;
         RelationAtom that = (RelationAtom) obj;
-        return !this.getMultiUnifier(that, UnifierType.STRUCTURAL).equals(MultiUnifierImpl.nonExistent());
+        boolean equivalent = !this.getMultiUnifier(that, UnifierType.STRUCTURAL).equals(MultiUnifierImpl.nonExistent());
+        tx().profiler().updateTime(getClass().getSimpleName() + "::isStructurallyEquivalent", System.currentTimeMillis() - start);
+        return equivalent;
     }
 
     @Memoized
     @Override
     public int alphaEquivalenceHashCode() {
+        long start = System.currentTimeMillis();
         int equivalenceHashCode = baseHashCode();
         SortedSet<Integer> hashes = new TreeSet<>();
         this.getRoleTypeMap().entries().stream()
@@ -329,6 +340,7 @@ public abstract class RelationAtom extends IsaAtomBase {
                 .sorted(Comparator.comparing(Map.Entry::getValue))
                 .forEach(e -> hashes.add(e.hashCode()));
         for (Integer hash : hashes) equivalenceHashCode = equivalenceHashCode * 37 + hash;
+        tx().profiler().updateTime(getClass().getSimpleName() + "::alphaEquivalenceHashCode", System.currentTimeMillis() - start);
         return equivalenceHashCode;
     }
 
@@ -829,6 +841,16 @@ public abstract class RelationAtom extends IsaAtomBase {
         List<Set<Pair<RelationProperty.RolePlayer, RelationProperty.RolePlayer>>> compatibleMappingsPerParentRP = new ArrayList<>();
         if (parentAtom.getRelationPlayers().size() > this.getRelationPlayers().size()) return new HashSet<>();
 
+
+        Map<Variable, Set<Atomic>> childIdMap = new HashMap<>();
+        Map<Variable, Set<Atomic>> childValuePredicateMap = new HashMap<>();
+        this.getRolePlayers().forEach(crp -> {
+            childIdMap.put(crp, this.getPredicates(crp, IdPredicate.class).collect(toSet()));
+            childValuePredicateMap.put(crp, this.getPredicates(crp, ValuePredicate.class).collect(toSet()));
+        });
+
+        tx().profiler().updateTime(getClass().getSimpleName() + "::rpPreProcessTime", System.currentTimeMillis() - start);
+        long start2 = System.currentTimeMillis();
         ReasonerQuery childQuery = getParentQuery();
         parentAtom.getRelationPlayers()
                 .forEach(prp -> {
@@ -845,6 +867,7 @@ public abstract class RelationAtom extends IsaAtomBase {
                     this.getRelationPlayers().stream()
                             //check for role compatibility
                             .filter(crp -> {
+                                long st = System.currentTimeMillis();
                                 Statement childRolePattern = crp.getRole().orElse(null);
                                 if (childRolePattern == null){
                                     throw GraqlQueryException.rolePatternAbsent(this);
@@ -854,35 +877,51 @@ public abstract class RelationAtom extends IsaAtomBase {
 
                                 boolean varCompatibility = unifierType.equivalence() == null
                                         || parentRolePattern.var().isReturned() == childRolePattern.var().isReturned();
-                                return varCompatibility && unifierType.roleCompatibility(parentRole, childRole);
-                            })
-                            //check for inter-type compatibility
-                            .filter(crp -> {
-                                Variable childVar = crp.getPlayer().var();
-                                Set<Type> childTypes = childVarTypeMap.get(childVar);
-                                return unifierType.typeCompatibility(parentTypes, childTypes)
-                                        && parentTypes.stream().allMatch(parentType -> unifierType.typePlayability(childQuery, childVar, parentType));
+                                boolean compatible = varCompatibility && unifierType.roleCompatibility(parentRole, childRole);
+
+                                tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime::roleCompatibility", System.currentTimeMillis() - st);
+                                return compatible;
                             })
                             //check for substitution compatibility
                             .filter(crp -> {
+                                long st = System.currentTimeMillis();
                                 Set<Atomic> parentIds = parentAtom.getPredicates(prp.getPlayer().var(), IdPredicate.class).collect(toSet());
-                                Set<Atomic> childIds = this.getPredicates(crp.getPlayer().var(), IdPredicate.class).collect(toSet());
-                                return unifierType.idCompatibility(parentIds, childIds);
+                                Set<Atomic> childIds = childIdMap.get(crp.getPlayer().var());
+                                boolean compatible = unifierType.idCompatibility(parentIds, childIds);
+                                tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime::idCompatibility", System.currentTimeMillis() - st);
+                                return compatible;
+                            })
+                            //check for inter-type compatibility
+                            .filter(crp -> {
+                                long st = System.currentTimeMillis();
+                                Variable childVar = crp.getPlayer().var();
+                                Set<Type> childTypes = childVarTypeMap.get(childVar);
+                                boolean compatible = unifierType.typeCompatibility(parentTypes, childTypes)
+                                        && parentTypes.stream().allMatch(parentType -> unifierType.typePlayability(childQuery, childVar, parentType));
+                                tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime::typeCompatibility", System.currentTimeMillis() - st);
+                                return compatible;
                             })
                             //check for value predicate compatibility
                             .filter(crp -> {
+                                long st = System.currentTimeMillis();
                                 Set<Atomic> parentVP = parentAtom.getPredicates(prp.getPlayer().var(), ValuePredicate.class).collect(toSet());
-                                Set<Atomic> childVP = this.getPredicates(crp.getPlayer().var(), ValuePredicate.class).collect(toSet());
-                                return unifierType.valueCompatibility(parentVP, childVP);
+                                Set<Atomic> childVP = childValuePredicateMap.get(crp.getPlayer().var());
+                                boolean compatible = unifierType.valueCompatibility(parentVP, childVP);
+                                tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime::valueCompatibility", System.currentTimeMillis() - st);
+                                return compatible;
                             })
                             //check linked resources
                             .filter(crp -> {
+                                long st = System.currentTimeMillis();
                                 Variable parentVar = prp.getPlayer().var();
                                 Variable childVar = crp.getPlayer().var();
-                                return unifierType.attributeCompatibility(parentAtom.getParentQuery(), this.getParentQuery(), parentVar, childVar);
+                                boolean compatible = unifierType.attributeCompatibility(parentAtom.getParentQuery(), this.getParentQuery(), parentVar, childVar);
+                                tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime::resourceCompatibility", System.currentTimeMillis() - st);
+                                return compatible;
                             })
                             .forEach(compatibleRelationPlayers::add);
 
+                    long st = System.currentTimeMillis();
                     if (!compatibleRelationPlayers.isEmpty()) {
                         compatibleMappingsPerParentRP.add(
                                 compatibleRelationPlayers.stream()
@@ -890,8 +929,11 @@ public abstract class RelationAtom extends IsaAtomBase {
                                         .collect(Collectors.toSet())
                         );
                     }
+                    tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime::rpAddition", System.currentTimeMillis() - st);
                 });
 
+        tx().profiler().updateTime(getClass().getSimpleName() + "::rpCompatibilityTime", System.currentTimeMillis() - start2);
+        long start3 = System.currentTimeMillis();
         Set<List<Pair<RelationProperty.RolePlayer, RelationProperty.RolePlayer>>> rpMappings = Sets.cartesianProduct(compatibleMappingsPerParentRP).stream()
                 .filter(list -> !list.isEmpty())
                 //check the same child rp is not mapped to multiple parent rps
@@ -906,7 +948,7 @@ public abstract class RelationAtom extends IsaAtomBase {
                     return listParentRps.containsAll(parentAtom.getRelationPlayers());
                 })
                 .collect(toSet());
-
+        tx().profiler().updateTime(getClass().getSimpleName() + "::rpCartesianProductTime", System.currentTimeMillis() - start3);
         tx().profiler().updateTime(getClass().getSimpleName() + "::rpMappingTime", System.currentTimeMillis() - start);
         return rpMappings;
     }
@@ -918,7 +960,9 @@ public abstract class RelationAtom extends IsaAtomBase {
 
     @Override
     public MultiUnifier getMultiUnifier(Atom parentAtom, UnifierType unifierType) {
+        long start = System.currentTimeMillis();
         Unifier baseUnifier = super.getUnifier(parentAtom, unifierType);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifierSuper", System.currentTimeMillis() - start);
         if (baseUnifier == null){ return MultiUnifierImpl.nonExistent();}
 
         Set<Unifier> unifiers = new HashSet<>();
@@ -933,14 +977,19 @@ public abstract class RelationAtom extends IsaAtomBase {
             //NB: if two atoms are equal and their rp mappings are complete we return the identity unifier
             //this is important for cases like unifying ($r1: $x, $r2: $y) with itself
             //this is only for cached queries to ensure they do not produce spurious answers
-            if (ReasonerQueryEquivalence.Equality.equivalent(this.getParentQuery(), parent.getParentQuery())
-                    && containsRoleVariables
+            if (containsRoleVariables
                     && unifierType != UnifierType.RULE
                     //for subsumptive unifiers we need a meaningful (with actual variables) inverse
                     && unifierType != UnifierType.SUBSUMPTIVE
                     && !rpMappings.isEmpty()
                     && rpMappings.stream().allMatch(mapping -> mapping.size() == getRelationPlayers().size())){
-                return MultiUnifierImpl.trivial();
+                long start2 = System.currentTimeMillis();
+                boolean equal = ReasonerQueryEquivalence.Equality.equivalent(this.getParentQuery(), parent.getParentQuery());
+                tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifierEquals", System.currentTimeMillis() - start2);
+                if (equal) {
+                    tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier", System.currentTimeMillis() - start);
+                    return MultiUnifierImpl.trivial();
+                }
             }
 
             rpMappings
@@ -966,9 +1015,12 @@ public abstract class RelationAtom extends IsaAtomBase {
 
         if (!unifierType.allowsNonInjectiveMappings()
              && unifiers.stream().anyMatch(Unifier::isNonInjective) ){
+            tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier", System.currentTimeMillis() - start);
             return MultiUnifierImpl.nonExistent();
         }
-        return new MultiUnifierImpl(unifiers);
+        MultiUnifierImpl unifier = new MultiUnifierImpl(unifiers);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier", System.currentTimeMillis() - start);
+        return unifier;
     }
 
     private HashMultimap<Variable, Role> getVarRoleMap() {

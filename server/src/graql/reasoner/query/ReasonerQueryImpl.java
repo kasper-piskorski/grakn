@@ -206,6 +206,9 @@ public class ReasonerQueryImpl implements ResolvableQuery {
         tx().profiler().updateCallCount(getClass().getSimpleName()+"::equalsCount");
         ReasonerQueryImpl q2 = (ReasonerQueryImpl) obj;
         boolean equivalent = this.isEquivalent(q2);
+        if (equivalent){
+            tx().profiler().updateCallCount(getClass().getSimpleName()+"::equalsTrueCount");
+        }
         tx().profiler().updateTime(getClass().getSimpleName() + "::equalsTime", System.currentTimeMillis() - start);
         return equivalent;
     }
@@ -226,17 +229,21 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     @Override
     public void checkValid() { getAtoms().forEach(Atomic::checkValid);}
 
+    private Conjunction<Pattern> pattern = null;
+
     @Override
     public Conjunction<Pattern> getPattern() {
-        long start = System.currentTimeMillis();
-        Conjunction<Pattern> and = Graql.and(
-                getAtoms().stream()
-                        .map(Atomic::getCombinedPattern)
-                        .flatMap(p -> p.statements().stream())
-                        .collect(Collectors.toSet())
-        );
-        tx().profiler().updateTime(getClass().getSimpleName() + "::getPattern", System.currentTimeMillis() - start);
-        return and;
+        if (pattern == null) {
+            long start = System.currentTimeMillis();
+            pattern = Graql.and(
+                    getAtoms().stream()
+                            .map(Atomic::getCombinedPattern)
+                            .flatMap(p -> p.statements().stream())
+                            .collect(Collectors.toSet())
+            );
+            tx().profiler().updateTime(getClass().getSimpleName() + "::getPattern", System.currentTimeMillis() - start);
+        }
+        return pattern;
     }
 
     @Override
@@ -309,13 +316,18 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     @Override
     public Set<Atomic> getAtoms() { return atomSet;}
 
+    private Set<Variable> varNames = null;
+
     @Override
     public Set<Variable> getVarNames() {
-        long start = System.currentTimeMillis();
-        Set<Variable> vars = new HashSet<>();
-        getAtoms().forEach(atom -> vars.addAll(atom.getVarNames()));
-        tx().profiler().updateTime(getClass().getSimpleName() + "::getVarNames", System.currentTimeMillis() - start);
-        return vars;
+        if (varNames == null) {
+            long start = System.currentTimeMillis();
+            Set<Variable> vars = new HashSet<>();
+            getAtoms().forEach(atom -> vars.addAll(atom.getVarNames()));
+            varNames = vars;
+            tx().profiler().updateTime(getClass().getSimpleName() + "::getVarNames", System.currentTimeMillis() - start);
+        }
+        return varNames;
     }
 
     @Override

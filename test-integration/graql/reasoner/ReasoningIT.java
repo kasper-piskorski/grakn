@@ -73,6 +73,18 @@ public class ReasoningIT {
     //as specified in the respective comments below.
 
     @Test
+    public void test3(){
+        try(SessionImpl session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "benchmark.gql", session);
+            try (TransactionOLTP tx = session.transaction().write()) {
+                String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get; limit 5050;";
+                GraqlGet query = Graql.parse(queryString).asGet();
+                tx.execute(query);
+            }
+        }
+    }
+
+    @Test
     public void test2(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             try (TransactionOLTP tx = session.transaction().write()) {

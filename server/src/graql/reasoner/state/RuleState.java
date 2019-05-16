@@ -42,8 +42,10 @@ public class RuleState extends QueryStateBase{
 
     public RuleState(InferenceRule rule, ConceptMap sub, Unifier unifier, QueryStateBase parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
         super(sub, unifier, parent, visitedSubGoals);
+        long start = System.currentTimeMillis();
         this.bodyIterator = Iterators.singletonIterator(rule.getBody().subGoal(sub, unifier, this, visitedSubGoals));
         this.rule = rule;
+        rule.getBody().tx().profiler().updateTime(getClass().getSimpleName() + "::RuleState", System.currentTimeMillis() - start);
     }
 
     @Override

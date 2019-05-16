@@ -108,10 +108,16 @@ public class ConceptUtils {
      * @return true if type sets are disjoint - it's possible to find a disjoint pair among parent and child set
      */
     public static boolean areDisjointTypeSets(Set<? extends SchemaConcept>  parentTypes, Set<? extends SchemaConcept> childTypes, boolean direct) {
-        return childTypes.isEmpty() && !parentTypes.isEmpty()
+        long start = System.currentTimeMillis();
+        boolean areDisjoint = childTypes.isEmpty() && !parentTypes.isEmpty()
                 || parentTypes.stream().anyMatch(parent -> childTypes.stream()
                 .anyMatch(child -> ConceptUtils.areDisjointTypes(parent, child, direct)));
+        disjointSetTime += System.currentTimeMillis() - start;
+        return areDisjoint;
     }
+
+    public static long disjointSetTime = 0;
+    public static long disjointTypeTime = 0;
 
     /** determines disjointness of parent-child types, parent defines the bound on the child
      * @param parent {@link SchemaConcept}
@@ -122,7 +128,10 @@ public class ConceptUtils {
      * - false if parent non-null and child null - parents defines a constraint to satisfy
      */
     public static boolean areDisjointTypes(SchemaConcept parent, SchemaConcept child, boolean direct) {
-        return parent != null && child == null || !typesCompatible(parent, child, direct) && !typesCompatible(child, parent, direct);
+        long start = System.currentTimeMillis();
+        boolean disjoint = parent != null && child == null || !typesCompatible(parent, child, direct) && !typesCompatible(child, parent, direct);
+        disjointTypeTime += System.currentTimeMillis() - start;
+        return disjoint;
     }
 
     /**
