@@ -300,7 +300,7 @@ public abstract class SemanticCache<
                             cachePair.getKey().filter(ans -> ans.explanation().isRuleExplanation())
                     ),
                     cachePair.getValue());
-            query.tx().profiler().updateTime(getClass().getSimpleName() + "getTime", System.currentTimeMillis() - start);
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::getTime", System.currentTimeMillis() - start);
             return streamMultiUnifierPair;
         }
 
@@ -313,7 +313,7 @@ public abstract class SemanticCache<
             LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
             CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
             Pair<Stream<ConceptMap>, MultiUnifier> streamMultiUnifierPair = new Pair<>(entryToAnswerStream(newEntry), MultiUnifierImpl.trivial());
-            query.tx().profiler().updateTime(getClass().getSimpleName() + "getTime", System.currentTimeMillis() - start);
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::getTime", System.currentTimeMillis() - start);
             return streamMultiUnifierPair;
         }
 

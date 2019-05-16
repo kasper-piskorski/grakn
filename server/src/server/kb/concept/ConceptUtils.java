@@ -134,6 +134,12 @@ public class ConceptUtils {
         return disjoint;
     }
 
+    public static long mergeTime = 0;
+    public static long setTime = 0;
+    public static long setEqualityTime = 0;
+    public static long varIntersectionTime = 0;
+
+
     /**
      * perform an answer merge with optional explanation
      * NB:assumes answers are compatible (concept corresponding to join vars if any are the same)
@@ -147,6 +153,7 @@ public class ConceptUtils {
         long start = System.currentTimeMillis();
         Sets.SetView<Variable> varUnion = Sets.union(answerA.vars(), answerB.vars());
         Set<Variable> varIntersection = Sets.intersection(answerA.vars(), answerB.vars());
+
         Map<Variable, Concept> entryMap = Sets.union(
                 answerA.map().entrySet(),
                 answerB.map().entrySet()
@@ -154,6 +161,10 @@ public class ConceptUtils {
                 .stream()
                 .filter(e -> !varIntersection.contains(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        setTime += System.currentTimeMillis() - start;
+        long start2 = System.currentTimeMillis();
+
         varIntersection
                 .forEach(var -> {
                     Concept concept = answerA.get(var);
@@ -175,14 +186,21 @@ public class ConceptUtils {
                         }
                     }
                 });
-        if (!entryMap.keySet().equals(varUnion)){
+
+        varIntersectionTime += System.currentTimeMillis() - start2;
+        long start3 = System.currentTimeMillis();
+        boolean keySetsEqual = entryMap.keySet().equals(varUnion);
+        setEqualityTime += System.currentTimeMillis() - start3;
+
+        if (!keySetsEqual){
             mergeTime += System.currentTimeMillis() - start;
             return new ConceptMap();
         }
+
         ConceptMap conceptMap = new ConceptMap(entryMap, answerA.explanation());
         mergeTime += System.currentTimeMillis() - start;
         return conceptMap;
     }
 
-    public static long mergeTime = 0;
+
 }

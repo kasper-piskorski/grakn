@@ -25,6 +25,7 @@ import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
+import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.cache.SemanticCache;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
@@ -183,7 +184,11 @@ public class BenchmarkSmallIT {
 
     public void printTimes(){
         System.out.println("UnifierImpl::apply: " + UnifierImpl.unifyTime);
+        System.out.println("IndexedAnswerSet:add " + IndexedAnswerSet.addTime);
         System.out.println("ConceptUtils::merge: " + ConceptUtils.mergeTime);
+        System.out.println("    ConceptUtils::setTime: " + ConceptUtils.setTime);
+        System.out.println("    ConceptUtils::setEqualityTime: " + ConceptUtils.setEqualityTime);
+        System.out.println("    ConceptUtils::varIntersectionTime: " + ConceptUtils.varIntersectionTime);
         System.out.println("ConceptUtils::disjointSet: " + ConceptUtils.disjointSetTime);
         System.out.println("ConceptUtils::disjointType: " + ConceptUtils.disjointTypeTime);
     }
@@ -205,7 +210,7 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        int N = 800;
+        int N = 100;
         int limit = 10;
         int answers = (N+1)*N/2;
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -223,6 +228,7 @@ public class BenchmarkSmallIT {
         executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
         tx.profiler().print();
         printTimes();
+        System.out.println();
 
         //assertEquals(executeQuery(query2, tx, "With specific resource").size(), N);
         //executeQuery(query.match().get().limit(limit), tx, "limit " + limit);

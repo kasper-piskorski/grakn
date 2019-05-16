@@ -38,8 +38,10 @@ public abstract class QueryState<Q extends ReasonerQueryImpl> extends QueryState
 
     QueryState(Q query, ConceptMap sub, Unifier u, QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals) {
         super(sub, u, parent, subGoals);
+        long start = System.currentTimeMillis();
         this.query = query;
         this.subGoalIterator = query.queryStateIterator(this, subGoals);
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::QueryState", System.currentTimeMillis() - start);
     }
 
     @Override

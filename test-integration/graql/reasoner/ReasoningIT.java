@@ -20,6 +20,8 @@ package grakn.core.graql.reasoner;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import grakn.client.GraknClient;
+import grakn.core.api.Transaction;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Attribute;
@@ -76,10 +78,20 @@ public class ReasoningIT {
     public void test3(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "benchmark.gql", session);
-            try (TransactionOLTP tx = session.transaction().write()) {
-                String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get; limit 5050;";
-                GraqlGet query = Graql.parse(queryString).asGet();
-                tx.execute(query);
+            GraknClient graknClient = new GraknClient(server.grpcUri().toString());
+            GraknClient.Session remoteSession = graknClient.session(session.keyspace().name());
+
+            try (Transaction tx = remoteSession.transaction().write()) {
+                //for(int i = 0 ; i < 50; i++) {
+                   // System.out.println("i = " + i);
+                    String queryString = "match (Q-from: $x, Q-to: $y) isa Q;" +
+                                    "$x has index 'a';" +
+                                    "$y has index 'a" + "46" + "';" +
+                                    "get;";
+                    GraqlGet query = Graql.parse(queryString).asGet();
+                List<ConceptMap> answers = tx.execute(query);
+                System.out.println("answers: " + answers.size() + " depth: " + answers.iterator().next().explanation().explicit().size());
+                //}
             }
         }
     }

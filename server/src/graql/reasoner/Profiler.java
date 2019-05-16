@@ -22,7 +22,7 @@ public class Profiler {
 
     public void print(){
         registeredTimes.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .sorted(Comparator.comparing(Map.Entry::getValue))
                 .forEach(System.out::println);
         System.out.println();
 

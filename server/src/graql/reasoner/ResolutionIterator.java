@@ -72,13 +72,6 @@ public class ResolutionIterator extends ReasonerQueryIterator {
                 return state.getSubstitution();
             }
 
-            /*
-            long start = System.currentTimeMillis();
-            state.completionQueries().forEach(toComplete::add);
-            query.tx().profiler().updateTime(getClass().getSimpleName() + "::toComplete", System.currentTimeMillis() - start);
-            query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::processedStates");
-            */
-
             ResolutionState newState = state.generateSubGoal();
             if (newState != null) {
                 if (!state.isAnswerState()) states.push(state);
@@ -119,7 +112,6 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         }
 
         subGoals.forEach(query.tx().queryCache()::ackCompleteness);
-        //toComplete.forEach(query.tx().queryCache()::ackCompleteness);
         query.tx().queryCache().propagateAnswers();
 
         return false;
