@@ -48,8 +48,6 @@ public class ResolutionIterator extends ReasonerQueryIterator {
 
     private final Stack<ResolutionState> states = new Stack<>();
 
-    private Set<ReasonerAtomicQuery> toComplete = new HashSet<>();
-
     private ConceptMap nextAnswer = null;
     private final boolean reiterationRequired;
 

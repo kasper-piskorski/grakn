@@ -94,6 +94,8 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     private ConceptMap substitution = null;
     private ImmutableSetMultimap<Variable, Type> varTypeMap = null;
     private ResolutionPlan resolutionPlan = null;
+    private Conjunction<Pattern> pattern = null;
+    private Set<Variable> varNames = null;
 
     ReasonerQueryImpl(Conjunction<Statement> pattern, TransactionOLTP tx) {
         this.tx = tx;
@@ -229,8 +231,6 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     @Override
     public void checkValid() { getAtoms().forEach(Atomic::checkValid);}
 
-    private Conjunction<Pattern> pattern = null;
-
     @Override
     public Conjunction<Pattern> getPattern() {
         if (pattern == null) {
@@ -315,8 +315,6 @@ public class ReasonerQueryImpl implements ResolvableQuery {
 
     @Override
     public Set<Atomic> getAtoms() { return atomSet;}
-
-    private Set<Variable> varNames = null;
 
     @Override
     public Set<Variable> getVarNames() {

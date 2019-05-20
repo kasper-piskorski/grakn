@@ -39,9 +39,6 @@ import graql.lang.pattern.Conjunction;
 import graql.lang.pattern.Pattern;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -54,6 +51,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static grakn.core.common.util.CommonUtil.toImmutableSet;
 import static grakn.core.graql.gremlin.NodesUtil.buildNodesWithDependencies;
@@ -66,7 +65,9 @@ import static grakn.core.graql.gremlin.fragment.Fragment.SHARD_LOAD_FACTOR;
  */
 public class TraversalPlanner {
 
-    protected static final Logger LOG = LoggerFactory.getLogger(TraversalPlanner.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TraversalPlanner.class);
+
+    private static final int MAX_STARTING_POINTS = 3;
 
     /**
      * Create a traversal plan.
@@ -181,14 +182,15 @@ public class TraversalPlanner {
         if (!weightedGraph.isEmpty()) {
             // sparse graph for better performance
             SparseWeightedGraph sparseWeightedGraph = SparseWeightedGraph.from(weightedGraph);
-            Set<Node> startingNodes = chooseStartingNodeSet(connectedFragments, nodes, sparseWeightedGraph);
+            Set<Node> startingNodes = chooseStartingNodeSet(connectedFragments, nodes, sparseWeightedGraph, tx);
 
             // find the minimum spanning tree for each root
             // then get the tree with minimum weight
             Arborescence<Node> arborescence = startingNodes.stream()
                     .map(node -> ChuLiuEdmonds.getMaxArborescence(sparseWeightedGraph, node))
                     .max(Comparator.comparingDouble(tree -> tree.weight))
-                    .map(arborescenceInside -> arborescenceInside.val).orElse(Arborescence.empty());
+                    .map(arborescenceInside -> arborescenceInside.val)
+                    .orElse(Arborescence.empty());
 
             return arborescence;
         } else {
@@ -207,15 +209,17 @@ public class TraversalPlanner {
         return weightedGraph;
     }
 
-    private static Set<Node> chooseStartingNodeSet(Set<Fragment> fragmentSet, Map<NodeId, Node> allNodes, SparseWeightedGraph sparseWeightedGraph) {
+    private static Set<Node> chooseStartingNodeSet(Set<Fragment> fragmentSet, Map<NodeId, Node> allNodes, SparseWeightedGraph sparseWeightedGraph, TransactionOLTP tx) {
         final Set<Node> highPriorityStartingNodeSet = new HashSet<>();
 
-        fragmentSet.forEach(fragment -> {
-            if (fragment.hasFixedFragmentCost()) {
+        fragmentSet.stream()
+            .filter(Fragment::hasFixedFragmentCost)
+            .sorted(Comparator.comparing(fragment -> fragment.estimatedCostAsStartingPoint(tx)))
+            .limit(MAX_STARTING_POINTS)
+            .forEach(fragment -> {
                 Node node = allNodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.start()));
                 highPriorityStartingNodeSet.add(node);
-            }
-        });
+            });
 
         Set<Node> startingNodes;
         if (!highPriorityStartingNodeSet.isEmpty()) {
@@ -227,6 +231,7 @@ public class TraversalPlanner {
         }
         return startingNodes;
     }
+
 
     // add unvisited node fragments to plan
     private static List<Fragment> fragmentsForUnvisitedNodes(Map<NodeId, Node> allNodes, Collection<Node> connectedNodes) {
@@ -324,7 +329,7 @@ public class TraversalPlanner {
         }
     }
 
-    static Map<Node, Map<Node, Fragment>> virtualMiddleNodeToFragmentMapping(Set<Fragment> connectedFragments, Map<NodeId, Node> nodes) {
+    private static Map<Node, Map<Node, Fragment>> virtualMiddleNodeToFragmentMapping(Set<Fragment> connectedFragments, Map<NodeId, Node> nodes) {
         Map<Node, Map<Node, Fragment>> middleNodeFragmentMapping = new HashMap<>();
         for (Fragment fragment : connectedFragments) {
             Pair<Node, Node> middleNodeDirectedEdge = fragment.getMiddleNodeDirectedEdge(nodes);

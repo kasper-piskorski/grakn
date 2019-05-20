@@ -962,13 +962,17 @@ public abstract class RelationAtom extends IsaAtomBase {
                     && unifierType != UnifierType.SUBSUMPTIVE
                     && !rpMappings.isEmpty()
                     && rpMappings.stream().allMatch(mapping -> mapping.size() == getRelationPlayers().size())){
-                long start2 = System.currentTimeMillis();
+
                 boolean equal = ReasonerQueryEquivalence.Equality.equivalent(this.getParentQuery(), parent.getParentQuery());
-                tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifierEquals", System.currentTimeMillis() - start2);
+
                 if (equal) {
                     tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier", System.currentTimeMillis() - start);
                     return MultiUnifierImpl.trivial();
                 }
+                long start2 = System.currentTimeMillis();
+                boolean queriesEqual = ReasonerQueryEquivalence.Equality.equivalent(this.getParentQuery(), parent.getParentQuery());
+                tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifierEquals", System.currentTimeMillis() - start2);
+                if (queriesEqual) return MultiUnifierImpl.trivial();
             }
 
             rpMappings
