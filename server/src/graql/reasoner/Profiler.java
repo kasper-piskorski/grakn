@@ -20,6 +20,9 @@ public class Profiler {
         registeredCalls.put(name, match != null? (match + 1) : 1);
     }
 
+    public long getTime(String name){ return registeredTimes.get(name);}
+    public long getCount(String name){ return registeredCalls.get(name);}
+
     public void print(){
         registeredTimes.entrySet().stream()
                 .sorted(Comparator.comparing(Map.Entry::getValue))

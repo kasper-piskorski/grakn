@@ -70,6 +70,8 @@ public class ResolutionIterator extends ReasonerQueryIterator {
                 return state.getSubstitution();
             }
 
+            query.tx().profiler().updateCallCount(getClass().getSimpleName()+"::visitedStates");
+
             ResolutionState newState = state.generateSubGoal();
             if (newState != null) {
                 if (!state.isAnswerState()) states.push(state);

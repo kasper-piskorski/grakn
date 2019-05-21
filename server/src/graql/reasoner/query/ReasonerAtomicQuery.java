@@ -205,6 +205,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
 
     @Override
     public Iterator<ResolutionState> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
+        long start = System.currentTimeMillis();
         Pair<Stream<ConceptMap>, MultiUnifier> cacheEntry = tx().queryCache().getAnswerStreamWithUnifier(this);
         Iterator<AnswerState> dbIterator = cacheEntry.getKey()
                 .map(a -> a.explain(a.explanation().setPattern(this.getPattern())))
@@ -216,22 +217,24 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
 
         Iterator<ResolutionState> subGoalIterator;
         //if this is ground and exists in the db then do not resolve further
-        long start = System.currentTimeMillis();
+        long start2 = System.currentTimeMillis();
         boolean visited = visitedSubGoals.contains(this);
         if (!visited) visitedSubGoals.add(this);
-        tx().profiler().updateTime(getClass().getSimpleName() + "::visitedSubGoals.contains", System.currentTimeMillis() - start);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::visitedSubGoals.contains", System.currentTimeMillis() - start2);
         boolean doNotResolveFurther = visited
                 || tx().queryCache().isComplete(this)
                 || (this.isGround() && dbIterator.hasNext());
         if(doNotResolveFurther){
             subGoalIterator = Collections.emptyIterator();
         } else {
-            tx().profiler().updateCallCount(getClass().getSimpleName() + "::visitedSubGoals");
+            tx().profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);
             subGoalIterator = getRuleStream()
                     .map(rulePair -> rulePair.getKey().subGoal(this.getAtom(), rulePair.getValue(), parent, visitedSubGoals))
                     .iterator();
         }
         if (!visited) visitedSubGoals.add(this);
+
+        tx().profiler().updateCallCount(getClass().getSimpleName() + "::visitedSubGoals");
         return Iterators.concat(dbIterator, dbCompletionIterator, subGoalIterator);
     }
 

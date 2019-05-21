@@ -317,6 +317,7 @@ public abstract class RelationAtom extends IsaAtomBase {
     @Override
     public boolean isStructurallyEquivalent(Object obj) {
         long start =System.currentTimeMillis();
+        tx().profiler().updateCallCount(getClass().getSimpleName() + "::isStructurallyEquivalent");
         if (!isBaseEquivalent(obj)) return false;
         RelationAtom that = (RelationAtom) obj;
         boolean equivalent = !this.getMultiUnifier(that, UnifierType.STRUCTURAL).equals(MultiUnifierImpl.nonExistent());

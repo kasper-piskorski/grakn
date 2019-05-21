@@ -224,8 +224,8 @@ public class BenchmarkSmallIT {
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
-        //assertEquals(executeQuery(query, tx, "full").size(), answers);
-        executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
+        assertEquals(executeQuery(query, tx, "full").size(), answers);
+        //executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
         tx.profiler().print();
         printTimes();
         System.out.println();
@@ -272,27 +272,34 @@ public class BenchmarkSmallIT {
         //results @N = 30 216225    ?       ?      ?     30 s
         //results @N = 35 396900   ?        ?      ?     76 s
         transitivityMatrixGraph.load(N, N);
-        TransactionOLTP tx = session.transaction().write();
-        
+        for (int i = 0; i < 1 ; i++) {
+            try (TransactionOLTP tx = session.transaction().write()) {
 
-        //full result
-        String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
-        GraqlGet query = Graql.parse(queryString).asGet();
 
-        //with specific resource
-        String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
-        GraqlGet query2 = Graql.parse(queryString2).asGet();
+                //full result
+                String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
+                GraqlGet query = Graql.parse(queryString).asGet();
 
-        //with substitution
-        Concept id = tx.execute(Graql.parse("match $x has index 'a'; get;").asGet()).iterator().next().get("x");
-        String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + id.id().getValue() + "; get;";
-        GraqlGet query3 = Graql.parse(queryString3).asGet();
+                //with specific resource
+                String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
+                GraqlGet query2 = Graql.parse(queryString2).asGet();
 
-        executeQuery(query, tx, "full");
-        executeQuery(query2, tx, "With specific resource");
-        executeQuery(query3, tx, "Single argument bound");
-        executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
-        tx.close();
+                //with substitution
+                Concept id = tx.execute(Graql.parse("match $x has index 'a'; get;").asGet()).iterator().next().get("x");
+                String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + id.id().getValue() + "; get;";
+                GraqlGet query3 = Graql.parse(queryString3).asGet();
+
+                executeQuery(query, tx, "full");
+                //executeQuery(query2, tx, "With specific resource");
+                //executeQuery(query3, tx, "Single argument bound");
+                //List<ConceptMap> answers = executeQuery(query.match().get().limit(3025), tx, "limit " + 3025);
+
+                System.out.println("visitedSubGoals: " + tx.profiler().getCount("ReasonerAtomicQuery::visitedSubGoals"));
+                tx.profiler().print();
+                printTimes();
+                System.out.println();
+            }
+        }
         session.close();
     }
 

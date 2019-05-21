@@ -621,6 +621,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
      * @return query state iterator (db iter + unifier + state iter) for this query
      */
     public Iterator<ResolutionState> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> subGoals){
+        long start = System.currentTimeMillis();
         Iterator<AnswerState> dbIterator;
         Iterator<QueryStateBase> subGoalIterator;
 
@@ -641,7 +642,9 @@ public class ReasonerQueryImpl implements ResolvableQuery {
             ResolutionQueryPlan queryPlan = new ResolutionQueryPlan(this);
             subGoalIterator = Iterators.singletonIterator(new CumulativeState(queryPlan.queries(), new ConceptMap(), parent.getUnifier(), parent, subGoals));
         }
-        return Iterators.concat(dbIterator, subGoalIterator);
+        Iterator<ResolutionState> concat = Iterators.concat(dbIterator, subGoalIterator);
+        tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);
+        return concat;
     }
 
     /**
