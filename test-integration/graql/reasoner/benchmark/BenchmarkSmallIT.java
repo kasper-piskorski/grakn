@@ -18,6 +18,8 @@
 
 package grakn.core.graql.reasoner.benchmark;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableMap;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
@@ -29,13 +31,17 @@ import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
 import grakn.core.graql.reasoner.graph.PathTreeGraph;
 import grakn.core.graql.reasoner.graph.TransitivityChainGraph;
 import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
+import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.rule.GraknTestServer;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
+import grakn.core.util.GraqlTestUtil;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.ArrayList;
+import java.util.Set;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -193,13 +199,15 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        int N = 100;
+        int N = 5000;
         int limit = 10;
         int answers = (N+1)*N/2;
         SessionImpl session = server.sessionWithNewKeyspace();
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
         TransitivityChainGraph transitivityChainGraph = new TransitivityChainGraph(session);
+        long start = System.currentTimeMillis();
         transitivityChainGraph.load(N);
+        System.out.println("load time: " + (System.currentTimeMillis() - start));
         TransactionOLTP tx = session.transaction().write();
 
         String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
@@ -208,11 +216,29 @@ public class BenchmarkSmallIT {
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
+        /*
         assertEquals(executeQuery(query, tx, "full").size(), answers);
         assertEquals(executeQuery(query2, tx, "With specific resource").size(), N);
 
         executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
         executeQuery(query2.match().get().limit(limit), tx, "limit " + limit);
+         */
+
+        long start2 = System.currentTimeMillis();
+        List<ConceptMap> dbAnswers = tx.execute(query, false);
+        System.out.println("Db time: " + (System.currentTimeMillis() - start2));
+
+        HashMultimap<Concept, Concept> graph = HashMultimap.create();
+        dbAnswers.forEach(ans -> graph.put(ans.get("x"), ans.get("y")));
+
+        List<ConceptMap> tarjanAnswers = new ArrayList<>();
+        HashMultimap<Concept, Concept> successorMap = new TarjanSCC<>(graph).successorMap();
+        successorMap.entries()
+                .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
+        System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
+        //GraqlTestUtil.assertCollectionsEqual(resAnswers, tarjanAnswers);
+        assertEquals(answers, tarjanAnswers.size());
+        System.out.println();
         tx.close();
         session.close();
     }
@@ -240,7 +266,7 @@ public class BenchmarkSmallIT {
     @Test
     public void testTransitiveMatrix(){
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
-        int N = 10;
+        int N = 100;
         int limit = 100;
 
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -251,9 +277,10 @@ public class BenchmarkSmallIT {
         //results @N = 25 105625    ?       ?     50s    11 s
         //results @N = 30 216225    ?       ?      ?     30 s
         //results @N = 35 396900   ?        ?      ?     76 s
+        long start = System.currentTimeMillis();
         transitivityMatrixGraph.load(N, N);
+        System.out.println("load time: " + (System.currentTimeMillis() - start));
         TransactionOLTP tx = session.transaction().write();
-        
 
         //full result
         String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
@@ -268,10 +295,30 @@ public class BenchmarkSmallIT {
         String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + id.id().getValue() + "; get;";
         GraqlGet query3 = Graql.parse(queryString3).asGet();
 
-        executeQuery(query, tx, "full");
+        //List<ConceptMap> answers = executeQuery(query, tx, "full");
+        int answers = 396900;
+        //List<ConceptMap> resAnswers = executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
+
+        long start2 = System.currentTimeMillis();
+        List<ConceptMap> dbAnswers = tx.execute(query, false);
+        System.out.println("Db time: " + (System.currentTimeMillis() - start2));
+
+        HashMultimap<Concept, Concept> graph = HashMultimap.create();
+        dbAnswers.forEach(ans -> graph.put(ans.get("x"), ans.get("y")));
+
+        List<ConceptMap> tarjanAnswers = new ArrayList<>();
+        HashMultimap<Concept, Concept> successorMap = new TarjanSCC<>(graph).successorMap();
+        successorMap.entries()
+                .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
+        System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
+        //GraqlTestUtil.assertCollectionsEqual(resAnswers, tarjanAnswers);
+        System.out.println();
+        /*
         executeQuery(query2, tx, "With specific resource");
         executeQuery(query3, tx, "Single argument bound");
         executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
+         */
+
         tx.close();
         session.close();
     }
