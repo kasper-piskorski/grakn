@@ -133,6 +133,7 @@ public class RuleCache {
 
     private boolean typeHasInstances(Type type){
         if (checkedTypes.contains(type)) return !absentTypes.contains(type);
+        long start = System.currentTimeMillis();
         checkedTypes.add(type);
         boolean instancePresent = type.instances().findFirst().isPresent()
                 || type.thenRules().anyMatch(this::checkRule);
@@ -140,6 +141,8 @@ public class RuleCache {
             absentTypes.add(type);
             type.whenRules().forEach(r -> fruitlessRules.add(r));
         }
+
+        tx.profiler().updateTime(getClass().getSimpleName() + "::typeHasInstances", System.currentTimeMillis() - start);
         return instancePresent;
     }
 
@@ -153,10 +156,7 @@ public class RuleCache {
         if (checkedRules.contains(rule)) return true;
         checkedRules.add(rule);
         return rule.whenTypes()
-                //.filter(t -> !checkedTypes.contains(t))
                 .allMatch(this::typeHasInstances);
-                //.peek(t ->
-                //.findFirst().isPresent();
     }
 
     /**

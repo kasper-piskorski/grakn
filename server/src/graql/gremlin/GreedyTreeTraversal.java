@@ -33,8 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static grakn.core.graql.gremlin.NodesUtil.nodeVisitedDependenciesFragments;
 import static grakn.core.graql.gremlin.NodesUtil.nodeFragmentsWithoutDependencies;
+import static grakn.core.graql.gremlin.NodesUtil.nodeVisitedDependenciesFragments;
+import static grakn.core.graql.gremlin.NodesUtil.propagateLabels;
 
 public class GreedyTreeTraversal {
 
@@ -53,6 +54,8 @@ public class GreedyTreeTraversal {
             }
             edgesParentToChild.get(parent).add(child);
         });
+
+        propagateLabels(edgesParentToChild);
 
         Node root = arborescence.getRoot();
 

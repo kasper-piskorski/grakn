@@ -18,7 +18,6 @@
 
 package grakn.core.graql.executor;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
@@ -78,8 +77,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static grakn.core.common.util.CommonUtil.toImmutableList;
-import static grakn.core.common.util.CommonUtil.toImmutableSet;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -171,7 +168,7 @@ public class QueryExecutor {
         }
     }
 
-    public void validateVarVarComparisons(Disjunction<Conjunction<Pattern>> negationDNF) {
+    private void validateVarVarComparisons(Disjunction<Conjunction<Pattern>> negationDNF) {
         // comparisons between two variables (ValueProperty and NotEqual, similar to !== and !=)
         // must only use variables that are also used outside of comparisons
 
@@ -250,7 +247,7 @@ public class QueryExecutor {
         ImmutableSet.Builder<PropertyExecutor.Writer> executors = ImmutableSet.builder();
         List<Statement> statements = query.statements().stream()
                 .flatMap(statement -> statement.innerStatements().stream())
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
 
         for (Statement statement : statements) {
             for (VarProperty property : statement.properties()) {
@@ -263,9 +260,9 @@ public class QueryExecutor {
 
     public ConceptMap undefine(GraqlUndefine query) {
         ImmutableSet.Builder<PropertyExecutor.Writer> executors = ImmutableSet.builder();
-        ImmutableList<Statement> statements = query.statements().stream()
+        List<Statement> statements = query.statements().stream()
                 .flatMap(statement -> statement.innerStatements().stream())
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
 
         for (Statement statement : statements) {
             for (VarProperty property : statement.properties()) {
@@ -281,7 +278,7 @@ public class QueryExecutor {
 
         Collection<Statement> statements = query.statements().stream()
                 .flatMap(statement -> statement.innerStatements().stream())
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
 
         ImmutableSet.Builder<PropertyExecutor.Writer> executors = ImmutableSet.builder();
         for (Statement statement : statements) {
@@ -299,14 +296,14 @@ public class QueryExecutor {
         if (query.match() != null) {
             MatchClause match = query.match();
             Set<Variable> matchVars = match.getSelectedNames();
-            Set<Variable> insertVars = statements.stream().map(statement -> statement.var()).collect(toImmutableSet());
+            Set<Variable> insertVars = statements.stream().map(Statement::var).collect(ImmutableSet.toImmutableSet());
 
             LinkedHashSet<Variable> projectedVars = new LinkedHashSet<>(matchVars);
             projectedVars.retainAll(insertVars);
 
             Stream<ConceptMap> answers = transaction.stream(match.get(projectedVars), infer);
-            answerStream = answers.map(answer -> WriteExecutor
-                    .create(transaction, executors.build()).write(answer))
+            answerStream = answers
+                    .map(answer -> WriteExecutor.create(transaction, executors.build()).write(answer))
                     .collect(toList()).stream();
         } else {
             answerStream = Stream.of(WriteExecutor.create(transaction, executors.build()).write(new ConceptMap()));
