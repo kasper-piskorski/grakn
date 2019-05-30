@@ -200,6 +200,7 @@ public class RuleUtils {
     public static long estimateInferredTypeCount(Label label, TransactionOLTP tx){
         SchemaConcept initialType = tx.getSchemaConcept(label);
         if (initialType == null || !initialType.thenRules().findFirst().isPresent()) return 0;
+        long start = System.currentTimeMillis();
         long inferredEstimate = 0;
 
         Set<SchemaConcept> visitedTypes = new HashSet<>();
@@ -233,6 +234,7 @@ public class RuleUtils {
                 }
             }
         }
+        tx.profiler().updateTime("RuleUtils::estimateInferredTypeCount", System.currentTimeMillis() - start);
         return inferredEstimate;
     }
 }
