@@ -3,12 +3,14 @@ package grakn.core.graql.reasoner;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Profiler {
 
     private final Map<String, Long> registeredTimes = new HashMap<>();
-
     private final Map<String, Long> registeredCalls = new HashMap<>();
+    private static final Logger LOG = LoggerFactory.getLogger(Profiler.class);
 
     public void updateTime(String name, long increment){
         Long match = registeredTimes.get(name);
@@ -33,5 +35,21 @@ public class Profiler {
                 .sorted(Comparator.comparing(Map.Entry::getKey))
                 .forEach(System.out::println);
         System.out.println();
+    }
+
+    public void logTimes(){
+        registeredTimes.entrySet().stream()
+                .sorted(Comparator.comparing(Map.Entry::getValue))
+                .forEach(e -> LOG.trace(e.toString()));
+
+        registeredCalls.entrySet().stream()
+                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .forEach(e -> LOG.trace(e.toString()));
+        clear();
+    }
+
+    public void clear(){
+        registeredTimes.clear();
+        registeredCalls.clear();
     }
 }
