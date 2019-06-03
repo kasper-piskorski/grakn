@@ -37,15 +37,25 @@ public class Profiler {
         System.out.println();
     }
 
-    public void logTimes(){
-        registeredTimes.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry::getValue))
-                .forEach(e -> LOG.trace(e.toString()));
+    private static long cutOff = 20;
 
+    public void logTimes(){
+
+        registeredTimes.entrySet().stream()
+                .filter(e -> e.getValue() > cutOff)
+                .sorted(Comparator.comparing(Map.Entry::getValue))
+                .forEach(e -> LOG.debug(e.toString()));
+        LOG.debug("");
+
+        clear();
+
+        /*
         registeredCalls.entrySet().stream()
                 .sorted(Comparator.comparing(Map.Entry::getKey))
-                .forEach(e -> LOG.trace(e.toString()));
+                .forEach(e -> LOG.debug(e.toString()));
         clear();
+
+         */
     }
 
     public void clear(){

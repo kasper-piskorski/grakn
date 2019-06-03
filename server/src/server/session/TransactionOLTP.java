@@ -823,6 +823,7 @@ public class TransactionOLTP implements Transaction {
 
     @Override
     public void close() {
+        profiler.logTimes();
         close(ErrorMessage.TX_CLOSED.getMessage(keyspace()));
     }
 

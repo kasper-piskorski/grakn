@@ -243,6 +243,13 @@ public class TransactionCache {
                 .filter(t -> !inferredConceptsToPersist.contains(t));
     }
 
+    public Stream<Thing> getInferredThings(){
+        return conceptCache.values().stream()
+                .filter(Concept::isThing)
+                .map(Concept::asThing)
+                .filter(Thing::isInferred);
+    }
+
     /**
      * Returns a previously built type
      *
