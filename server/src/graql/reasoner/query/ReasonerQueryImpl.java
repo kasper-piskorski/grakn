@@ -253,7 +253,10 @@ public class ReasonerQueryImpl implements ResolvableQuery {
 
     @Override
     public boolean isRuleResolvable() {
-        return selectAtoms().anyMatch(Atom::isRuleResolvable);
+        long start = System.currentTimeMillis();
+        boolean b = selectAtoms().anyMatch(Atom::isRuleResolvable);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::isRuleResolvable", System.currentTimeMillis() - start);
+        return b;
     }
 
     /**
@@ -563,10 +566,14 @@ public class ReasonerQueryImpl implements ResolvableQuery {
 
     @Override
     public boolean requiresReiteration() {
+        return false;
+        /*
         if (isCacheComplete()) return false;
         Set<InferenceRule> dependentRules = RuleUtils.getDependentRules(this);
         return RuleUtils.subGraphIsCyclical(dependentRules)||
                 RuleUtils.subGraphHasRulesWithHeadSatisfyingBody(dependentRules);
+
+         */
     }
 
     @Override
@@ -626,21 +633,36 @@ public class ReasonerQueryImpl implements ResolvableQuery {
         Iterator<QueryStateBase> subGoalIterator;
 
         if(!this.isRuleResolvable()) {
+            long start2 = System.currentTimeMillis();
             Set<Type> queryTypes = new HashSet<>(this.getVarTypeMap().values());
+            tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator::queryTypes", System.currentTimeMillis() - start2);
+
+            long start3 = System.currentTimeMillis();
             boolean fruitless = tx.ruleCache().absentTypes(queryTypes);
+            tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator::fruitless", System.currentTimeMillis() - start3);
+
             if (fruitless) dbIterator = Collections.emptyIterator();
             else {
+                long start4 = System.currentTimeMillis();
                 dbIterator = tx.stream(getQuery(), false)
                         .map(ans -> ans.explain(new JoinExplanation(this.getPattern(), this.splitToPartialAnswers(ans))))
                         .map(ans -> new AnswerState(ans, parent.getUnifier(), parent))
                         .iterator();
+
+                tx.profiler().updateCallCount("conjQueriesExecuted");
+                tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator::dbIterator", System.currentTimeMillis() - start4);
             }
             subGoalIterator = Collections.emptyIterator();
         } else {
             dbIterator = Collections.emptyIterator();
 
+            long start2 = System.currentTimeMillis();
             ResolutionQueryPlan queryPlan = new ResolutionQueryPlan(this);
+            tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator::queryPlan", System.currentTimeMillis() - start2);
+
+            long start3 = System.currentTimeMillis();
             subGoalIterator = Iterators.singletonIterator(new CumulativeState(queryPlan.queries(), new ConceptMap(), parent.getUnifier(), parent, subGoals));
+            tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator::subGoalIterator", System.currentTimeMillis() - start3);
         }
         Iterator<ResolutionState> concat = Iterators.concat(dbIterator, subGoalIterator);
         tx.profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);

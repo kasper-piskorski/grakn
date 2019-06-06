@@ -98,9 +98,9 @@ public class DisjunctionIterator extends ReasonerQueryIterator {
             if (answerIterator.hasNext()) return true;
         }
 
-        LOG.debug("Query: " + matchClause);
-        tx.profiler().updateTime("Query execution time", System.currentTimeMillis() - startTime);
-        tx.profiler().logTimes();
+        //LOG.debug("Query: " + matchClause);
+        //tx.profiler().updateTime("Query execution time", System.currentTimeMillis() - startTime);
+        //tx.profiler().logTimes();
         return false;
     }
 }

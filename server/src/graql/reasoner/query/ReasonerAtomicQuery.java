@@ -24,6 +24,7 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.atom.AtomicFactory;
@@ -185,10 +186,18 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      * @return stream of materialised answers
      */
     public Stream<ConceptMap> materialise(ConceptMap answer) {
+        tx().profiler().updateCallCount(getClass().getSimpleName() + "::materialise");
         return this.withSubstitution(answer)
                 .getAtom()
                 .materialise()
                 .map(ans -> ans.explain(answer.explanation()));
+    }
+
+    @Override
+    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals, boolean reiterate){
+        return isRuleResolvable()?
+                new ResolutionIterator(this, subGoals, reiterate).hasStream() :
+                tx().queryCache().getAnswerStream(this);
     }
 
     @Override

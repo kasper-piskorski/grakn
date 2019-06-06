@@ -35,6 +35,7 @@ import grakn.core.concept.ConceptId;
 import grakn.core.concept.Label;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Relation;
+import grakn.core.concept.thing.Thing;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
 import grakn.core.concept.type.Rule;
@@ -48,8 +49,11 @@ import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
 import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
+import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.cache.VariableDefinition;
+import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
+import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueryEquivalence;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
@@ -1046,18 +1050,35 @@ public abstract class RelationAtom extends IsaAtomBase {
         return baseDiff.merge(new SemanticDifference(diff));
     }
 
+    private Relation findRelation(ConceptMap sub){
+        long start = System.currentTimeMillis();
+        MultilevelSemanticCache cache = tx().queryCache();
+
+        ReasonerAtomicQuery query = ReasonerQueries.atomic(this).withSubstitution(sub);
+        ConceptMap answer = cache.getAnswerStream(query).findFirst().orElse(null);
+
+        if (answer == null) cache.ackDBCompleteness(query);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::findRelation", System.currentTimeMillis() - start);
+        return answer != null? answer.get(getVarName()).asRelation() : null;
+    }
+
     @Override
     public Stream<ConceptMap> materialise(){
         RelationType relationType = getSchemaConcept().asRelationType();
         Multimap<Role, Variable> roleVarMap = getRoleVarMap();
         ConceptMap substitution = getParentQuery().getSubstitution();
 
-        //NB: if the relation is implicit, it will created as a reified relation
-
+        //NB: if the relation is implicit, it will be created as a reified relation
         //if the relation already exists, only assign roleplayers, otherwise create a new relation
-        Relation relation = substitution.containsVar(getVarName())?
-                substitution.get(getVarName()).asRelation() :
-                RelationTypeImpl.from(relationType).addRelationInferred();
+        Relation relation;
+        if (substitution.containsVar(getVarName())){
+            relation = substitution.get(getVarName()).asRelation();
+        } else {
+            Relation foundRelation = findRelation(substitution);
+            relation = foundRelation != null?
+                    foundRelation :
+                    RelationTypeImpl.from(relationType).addRelationInferred();
+        }
 
         roleVarMap.asMap()
                 .forEach((key, value) -> value.forEach(var -> relation.assign(key, substitution.get(var).asThing())));

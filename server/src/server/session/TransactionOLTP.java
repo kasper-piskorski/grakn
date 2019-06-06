@@ -70,21 +70,6 @@ import graql.lang.query.GraqlGet;
 import graql.lang.query.GraqlInsert;
 import graql.lang.query.GraqlUndefine;
 import graql.lang.query.MatchClause;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.ReadOnlyStrategy;
@@ -98,6 +83,21 @@ import org.janusgraph.diskstorage.locking.PermanentLockingException;
 import org.janusgraph.diskstorage.locking.TemporaryLockingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A TransactionOLTP using JanusGraph as a vendor backend.
@@ -113,8 +113,6 @@ public class TransactionOLTP implements Transaction {
     private final SessionImpl session;
     private final JanusGraph janusGraph;
     private final ElementFactory elementFactory;
-    private final ReadWriteLock graphLock;
-
 
     // Caches
     private final MultilevelSemanticCache queryCache;
@@ -155,9 +153,7 @@ public class TransactionOLTP implements Transaction {
         }
     }
 
-    TransactionOLTP(SessionImpl session, JanusGraph janusGraph, KeyspaceCache keyspaceCache, ReadWriteLock graphLock) {
-        this.graphLock = graphLock;
-
+    TransactionOLTP(SessionImpl session, JanusGraph janusGraph, KeyspaceCache keyspaceCache) {
         createdInCurrentThread.set(true);
 
         this.session = session;
@@ -192,18 +188,22 @@ public class TransactionOLTP implements Transaction {
         executeLockingMethod(() -> {
             try {
                 LOG.trace("Graph is valid. Committing graph...");
-                // Serialise all the commits to the same Janus graph
-                // (the lock is associated to a specific graph)
-                graphLock.writeLock().lock();
                 janusTransaction.commit();
-
+                updateAttributesMapInSession();
                 LOG.trace("Graph committed.");
             } catch (UnsupportedOperationException e) {
                 //IGNORED
-            } finally {
-                graphLock.writeLock().unlock();
             }
             return null;
+        });
+    }
+
+    // Register new committed Attributes in AttributesMap (if the map doesnt already contain the same INDEX),
+    // so that all following Transactions will be able to use the same ConceptId
+    // when in need of same attribute with same value.
+    private void updateAttributesMapInSession() {
+        cache().getNewAttributes().forEach((labelStringPair, conceptId) -> {
+            session.attributesMap().putIfAbsent(labelStringPair.getValue(), conceptId);
         });
     }
 
@@ -318,7 +318,9 @@ public class TransactionOLTP implements Transaction {
         return ruleCache;
     }
 
-    public MultilevelSemanticCache queryCache(){ return queryCache;}
+    public MultilevelSemanticCache queryCache() {
+        return queryCache;
+    }
 
     /**
      * Converts a Type Label into a type Id for this specific graph. Mapping labels to ids will differ between graphs
@@ -405,7 +407,7 @@ public class TransactionOLTP implements Transaction {
      * @return A read-only Tinkerpop traversal for manually traversing the graph
      */
     public GraphTraversalSource getTinkerTraversal() {
-        operateOnOpenGraph(() -> null); //This is to check if the graph is open
+        checkGraphIsOpen();
         if (graphTraversalSource == null) {
             graphTraversalSource = janusGraph.traversal().withStrategies(ReadOnlyStrategy.instance());
         }
@@ -429,15 +431,7 @@ public class TransactionOLTP implements Transaction {
     private <T extends Concept> T getConcept(Iterator<Vertex> vertices) {
         T concept = null;
         if (vertices.hasNext()) {
-            Vertex vertex;
-            // Get read lock before accessing graph so that if a commit is occurring, we wait
-            // Without lock, when inserting a lot of attributes this traversal might return ghost vertices
-            graphLock.readLock().lock();
-            try {
-                vertex = vertices.next();
-            } finally {
-                graphLock.readLock().unlock();
-            }
+            Vertex vertex = vertices.next();
             concept = factory().buildConcept(vertex);
         }
         return concept;
@@ -481,15 +475,13 @@ public class TransactionOLTP implements Transaction {
     }
 
     /**
-     * An operation on the graph which requires it to be open.
+     * Make sure graph is open and usable.
      *
-     * @param supplier The operation to be performed on the graph
-     * @return The result of the operation on the graph.
-     * @throws TransactionException if the graph is closed.
+     * @throws TransactionException if the graph is closed
+     *                              or current transaction is not local (i.e. it was open in another thread)
      */
-    private <X> X operateOnOpenGraph(Supplier<X> supplier) {
+    private void checkGraphIsOpen() {
         if (!isLocal() || isClosed()) throw TransactionException.transactionClosed(this, this.closedReason);
-        return supplier.get();
     }
 
     private boolean isLocal() {
@@ -670,37 +662,39 @@ public class TransactionOLTP implements Transaction {
      */
     @Override
     public <T extends Concept> T getConcept(ConceptId id) {
-        return operateOnOpenGraph(() -> {
-            if (transactionCache.isConceptCached(id)) {
-                return transactionCache.getCachedConcept(id);
-            } else {
-                if (Schema.isEdgeId(id)) {
-                    Optional<T> concept = getConceptEdge(id);
-                    if (concept.isPresent()) return concept.get();
-                }
+        checkGraphIsOpen();
 
-                T concept = getConcept(getTinkerTraversal().V(Schema.elementId(id)));
-                //if the concept doesn't exists, it is possible we are referring to a ReifiedRelation which
-                //uses an its previous EdgeRelation as an id so property must be fetched
-                return concept == null?
-                        this.getConcept(Schema.VertexProperty.EDGE_RELATION_ID, id.getValue()) :
-                        concept;
-            }
-        });
+        // fetch concept from cache if it's cached
+        if (transactionCache.isConceptCached(id)) {
+            return transactionCache.getCachedConcept(id);
+        }
+
+        // If edgeId, we are trying to fetch either:
+        // - a concept edge
+        // - a reified relation
+        if (Schema.isEdgeId(id)) {
+            T concept = getConceptEdge(id);
+            if (concept != null) return concept;
+            // If concept is still null,  it is possible we are referring to a ReifiedRelation which
+            // uses its previous EdgeRelation as an id so property must be fetched
+            return this.getConcept(Schema.VertexProperty.EDGE_RELATION_ID, id.getValue());
+        }
+
+        return getConcept(getTinkerTraversal().V(Schema.elementId(id)));
     }
 
-    private <T extends Concept> Optional<T> getConceptEdge(ConceptId id) {
+    @Nullable
+    private <T extends Concept> T getConceptEdge(ConceptId id) {
         String edgeId = Schema.elementId(id);
         GraphTraversal<Edge, Edge> traversal = getTinkerTraversal().E(edgeId);
         if (traversal.hasNext()) {
-            return Optional.of(factory().buildConcept(factory().buildEdgeElement(traversal.next())));
+            return factory().buildConcept(factory().buildEdgeElement(traversal.next()));
         }
-        return Optional.empty();
+        return null;
     }
 
     private <T extends SchemaConcept> T getSchemaConcept(Label label, Schema.BaseType baseType) {
-        operateOnOpenGraph(() -> null); //Makes sure the graph is open
-
+        checkGraphIsOpen();
         SchemaConcept schemaConcept;
         if (transactionCache.isTypeCached(label)) {
             schemaConcept = transactionCache.getCachedSchemaConcept(label);
@@ -823,7 +817,7 @@ public class TransactionOLTP implements Transaction {
 
     @Override
     public void close() {
-        profiler.logTimes();
+        profiler().logTimes();
         close(ErrorMessage.TX_CLOSED.getMessage(keyspace()));
     }
 
@@ -887,7 +881,6 @@ public class TransactionOLTP implements Transaction {
         try {
             janusTransaction.close();
         } finally {
-            transactionCache.closeTx();
             this.closedReason = closedReason;
             this.isTxOpen = false;
             ruleCache().clear();
@@ -907,9 +900,7 @@ public class TransactionOLTP implements Transaction {
         removeInferredConcepts();
         validateGraph();
 
-        Map<ConceptId, Long> newInstances = transactionCache.getShardingCount();
-        Map<Pair<Label, String>, Set<ConceptId>> newAttributes = transactionCache.getNewAttributes();
-        boolean logsExist = !newInstances.isEmpty() || !newAttributes.isEmpty();
+        Map<Pair<Label, String>, ConceptId> newAttributes = transactionCache.getNewAttributes();
 
         ServerTracing.closeScopedChildSpan(validateSpanId);
 
@@ -925,12 +916,12 @@ public class TransactionOLTP implements Transaction {
 
         ServerTracing.closeScopedChildSpan(commitSpanId);
 
-        //If we have logs to commit get them and add them
-        if (logsExist) {
+        //If we have new attributes to deduplicate create CommitLog
+        if (!newAttributes.isEmpty()) {
 
             int createLogSpanId = ServerTracing.startScopedChildSpan("commitWithLogs create log");
 
-            Optional logs = Optional.of(CommitLog.create(keyspace(), newInstances, newAttributes));
+            Optional logs = Optional.of(new CommitLog(keyspace(), newAttributes));
 
             ServerTracing.closeScopedChildSpan(createLogSpanId);
 
@@ -940,7 +931,7 @@ public class TransactionOLTP implements Transaction {
         return Optional.empty();
     }
 
-    private void removeInferredConcepts(){
+    private void removeInferredConcepts() {
         Set<Thing> inferredThingsToDiscard = cache().getInferredThingsToDiscard().collect(Collectors.toSet());
         inferredThingsToDiscard.forEach(inferred -> cache().remove(inferred));
         inferredThingsToDiscard.forEach(Concept::delete);
@@ -1005,24 +996,17 @@ public class TransactionOLTP implements Transaction {
     }
 
     /**
-     * Stores the commit log of a TransactionOLTP which is uploaded to the jserver when the Session is closed.
-     * The commit log is also uploaded periodically to make sure that if a failure occurs the counts are still roughly maintained.
+     * Stores the commit log of a TransactionOLTP.
      */
-    public static class CommitLog {
-
+    public class CommitLog {
         private final KeyspaceImpl keyspace;
-        private final Map<ConceptId, Long> instanceCount;
-        private final Map<Pair<Label, String>, Set<ConceptId>> attributes;
+        private final Map<Pair<Label, String>, ConceptId> attributes;
 
-        CommitLog(KeyspaceImpl keyspace, Map<ConceptId, Long> instanceCount, Map<Pair<Label, String>, Set<ConceptId>> attributes) {
+        CommitLog(KeyspaceImpl keyspace, Map<Pair<Label, String>, ConceptId> attributes) {
             if (keyspace == null) {
                 throw new NullPointerException("Null keyspace");
             }
             this.keyspace = keyspace;
-            if (instanceCount == null) {
-                throw new NullPointerException("Null instanceCount");
-            }
-            this.instanceCount = instanceCount;
             if (attributes == null) {
                 throw new NullPointerException("Null attributes");
             }
@@ -1033,40 +1017,8 @@ public class TransactionOLTP implements Transaction {
             return keyspace;
         }
 
-        public Map<ConceptId, Long> instanceCount() {
-            return instanceCount;
-        }
-
-        public Map<Pair<Label, String>, Set<ConceptId>> attributes() {
+        public Map<Pair<Label, String>, ConceptId> attributes() {
             return attributes;
-        }
-
-        public static CommitLog create(KeyspaceImpl keyspace, Map<ConceptId, Long> instanceCount, Map<Pair<Label, String>, Set<ConceptId>> newAttributes) {
-            return new CommitLog(keyspace, instanceCount, newAttributes);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            TransactionOLTP.CommitLog that = (TransactionOLTP.CommitLog) o;
-
-            return (this.keyspace.equals(that.keyspace()) &&
-                    this.instanceCount.equals(that.instanceCount()) &&
-                    this.attributes.equals(that.attributes()));
-        }
-
-        @Override
-        public int hashCode() {
-            int h = 1;
-            h *= 1000003;
-            h ^= this.keyspace.hashCode();
-            h *= 1000003;
-            h ^= this.instanceCount.hashCode();
-            h *= 1000003;
-            h ^= this.attributes.hashCode();
-            return h;
         }
     }
 }

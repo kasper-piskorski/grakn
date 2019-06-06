@@ -35,6 +35,9 @@ import grakn.core.concept.thing.Thing;
 import grakn.core.graql.exception.GraqlSemanticException;
 import grakn.core.graql.executor.property.PropertyExecutor.Writer;
 import grakn.core.graql.util.Partition;
+import grakn.core.server.kb.Schema;
+import grakn.core.server.kb.concept.ConceptImpl;
+import grakn.core.server.kb.concept.ConceptVertex;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
@@ -272,7 +275,11 @@ public class WriteExecutor {
                 .filter(Concept::isThing)
                 .map(Concept::asThing)
                 .filter(Thing::isInferred)
-                .forEach(t -> transaction.cache().inferredThingToPersist(t));
+                .forEach(t -> {
+                    //as we are going to persist the concepts, reset the inferred flag
+                    ConceptVertex.from(t).vertex().property(Schema.VertexProperty.IS_INFERRED, false);
+                    transaction.cache().inferredThingToPersist(t);
+                });
         transaction.profiler().updateTime(getClass().getSimpleName() + "::persistenceMarking", System.currentTimeMillis() - start);
 
         return new ConceptMap(namedConcepts);

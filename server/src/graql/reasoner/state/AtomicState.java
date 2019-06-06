@@ -32,6 +32,7 @@ import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.server.kb.concept.ConceptUtils;
 import graql.lang.statement.Variable;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -42,6 +43,7 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
 
     private MultiUnifier cacheUnifier = null;
     private CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> cacheEntry = null;
+    private Set<ConceptMap> materialised = new HashSet<>();
 
     public AtomicState(ReasonerAtomicQuery query,
                 ConceptMap sub,
@@ -117,49 +119,46 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
     }
 
     private ConceptMap materialisedAnswer(ConceptMap baseAnswer, InferenceRule rule, Unifier unifier) {
+        long start = System.currentTimeMillis();
         ConceptMap answer = baseAnswer;
+
         ReasonerAtomicQuery query = getQuery();
         MultilevelSemanticCache cache = getQuery().tx().queryCache();
-
-        ReasonerAtomicQuery subbedQuery = ReasonerQueries.atomic(query, answer);
         ReasonerAtomicQuery ruleHead = ReasonerQueries.atomic(rule.getHead(), answer);
+
+        ConceptMap sub = ruleHead.getSubstitution();
+        if(materialised.contains(sub)){
+            return new ConceptMap();
+        } else {
+            materialised.add(sub);
+        }
 
         Set<Variable> queryVars = query.getVarNames().size() < ruleHead.getVarNames().size() ?
                 unifier.keySet() :
                 ruleHead.getVarNames();
 
-        boolean queryEquivalentToHead = subbedQuery.isEquivalent(ruleHead);
-
-        //check if the specific answer to ruleHead already in cache/db
-        ConceptMap headAnswer = unifier.apply(
-                cache
-                        .findAnswer(ruleHead, answer)
-                        .project(queryVars)
-        );
-
-        //if not and query different than rule head do the same with the query
-        ConceptMap queryAnswer = headAnswer.isEmpty() && queryEquivalentToHead ?
-                cache.findAnswer(query, answer) :
-                new ConceptMap();
-
         //ensure no duplicates created - only materialise answer if it doesn't exist in the db
-        if (headAnswer.isEmpty()
-                && queryAnswer.isEmpty()) {
-            ConceptMap materialisedSub = ruleHead.materialise(answer).findFirst().orElse(null);
-            if (materialisedSub != null) {
-                if (!queryEquivalentToHead) {
-                    cache.record(ruleHead, materialisedSub.explain(new RuleExplanation(query.getPattern(), rule.getRule().id())));
-                }
-                answer = unifier.apply(materialisedSub.project(queryVars));
+        long start2 = System.currentTimeMillis();
+        //System.out.println("materialise in @" + Integer.toHexString(hashCode()) + " :"+ ruleHead);
+        ConceptMap materialisedSub = ruleHead.materialise(answer).findFirst().orElse(null);
+        getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start2);
+        if (materialisedSub != null) {
+            if (!query.isEquivalent(ruleHead)) {
+                cache.record(ruleHead, materialisedSub.explain(new RuleExplanation(query.getPattern(), rule.getRule().id())));
             }
-        } else {
-            answer = headAnswer.isEmpty() ? queryAnswer : headAnswer;
+            answer = unifier.apply(materialisedSub.project(queryVars));
         }
 
-        if (answer.isEmpty()) return answer;
+        if (answer.isEmpty()){
+            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialisedAnswer", System.currentTimeMillis() - start);
+            return answer;
+        }
 
-        return ConceptUtils
+        ConceptMap explain = ConceptUtils
                 .mergeAnswers(answer, query.getSubstitution())
                 .explain(new RuleExplanation(query.getPattern(), rule.getRule().id()));
+
+        getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialisedAnswer", System.currentTimeMillis() - start);
+        return explain;
     }
 }

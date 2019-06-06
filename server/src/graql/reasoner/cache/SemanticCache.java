@@ -24,6 +24,7 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
+import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.MultiUnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
@@ -273,6 +274,7 @@ public abstract class SemanticCache<
     @Override
     public Pair<Stream<ConceptMap>, MultiUnifier> getAnswerStreamWithUnifier(ReasonerAtomicQuery query) {
         long start = System.currentTimeMillis();
+        //LOG.debug("Cache GET: {}", query);
         query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::getCalls");
 
         assert(query.isPositive());
@@ -280,6 +282,7 @@ public abstract class SemanticCache<
         boolean queryGround = query.isGround();
 
         if (match != null) {
+            query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::cacheHit");
             boolean answersToGroundQuery = false;
             boolean queryDBComplete = isDBComplete(query);
             if (queryGround) {
@@ -309,11 +312,13 @@ public abstract class SemanticCache<
         boolean fetchFromParent = parents.stream().anyMatch(p ->
                 queryGround || isDBComplete(keyToQuery(p))
         );
+        query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::cacheMiss");
         if (fetchFromParent){
             LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
             CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
             Pair<Stream<ConceptMap>, MultiUnifier> streamMultiUnifierPair = new Pair<>(entryToAnswerStream(newEntry), MultiUnifierImpl.trivial());
             query.tx().profiler().updateTime(getClass().getSimpleName() + "::getTime", System.currentTimeMillis() - start);
+            query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::parentFetch");
             return streamMultiUnifierPair;
         }
 
@@ -344,11 +349,28 @@ public abstract class SemanticCache<
     @Override
     public ConceptMap findAnswer(ReasonerAtomicQuery query, ConceptMap ans) {
         if(ans.isEmpty()) return ans;
-        ConceptMap answer = getAnswerStreamWithUnifier(ReasonerQueries.atomic(query, ans)).getKey().findFirst().orElse(null);
-        if (answer != null) return answer;
+        long start = System.currentTimeMillis();
+        ReasonerAtomicQuery subbedQuery = ReasonerQueries.atomic(query, ans);
+        ConceptMap answer = getAnswerStream(subbedQuery).findFirst().orElse(null);
+        if (answer != null){
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::findAnswer", System.currentTimeMillis() - start);
+            return answer;
+        }
 
-        //TODO should it create a cache entry?
-        List<ConceptMap> answers = query.tx().execute(ReasonerQueries.create(query, ans).getQuery(), false);
-        return answers.isEmpty()? new ConceptMap() : answers.iterator().next();
+        return new ConceptMap();
+
+        ///TODO should it create a cache entry?
+        /*
+        ConceptMap dbAnswer = query.tx().stream(subbedQuery.getQuery(), false).findFirst().orElse(null);
+
+        if (dbAnswer != null){
+            Stream<ConceptMap> answerStream = getAnswerStream(subbedQuery);
+            System.out.println();
+        }
+
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::findAnswer", System.currentTimeMillis() - start);
+        return dbAnswer != null? dbAnswer : new ConceptMap();
+
+         */
     }
 }

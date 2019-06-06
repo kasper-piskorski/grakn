@@ -363,10 +363,14 @@ public class InferenceRule {
      * @return rewritten rule
      */
     public InferenceRule rewrite(Atom parentAtom){
-        return this
+        long start = System.currentTimeMillis();
+        InferenceRule rewrite = this
                 .rewriteBodyAtoms()
                 .rewriteHeadToRelation(parentAtom)
                 .rewriteVariables(parentAtom);
+        tx.profiler().updateTime(getClass().getSimpleName() + "::rewrite", System.currentTimeMillis() - start);
+        tx.profiler().updateCallCount(getClass().getSimpleName() + "::rewrite");
+        return rewrite;
     }
 
     /**

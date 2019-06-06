@@ -47,15 +47,11 @@ public class Profiler {
                 .forEach(e -> LOG.debug(e.toString()));
         LOG.debug("");
 
-        clear();
-
-        /*
         registeredCalls.entrySet().stream()
                 .sorted(Comparator.comparing(Map.Entry::getKey))
                 .forEach(e -> LOG.debug(e.toString()));
         clear();
 
-         */
     }
 
     public void clear(){
