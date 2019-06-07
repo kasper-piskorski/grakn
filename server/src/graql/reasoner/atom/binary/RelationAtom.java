@@ -35,7 +35,6 @@ import grakn.core.concept.ConceptId;
 import grakn.core.concept.Label;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Relation;
-import grakn.core.concept.thing.Thing;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
 import grakn.core.concept.type.Rule;
@@ -49,7 +48,6 @@ import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
 import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
-import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.cache.VariableDefinition;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
@@ -78,8 +76,6 @@ import graql.lang.statement.Statement;
 import graql.lang.statement.StatementInstance;
 import graql.lang.statement.StatementThing;
 import graql.lang.statement.Variable;
-
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -94,6 +90,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 
 import static grakn.core.server.kb.concept.ConceptUtils.bottom;
 import static grakn.core.server.kb.concept.ConceptUtils.top;
@@ -1052,12 +1049,10 @@ public abstract class RelationAtom extends IsaAtomBase {
 
     private Relation findRelation(ConceptMap sub){
         long start = System.currentTimeMillis();
-        MultilevelSemanticCache cache = tx().queryCache();
-
         ReasonerAtomicQuery query = ReasonerQueries.atomic(this).withSubstitution(sub);
-        ConceptMap answer = cache.getAnswerStream(query).findFirst().orElse(null);
+        ConceptMap answer = tx().queryCache().getAnswerStream(query).findFirst().orElse(null);
 
-        if (answer == null) cache.ackDBCompleteness(query);
+        if (answer == null) tx().queryCache().ackDBCompleteness(query);
         tx().profiler().updateTime(getClass().getSimpleName() + "::findRelation", System.currentTimeMillis() - start);
         return answer != null? answer.get(getVarName()).asRelation() : null;
     }
