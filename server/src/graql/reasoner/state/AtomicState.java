@@ -22,6 +22,7 @@ import com.google.common.collect.HashMultimap;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.cache.CacheEntry;
 import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.explanation.RuleExplanation;
@@ -34,6 +35,8 @@ import grakn.core.server.kb.concept.ConceptUtils;
 import graql.lang.statement.Variable;
 
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Query state corresponding to an atomic query (ReasonerAtomicQuery) in the resolution tree.
@@ -44,6 +47,8 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
     private MultiUnifier cacheUnifier = null;
     private CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> cacheEntry = null;
     private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
+
+    private HashMultimap<ConceptId, ConceptMap> consumed = HashMultimap.create();
 
     public AtomicState(ReasonerAtomicQuery query,
                 ConceptMap sub,
@@ -107,16 +112,23 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
     }
 
     private ConceptMap ruleAnswer(ConceptMap baseAnswer, InferenceRule rule, Unifier unifier) {
+
         ReasonerAtomicQuery query = getQuery();
         ConceptMap answer = unifier.apply(ConceptUtils.mergeAnswers(
                 baseAnswer, rule.getHead().getRoleSubstitution())
         );
+
+        //if (consumed.get(rule.getRule().id()).contains(answer)) return new ConceptMap();
+        //consumed.put(rule.getRule().id(), answer);
+
         if (answer.isEmpty()) return answer;
 
         return ConceptUtils.mergeAnswers(answer, query.getSubstitution())
                 .project(query.getVarNames())
                 .explain(new RuleExplanation(query.getPattern(), rule.getRule().id()));
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(AtomicState.class);
 
     private ConceptMap materialisedAnswer(ConceptMap baseAnswer, InferenceRule rule, Unifier unifier) {
         long start = System.currentTimeMillis();
@@ -137,6 +149,7 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
 
         //materialise exhibits put behaviour - duplicates won't be created
         long start2 = System.currentTimeMillis();
+        LOG.debug("Materialise: {}", query);
         ConceptMap materialisedSub = ruleHead.materialise(answer).findFirst().orElse(null);
         getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start2);
         if (materialisedSub != null) {

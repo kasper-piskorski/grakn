@@ -340,23 +340,30 @@ public abstract class AttributeAtom extends Binary{
      * @return implicit relation of the attribute
      */
     private Relation attachAttribute(Concept owner, Attribute attribute){
+        long start = System.currentTimeMillis();
         //check if link exists
+        Relation relation;
         if (owner.asThing().attributes(attribute.type()).noneMatch(a -> a.equals(attribute))) {
             if (owner.isEntity()) {
-                return EntityImpl.from(owner.asEntity()).attributeInferred(attribute);
+                relation = EntityImpl.from(owner.asEntity()).attributeInferred(attribute);
             } else if (owner.isRelation()) {
-                return RelationImpl.from(owner.asRelation()).attributeInferred(attribute);
+                relation =  RelationImpl.from(owner.asRelation()).attributeInferred(attribute);
             } else if (owner.isAttribute()) {
-                return AttributeImpl.from(owner.asAttribute()).attributeInferred(attribute);
+                relation =  AttributeImpl.from(owner.asAttribute()).attributeInferred(attribute);
             }
-            return null;
+            else {
+                relation = null;
+            }
         } else {
             Role ownerRole = tx().getRole(Schema.ImplicitType.HAS_OWNER.getLabel(attribute.type().label()).getValue());
             Role valueRole = tx().getRole(Schema.ImplicitType.HAS_VALUE.getLabel(attribute.type().label()).getValue());
-            return owner.asThing().relations(ownerRole)
-                    .filter(relation -> relation.rolePlayersMap().get(valueRole).contains(attribute))
+            relation = owner.asThing().relations(ownerRole)
+                    .filter(r -> r.rolePlayersMap().get(valueRole).contains(attribute))
                     .findFirst().orElse(null);
+
         }
+        tx().profiler().updateTime(getClass().getSimpleName()+"::attachAttribute", System.currentTimeMillis() - start);
+        return relation;
     }
 
     @Override
@@ -377,6 +384,7 @@ public abstract class AttributeAtom extends Binary{
 
     @Override
     public Stream<ConceptMap> materialise(){
+        long start = System.currentTimeMillis();
         ConceptMap substitution = getParentQuery().getSubstitution();
         AttributeTypeImpl attributeType = AttributeTypeImpl.from(getSchemaConcept().asAttributeType());
 
@@ -384,6 +392,7 @@ public abstract class AttributeAtom extends Binary{
         Variable resourceVariable = getAttributeVariable();
 
         //if the attribute already exists, only attach a new link to the owner, otherwise create a new attribute
+        long start2 = System.currentTimeMillis();
         Attribute attribute;
         if(this.isValueEquality()){
             Object value = Iterables.getOnlyElement(getMultiPredicate()).getPredicate().value();
@@ -392,6 +401,7 @@ public abstract class AttributeAtom extends Binary{
         } else {
             attribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
         }
+        tx().profiler().updateTime(getClass().getSimpleName() + "::materialise::findAttribute", System.currentTimeMillis() - start2);
 
         if (attribute != null) {
             Relation relation = attachAttribute(owner, attribute);
@@ -400,9 +410,12 @@ public abstract class AttributeAtom extends Binary{
                 if (getRelationVariable().isReturned()){
                     answer = ConceptUtils.mergeAnswers(answer, new ConceptMap(ImmutableMap.of(getRelationVariable(), relation)));
                 }
-                return Stream.of(ConceptUtils.mergeAnswers(substitution, answer));
+                answer = ConceptUtils.mergeAnswers(substitution, answer);
+                tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start);
+                return Stream.of(answer);
             }
         }
+        tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start);
         return Stream.empty();
     }
 

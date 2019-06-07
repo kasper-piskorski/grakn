@@ -241,9 +241,12 @@ public abstract class RelationAtom extends IsaAtomBase {
     }
 
     private ConceptMap getRoleSubstitution(){
+        long start = System.currentTimeMillis();
         Map<Variable, Concept> roleSub = new HashMap<>();
         getRolePredicates().forEach(p -> roleSub.put(p.getVarName(), tx().getConcept(p.getPredicate())));
-        return new ConceptMap(roleSub);
+        ConceptMap answer = new ConceptMap(roleSub);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getRoleSubstitution", System.currentTimeMillis() - start);
+        return answer;
     }
 
     @Override
@@ -782,6 +785,7 @@ public abstract class RelationAtom extends IsaAtomBase {
      */
     @Memoized
     public Multimap<Role, Variable> getRoleVarMap() {
+        long start = System.currentTimeMillis();
         ImmutableMultimap.Builder<Role, Variable> builder = ImmutableMultimap.builder();
 
         TransactionOLTP graph = getParentQuery().tx();
@@ -804,7 +808,9 @@ public abstract class RelationAtom extends IsaAtomBase {
                 if (role != null) builder.put(role, varName);
             }
         });
-        return builder.build();
+        ImmutableMultimap<Role, Variable> build = builder.build();
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getRoleVarMap", System.currentTimeMillis() - start);
+        return build;
     }
 
     /**
@@ -1059,6 +1065,7 @@ public abstract class RelationAtom extends IsaAtomBase {
 
     @Override
     public Stream<ConceptMap> materialise(){
+        long start = System.currentTimeMillis();
         RelationType relationType = getSchemaConcept().asRelationType();
         Multimap<Role, Variable> roleVarMap = getRoleVarMap();
         ConceptMap substitution = getParentQuery().getSubstitution();
@@ -1075,9 +1082,12 @@ public abstract class RelationAtom extends IsaAtomBase {
                     RelationTypeImpl.from(relationType).addRelationInferred();
         }
 
+        long start2 = System.currentTimeMillis();
         roleVarMap.asMap()
                 .forEach((key, value) -> value.forEach(var -> relation.assign(key, substitution.get(var).asThing())));
+        tx().profiler().updateTime(getClass().getSimpleName() + "::materialise::assign", System.currentTimeMillis() - start2);
 
+        long start3 = System.currentTimeMillis();
         ConceptMap relationSub = ConceptUtils.mergeAnswers(
                 getRoleSubstitution(),
                 getVarName().isReturned()?
@@ -1086,6 +1096,8 @@ public abstract class RelationAtom extends IsaAtomBase {
         );
 
         ConceptMap answer = ConceptUtils.mergeAnswers(substitution, relationSub);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::materialise::mergeAnswers", System.currentTimeMillis() - start3);
+        tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start);
         return Stream.of(answer);
     }
 

@@ -469,6 +469,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
      * @return substitution obtained from all id predicates (including internal) in the query
      */
     public ConceptMap getSubstitution(){
+        long start = System.currentTimeMillis();
         if (substitution == null) {
             Set<Variable> varNames = getVarNames();
             Set<IdPredicate> predicates = getAtoms(IsaAtomBase.class)
@@ -486,6 +487,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
             });
             substitution = new ConceptMap(answerMap);
         }
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getSubstitution", System.currentTimeMillis() - start);
         return substitution;
     }
 
