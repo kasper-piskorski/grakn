@@ -343,7 +343,9 @@ public abstract class AttributeAtom extends Binary{
         long start = System.currentTimeMillis();
         //check if link exists
         Relation relation;
-        if (owner.asThing().attributes(attribute.type()).noneMatch(a -> a.equals(attribute))) {
+        boolean noLink = owner.asThing().attributes(attribute.type()).noneMatch(a -> a.equals(attribute));
+        tx().profiler().updateTime(getClass().getSimpleName()+"::attachAttribute::checkLink", System.currentTimeMillis() - start);
+        if (noLink) {
             if (owner.isEntity()) {
                 relation = EntityImpl.from(owner.asEntity()).attributeInferred(attribute);
             } else if (owner.isRelation()) {
@@ -355,11 +357,13 @@ public abstract class AttributeAtom extends Binary{
                 relation = null;
             }
         } else {
+            long start2 = System.currentTimeMillis();
             Role ownerRole = tx().getRole(Schema.ImplicitType.HAS_OWNER.getLabel(attribute.type().label()).getValue());
             Role valueRole = tx().getRole(Schema.ImplicitType.HAS_VALUE.getLabel(attribute.type().label()).getValue());
             relation = owner.asThing().relations(ownerRole)
                     .filter(r -> r.rolePlayersMap().get(valueRole).contains(attribute))
                     .findFirst().orElse(null);
+            tx().profiler().updateTime(getClass().getSimpleName()+"::attachAttribute::fetchLink", System.currentTimeMillis() - start);
 
         }
         tx().profiler().updateTime(getClass().getSimpleName()+"::attachAttribute", System.currentTimeMillis() - start);

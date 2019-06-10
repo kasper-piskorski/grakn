@@ -1072,6 +1072,7 @@ public abstract class RelationAtom extends IsaAtomBase {
 
         //NB: if the relation is implicit, it will be created as a reified relation
         //if the relation already exists, only assign roleplayers, otherwise create a new relation
+        long start4 = System.currentTimeMillis();
         Relation relation;
         if (substitution.containsVar(getVarName())){
             relation = substitution.get(getVarName()).asRelation();
@@ -1081,6 +1082,7 @@ public abstract class RelationAtom extends IsaAtomBase {
                     foundRelation :
                     RelationTypeImpl.from(relationType).addRelationInferred();
         }
+        tx().profiler().updateTime(getClass().getSimpleName() + "::materialise::findRelation", System.currentTimeMillis() - start4);
 
         long start2 = System.currentTimeMillis();
         roleVarMap.asMap()
