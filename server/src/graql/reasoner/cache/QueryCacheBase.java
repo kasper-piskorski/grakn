@@ -23,14 +23,14 @@ import grakn.core.graql.exception.GraqlQueryException;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
-
 import graql.lang.statement.Variable;
-import java.util.Set;
-import java.util.stream.Collectors;
+
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -101,15 +101,6 @@ public abstract class QueryCacheBase<
         CacheEntry<Q, SE> entry = getEntry(query);
         return entry != null ? query.getMultiUnifier(entry.query(), unifierType()) : null;
     }
-
-    /**
-     * find specific answer to a query in the cache
-     *
-     * @param query input query
-     * @param ans   sought specific answer to the query
-     * @return found answer if any, otherwise empty answer
-     */
-    public abstract ConceptMap findAnswer(Q query, ConceptMap ans);
 
     /**
      * @param query for which the entry is to be retrieved

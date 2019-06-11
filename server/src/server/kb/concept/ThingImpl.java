@@ -33,7 +33,7 @@ import grakn.core.concept.type.SchemaConcept;
 import grakn.core.concept.type.Type;
 import grakn.core.server.exception.TransactionException;
 import grakn.core.server.kb.Schema;
-import grakn.core.server.kb.cache.Cache;
+import grakn.core.server.kb.Cache;
 import grakn.core.server.kb.structure.Casting;
 import grakn.core.server.kb.structure.EdgeElement;
 import grakn.core.server.kb.structure.VertexElement;
@@ -66,6 +66,8 @@ import static java.util.stream.Collectors.toSet;
  */
 public abstract class ThingImpl<T extends Thing, V extends Type> extends ConceptImpl implements Thing {
 
+    private Boolean isInferred = null;
+
     private final Cache<V> cachedType = new Cache<>(() -> {
         Optional<V> type = vertex().getEdgesOfType(Direction.OUT, Schema.EdgeLabel.ISA).
                 map(EdgeElement::target).
@@ -97,7 +99,11 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
     }
 
     public boolean isInferred() {
-        return vertex().propertyBoolean(Schema.VertexProperty.IS_INFERRED);
+        //NB: might be over the top to cache it
+        if (isInferred == null) {
+            isInferred = vertex().propertyBoolean(Schema.VertexProperty.IS_INFERRED);
+        }
+        return isInferred;
     }
 
     /**
@@ -113,14 +119,14 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
             return relation;
         }).collect(toSet());
 
-        vertex().tx().statisticsDelta().decrement(type().label());
-        // decrement concept counts for non-reified edges - need to be explicitly handled before they are deleted by Janus
-        this.edgeRelations().forEach(relation -> vertex().tx().statisticsDelta().decrement(relation.type().label()));
+        if (!isDeleted()) vertex().tx().statisticsDelta().decrement(type().label());
+        this.edgeRelations().forEach(Concept::delete);
 
         vertex().tx().cache().removedInstance(type().id());
         deleteNode();
 
         relations.forEach(relation -> {
+            //NB: this only deletes reified implicit relations
             if (relation.type().isImplicit()) {//For now implicit relations die
                 relation.delete();
             } else {

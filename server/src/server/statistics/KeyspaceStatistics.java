@@ -23,12 +23,12 @@ import grakn.core.concept.Label;
 import grakn.core.server.kb.Schema;
 import grakn.core.server.kb.concept.ConceptVertex;
 import grakn.core.server.session.TransactionOLTP;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -39,6 +39,10 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * On cache miss, we read from JanusGraph schema vertices, which only have the INSTANCE_COUNT property if the
  * count is non-zero or has been non-zero in the past. No such property means instance count is 0.
+ *
+ * We also store the total count of all concepts the same was as any other schema concept, but on the `Thing` meta
+ * concept. Note that this is different from the other instance counts as it DOES include counts of all subtypes. The
+ * other counts on user-defined schema concepts are for for that concrete type only
  */
 public class KeyspaceStatistics {
 
@@ -48,42 +52,43 @@ public class KeyspaceStatistics {
         instanceCountsCache = new ConcurrentHashMap<>();
     }
 
-    public long count(TransactionOLTP tx, String label) {
-        Label lab = Label.of(label);
+    public long count(TransactionOLTP tx, Label label) {
         // return count if cached, else cache miss and retrieve from Janus
-        instanceCountsCache.computeIfAbsent(lab, l -> retrieveCountFromVertex(tx, l));
-        return instanceCountsCache.get(lab);
+        instanceCountsCache.computeIfAbsent(label, l -> retrieveCountFromVertex(tx, l));
+        return instanceCountsCache.get(label);
     }
 
     public void commit(TransactionOLTP tx, UncomittedStatisticsDelta statisticsDelta) {
         HashMap<Label, Long> deltaMap = statisticsDelta.instanceDeltas();
 
-        // merge each delta into the cache, then flush the cache to Janus
-        for (Map.Entry<Label, Long> entry : deltaMap.entrySet()) {
-            Label label = entry.getKey();
-            Long delta = entry.getValue();
-            // atomic update
-            instanceCountsCache.compute(label, (k, prior) -> {
-                long existingCount;
-                if (instanceCountsCache.containsKey(label)) {
-                    existingCount = prior;
-                } else {
-                    existingCount = retrieveCountFromVertex(tx, label) ;
-                }
-                return existingCount + delta;
-            });
-        }
+        statisticsDelta.updateThingCount();
 
-        persist(tx);
+        // merge each delta into the cache, then flush the cache to Janus
+        Set<Label> labelsToPersist = new HashSet<>();
+        deltaMap.entrySet().stream()
+                .filter(e -> e.getValue() != 0)
+                .forEach(entry -> {
+                    Label label = entry.getKey();
+                    Long delta = entry.getValue();
+                    labelsToPersist.add(label);
+                    // atomic update
+                    instanceCountsCache.compute(label, (k, prior) ->
+                        prior == null?
+                                retrieveCountFromVertex(tx, label) + delta:
+                                prior + delta
+            );
+        });
+
+        persist(tx, labelsToPersist);
     }
 
-    private void persist(TransactionOLTP tx) {
+    private void persist(TransactionOLTP tx, Set<Label> labelsToPersist) {
         // TODO - there's an possible removal from instanceCountsCache here
         // when the schemaConcept is null - ie it's been removed. However making this
         // thread safe with competing action of creating a schema concept of the same name again
         // So for now just wait until sessions are closed and rebuild the instance counts cache from scratch
 
-        for (Label label : instanceCountsCache.keySet()) {
+        for (Label label : labelsToPersist) {
             // don't change the value, just use `.compute()` for atomic and locking vertex write
             instanceCountsCache.compute(label, (lab, count) -> {
                 Concept schemaConcept = tx.getSchemaConcept(lab);

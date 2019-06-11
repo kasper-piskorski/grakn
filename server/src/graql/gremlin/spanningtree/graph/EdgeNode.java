@@ -16,27 +16,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package grakn.core.graql.reasoner.cache;
+package grakn.core.graql.gremlin.spanningtree.graph;
 
-import grakn.core.concept.answer.ConceptMap;
-import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
-import grakn.core.graql.reasoner.unifier.UnifierType;
+import grakn.core.server.session.TransactionOLTP;
 
-import java.util.Collection;
+public class EdgeNode extends Node {
+    private static final int EDGE_NODE_PRIORITY = 2;
 
-/**
- * 
- * @param <Q>
- * @param <R>
- */
-abstract class SimpleQueryCacheBase<
-        Q extends ReasonerQueryImpl,
-        R extends Collection<ConceptMap>> extends QueryCacheBase<Q, R, Q, R> {
+    public EdgeNode(NodeId nodeId) {
+        super(nodeId);
+    }
 
     @Override
-    UnifierType unifierType() { return UnifierType.EXACT; }
+    public long matchingElementsEstimate(TransactionOLTP tx) {
+        // edge nodes for now return 1 so we don't affect the multiplication of other vertices' counts
+        return 1;
+    }
 
-    @Override Q queryToKey(Q query) { return query; }
-    @Override Q keyToQuery(Q key) { return key; }
-
+    @Override
+    public int getNodeTypePriority() {
+        return EDGE_NODE_PRIORITY;
+    }
 }

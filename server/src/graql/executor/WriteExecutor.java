@@ -31,9 +31,13 @@ import com.google.common.collect.Sets;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.concept.thing.Thing;
 import grakn.core.graql.exception.GraqlSemanticException;
 import grakn.core.graql.executor.property.PropertyExecutor.Writer;
 import grakn.core.graql.util.Partition;
+import grakn.core.server.kb.Schema;
+import grakn.core.server.kb.concept.ConceptImpl;
+import grakn.core.server.kb.concept.ConceptVertex;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
@@ -264,6 +268,18 @@ public class WriteExecutor {
         }
 
         Map<Variable, Concept> namedConcepts = Maps.filterKeys(allConcepts.build(), Variable::isReturned);
+
+        //mark inferred concepts for persistence explicitly
+        namedConcepts.values().stream()
+                .filter(Concept::isThing)
+                .map(Concept::asThing)
+                .filter(Thing::isInferred)
+                .forEach(t -> {
+                    //as we are going to persist the concepts, reset the inferred flag
+                    ConceptVertex.from(t).vertex().property(Schema.VertexProperty.IS_INFERRED, false);
+                    transaction.cache().inferredThingToPersist(t);
+                });
+
         return new ConceptMap(namedConcepts);
     }
 

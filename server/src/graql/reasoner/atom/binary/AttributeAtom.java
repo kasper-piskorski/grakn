@@ -37,6 +37,7 @@ import grakn.core.graql.exception.GraqlSemanticException;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.atom.AtomicEquivalence;
+import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
 import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
@@ -59,6 +60,7 @@ import graql.lang.property.HasAttributeProperty;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -70,7 +72,7 @@ import static grakn.core.graql.reasoner.utils.ReasonerUtils.isEquivalentCollecti
 /**
  *
  * <p>
- * Atom implementation defining a resource atom corresponding to a {@link HasAttributeProperty}.
+ * Atom implementation defining a resource atom corresponding to a HasAttributeProperty.
  * The resource structure is the following:
  *
  * has($varName, $attributeVariable), type($attributeVariable)
@@ -156,12 +158,13 @@ public abstract class AttributeAtom extends Binary{
     @Override
     public String toString(){
         String multiPredicateString = getMultiPredicate().isEmpty()?
-                getAttributeVariable().toString() :
+                "" :
                 getMultiPredicate().stream().map(Predicate::getPredicate).collect(Collectors.toSet()).toString();
         return getVarName() + " has " + getSchemaConcept().label() + " " +
+                getAttributeVariable() + " " +
                 multiPredicateString +
                 (getRelationVariable().isReturned()? "(" + getRelationVariable() + ")" : "") +
-                getPredicates().map(Predicate::toString).collect(Collectors.joining(""));
+                getPredicates(IdPredicate.class).map(Predicate::toString).collect(Collectors.joining(""));
     }
 
     @Override
@@ -330,6 +333,12 @@ public abstract class AttributeAtom extends Binary{
         return Stream.concat(super.getInnerPredicates(), getMultiPredicate().stream());
     }
 
+    /**
+     * exhibits put behaviour - attributed is attached only if the link doesn't exist already
+     * @param owner attribute owner
+     * @param attribute attribute itself
+     * @return implicit relation of the attribute
+     */
     private Relation attachAttribute(Concept owner, Attribute attribute){
         //check if link exists
         if (owner.asThing().attributes(attribute.type()).noneMatch(a -> a.equals(attribute))) {

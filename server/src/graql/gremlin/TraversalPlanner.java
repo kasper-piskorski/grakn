@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
+import grakn.core.common.util.Tuple;
 import grakn.core.graql.gremlin.fragment.Fragment;
 import grakn.core.graql.gremlin.fragment.InIsaFragment;
 import grakn.core.graql.gremlin.fragment.InSubFragment;
@@ -33,7 +34,6 @@ import grakn.core.graql.gremlin.spanningtree.graph.Node;
 import grakn.core.graql.gremlin.spanningtree.graph.NodeId;
 import grakn.core.graql.gremlin.spanningtree.graph.SparseWeightedGraph;
 import grakn.core.graql.gremlin.spanningtree.util.Weighted;
-import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.server.exception.GraknServerException;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.pattern.Conjunction;
@@ -169,7 +169,7 @@ public class TraversalPlanner {
                 edgeFragmentSet.add(fragment);
                 // update the cost of an `InIsa` Fragment if we have some estimated cost
                 if (fragment instanceof InIsaFragment) {
-                    Node type = nodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.start()));
+                    Node type = nodes.get(NodeId.of(NodeId.Type.VAR, fragment.start()));
                     if (nodesWithFixedCost.containsKey(type) && nodesWithFixedCost.get(type) > 0) {
                         fragment.setAccurateFragmentCost(nodesWithFixedCost.get(type));
                     }
@@ -218,7 +218,7 @@ public class TraversalPlanner {
             .sorted(Comparator.comparing(fragment -> fragment.estimatedCostAsStartingPoint(tx)))
             .limit(MAX_STARTING_POINTS)
             .forEach(fragment -> {
-                Node node = allNodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.start()));
+                Node node = allNodes.get(NodeId.of(NodeId.Type.VAR, fragment.start()));
                 highPriorityStartingNodeSet.add(node);
             });
 
@@ -310,9 +310,9 @@ public class TraversalPlanner {
 
         Set<Fragment> validSubFragments = fragments.stream().filter(fragment -> {
             if (fragment instanceof InSubFragment) {
-                Node superType = allNodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.start()));
+                Node superType = allNodes.get(NodeId.of(NodeId.Type.VAR, fragment.start()));
                 if (nodesWithFixedCost.containsKey(superType) && nodesWithFixedCost.get(superType) > 0D) {
-                    Node subType = allNodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.end()));
+                    Node subType = allNodes.get(NodeId.of(NodeId.Type.VAR, fragment.end()));
                     return !nodesWithFixedCost.containsKey(subType);
                 }
             }
@@ -322,8 +322,8 @@ public class TraversalPlanner {
         if (!validSubFragments.isEmpty()) {
             validSubFragments.forEach(fragment -> {
                 // TODO: should decrease the weight of sub type after each level
-                nodesWithFixedCost.put(allNodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.end())),
-                        nodesWithFixedCost.get(allNodes.get(NodeId.of(NodeId.NodeType.VAR, fragment.start()))));
+                nodesWithFixedCost.put(allNodes.get(NodeId.of(NodeId.Type.VAR, fragment.end())),
+                        nodesWithFixedCost.get(allNodes.get(NodeId.of(NodeId.Type.VAR, fragment.start()))));
             });
             // recursively process all the sub fragments
             updateFixedCostSubsReachableByIndex(allNodes, nodesWithFixedCost, fragments);
@@ -333,10 +333,10 @@ public class TraversalPlanner {
     private static Map<Node, Map<Node, Fragment>> virtualMiddleNodeToFragmentMapping(Set<Fragment> connectedFragments, Map<NodeId, Node> nodes) {
         Map<Node, Map<Node, Fragment>> middleNodeFragmentMapping = new HashMap<>();
         for (Fragment fragment : connectedFragments) {
-            Pair<Node, Node> middleNodeDirectedEdge = fragment.getMiddleNodeDirectedEdge(nodes);
+            Tuple<Node, Node> middleNodeDirectedEdge = fragment.getMiddleNodeDirectedEdge(nodes);
             if (middleNodeDirectedEdge != null) {
-                middleNodeFragmentMapping.putIfAbsent(middleNodeDirectedEdge.getKey(), new HashMap<>());
-                middleNodeFragmentMapping.get(middleNodeDirectedEdge.getKey()).put(middleNodeDirectedEdge.getValue(), fragment);
+                middleNodeFragmentMapping.putIfAbsent(middleNodeDirectedEdge.first(), new HashMap<>());
+                middleNodeFragmentMapping.get(middleNodeDirectedEdge.first()).put(middleNodeDirectedEdge.second(), fragment);
             }
         }
         return middleNodeFragmentMapping;

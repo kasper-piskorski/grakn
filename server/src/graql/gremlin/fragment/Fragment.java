@@ -19,13 +19,14 @@
 package grakn.core.graql.gremlin.fragment;
 
 import com.google.common.collect.ImmutableSet;
+import grakn.core.common.util.Tuple;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.type.AttributeType;
 import grakn.core.graql.gremlin.spanningtree.graph.DirectedEdge;
+import grakn.core.graql.gremlin.spanningtree.graph.InstanceNode;
 import grakn.core.graql.gremlin.spanningtree.graph.Node;
 import grakn.core.graql.gremlin.spanningtree.graph.NodeId;
 import grakn.core.graql.gremlin.spanningtree.util.Weighted;
-import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Variable;
@@ -145,12 +146,13 @@ public abstract class Fragment {
      * When building the query plan spanning tree, every fragment has a start defined with a variable
      * Some fragments are actually edges in JanusGraph (such as isa, sub, etc.)
      * These require another variable for the end() variable, and to force the MST algorithm to
-     * traverse these JanusGraph edges too, we insert a fake middle node representing the edge
+     * traverse these JanusGraph edges too, we insert a fake middle node representing the edge.
+     * We default to an INSTANCE_NODE node type, which is the most general node
      * @return
      */
     public Set<Node> getNodes() {
-        NodeId startNodeId = NodeId.of(NodeId.NodeType.VAR, start());
-        return Collections.singleton(new Node(startNodeId));
+        NodeId startNodeId = NodeId.of(NodeId.Type.VAR, start());
+        return Collections.singleton(new InstanceNode(startNodeId));
     }
 
     /**
@@ -163,7 +165,7 @@ public abstract class Fragment {
      * @param nodes
      * @return
      */
-    public Pair<Node, Node> getMiddleNodeDirectedEdge(Map<NodeId, Node> nodes) {
+    public Tuple<Node, Node> getMiddleNodeDirectedEdge(Map<NodeId, Node> nodes) {
         return null;
     }
 

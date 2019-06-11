@@ -124,7 +124,7 @@ jobs:
 
   test-assembly-mac-zip:
     macos:
-      xcode: "9.0"
+      xcode: "10.2.1"
     working_directory: ~/grakn
     steps:
       - install-bazel-mac
@@ -307,6 +307,7 @@ jobs:
       - install-bazel-linux-rbe
       - checkout
       - run: |
+          pip install certifi
           export RELEASE_NOTES_TOKEN=$REPO_GITHUB_TOKEN
           bazel run @graknlabs_build_tools//ci:release-notes -- grakn $(cat VERSION) ./RELEASE_TEMPLATE.md
       - run: |

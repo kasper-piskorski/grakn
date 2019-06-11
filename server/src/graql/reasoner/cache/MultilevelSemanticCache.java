@@ -27,18 +27,19 @@ import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.graql.reasoner.utils.Pair;
 import graql.lang.statement.Variable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static java.util.stream.Collectors.toSet;
 
 /**
  *
- * Implementation of {@link SemanticCache} using {@link ReasonerQueryEquivalence#StructuralEquivalence}
- * for query equivalence checks and {@link IndexedAnswerSet}s for storing query answer sets.
+ * Implementation of SemanticCache using {@link ReasonerQueryEquivalence#StructuralEquivalence}
+ * for query equivalence checks and IndexedAnswerSets for storing query answer sets.
  *
  */
 public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<ReasonerAtomicQuery>, IndexedAnswerSet> {
@@ -83,7 +84,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
     @Override
     protected boolean propagateAnswers(CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> parentEntry,
                                     CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> childEntry,
-                                    boolean inferred) {
+                                    boolean propagateInferred) {
         ReasonerAtomicQuery parent = parentEntry.query();
         ReasonerAtomicQuery child = childEntry.query();
         IndexedAnswerSet parentAnswers = parentEntry.cachedElement();
@@ -104,7 +105,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
         Set<ConceptMap> newAnswers = new HashSet<>();
 
         parentAnswers.getAll().stream()
-                .filter(ans -> inferred || ans.explanation().isLookupExplanation())
+                .filter(ans -> propagateInferred || ans.explanation().isLookupExplanation())
                 .flatMap(ans -> parentToChildUnifierDelta.stream()
                                 .map(unifierDelta -> unifierDelta.getValue()
                                         .applyToAnswer(ans, partialSub, childVars, unifierDelta.getKey()))

@@ -180,7 +180,7 @@ public class GraknTestServer extends ExternalResource {
         return copyName.toFile();
     }
 
-    protected static int findUnusedLocalPort() throws IOException {
+    protected synchronized static int findUnusedLocalPort() throws IOException {
         try (ServerSocket serverSocket = new ServerSocket(0)) {
             return serverSocket.getLocalPort();
         }
@@ -199,7 +199,7 @@ public class GraknTestServer extends ExternalResource {
         config.setConfigProperty(ConfigKey.STORAGE_PORT, rpcPort);
         //Hadoop cluster uses the Astyanax driver for some operations, so need to override the RPC_PORT (Thrift)
         config.setConfigProperty(ConfigKey.HADOOP_STORAGE_PORT, rpcPort);
-        //Hadoop cluster uses the CQL driver for some operations, so we need to instruct it to use the newly generate native transport port (CQL)
+        //Hadoop cluster uses the CQL driver for some operations, so we need to instruct it to use the newly generated native transport port (CQL)
         config.setConfigProperty(ConfigKey.CQL_STORAGE_PORT, nativeTransportPort);
         config.setConfigProperty(ConfigKey.STORAGE_CQL_NATIVE_PORT, nativeTransportPort);
 

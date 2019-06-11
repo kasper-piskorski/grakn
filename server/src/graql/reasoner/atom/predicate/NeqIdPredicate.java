@@ -31,13 +31,13 @@ import java.util.stream.Collectors;
 /**
  *
  * <p>
- * Predicate implementation specialising it to be an inequality predicate. Corresponds to graql {@link NeqProperty}.
+ * Predicate implementation specialising it to be an inequality predicate. Corresponds to graql NeqProperty.
  * </p>
  *
  *
  */
 
-public class NeqIdPredicate extends NeqPredicate {
+public class NeqIdPredicate extends VariablePredicate {
 
     private NeqIdPredicate(Variable varName, Variable predicateVar, Statement pattern, ReasonerQuery parentQuery) {
         super(varName, predicateVar, pattern, parentQuery);
