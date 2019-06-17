@@ -319,7 +319,7 @@ public class BenchmarkSmallIT {
     @Test
     public void testTransitiveMatrix(){
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
-        int N = 15;
+        int N = 10;
         int limit = 100;
 
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -335,7 +335,7 @@ public class BenchmarkSmallIT {
             try (TransactionOLTP tx = session.transaction().write()) {
 
                 //full result
-                String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
+                String queryString = "match $r (Q-from: $x, Q-to: $y) isa Q; get;";
                 GraqlGet query = Graql.parse(queryString).asGet();
 
                 //with specific resource
@@ -350,7 +350,8 @@ public class BenchmarkSmallIT {
                 //executeQuery(query, tx, "full");
                 //executeQuery(query2, tx, "With specific resource");
                 //executeQuery(query3, tx, "Single argument bound");
-                List<ConceptMap> answers = executeQuery(query.match().get().limit(14400), tx, "limit " + 14400);
+                int answersNo = 3025;
+                List<ConceptMap> answers = executeQuery(query.match().get().limit(answersNo), tx, "limit " + answersNo);
 
                 System.out.println("visitedSubGoals: " + tx.profiler().getCount("ReasonerAtomicQuery::visitedSubGoals"));
                 tx.profiler().print();

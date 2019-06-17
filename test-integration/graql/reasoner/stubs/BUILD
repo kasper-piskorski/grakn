@@ -22,7 +22,11 @@ filegroup(
     name = "reasoning-stubs",
     srcs = [
         "appendingRPs.gql",
+<<<<<<< HEAD
         "benchmark.gql",
+=======
+        "duplicateMaterialisation.gql",
+>>>>>>> e455da7d58da6431c79ce15350a00802d42db607
         "explanations.gql",
         "freshEntityDerivation.gql",
         "freshEntityDerivationFromRelations.gql",

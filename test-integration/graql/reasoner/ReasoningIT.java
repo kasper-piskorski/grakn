@@ -38,13 +38,12 @@ import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlGet;
 import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Variable;
-import org.junit.ClassRule;
-import org.junit.Test;
-
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.ClassRule;
+import org.junit.Test;
 
 import static grakn.core.server.kb.Schema.ImplicitType.HAS;
 import static grakn.core.server.kb.Schema.ImplicitType.HAS_OWNER;
@@ -138,10 +137,10 @@ public class ReasoningIT {
     }
 
     @Test
-    public void test(){
-        try(SessionImpl session = server.sessionWithNewKeyspace()) {
+    public void test() {
+        try (SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "implicitRole.gql", session);
-            try(TransactionOLTP tx = session.transaction().write()){
+            try (TransactionOLTP tx = session.transaction().write()) {
                 tx.stream(Graql.parse("match $relationship isa @has-job-title; get;").asGet())
                         .map(ans -> ans.get("relationship"))
                         .forEach(concept -> {
@@ -173,12 +172,26 @@ public class ReasoningIT {
     }
 
     @Test
+    public void whenMaterialising_duplicatesAreNotCreated(){
+        try(SessionImpl session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "duplicateMaterialisation.gql", session);
+            try (TransactionOLTP tx = session.transaction().write()) {
+                List<ConceptMap> answers = tx.execute(Graql.parse(
+                        "match " +
+                                "$rel has inferredAttribute 'inferredRelation';" +
+                                "get;")
+                        .asGet());
+                assertEquals(25, answers.size());
+
+            }
+        }
+    }
+
+    @Test
     public void attributeOwnerResultsAreConsistentBetweenDifferentAccessPoints(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "resourceDirectionality.gql", session);
             try (TransactionOLTP tx = session.transaction().write()) {
-                
-
                 List<ConceptMap> answers = tx.execute(Graql.parse("match $x isa specific-indicator;get;").asGet(), false);
 
                 Concept indicator = answers.iterator().next().get("x");
@@ -710,7 +723,6 @@ public class ReasoningIT {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "appendingRPs.gql", session);
             try (TransactionOLTP tx = session.transaction().read()) {
-
                 List<ConceptMap> persistedRelations = tx.execute(Graql.parse("match $r isa baseRelation; get;").asGet(), false);
                 List<ConceptMap> inferredRelations = tx.execute(Graql.parse("match $r isa baseRelation; get;").asGet());
                 assertCollectionsNonTriviallyEqual("New relations were created!", persistedRelations, inferredRelations);
@@ -725,7 +737,15 @@ public class ReasoningIT {
                         .collect(Collectors.toSet());
 
                 assertCollectionsNonTriviallyEqual("Rules are not matched correctly!", variants, inferredRelations);
+                }
+        }
+    }
 
+    @Test //when rule are defined to append new RPs no new relation instances should be created
+    public void whenAppendingRolePlayers_whenHeadRelationHasSymmetricRoles_answersContainAllPermutations(){
+        try(SessionImpl session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "appendingRPs.gql", session);
+            try (TransactionOLTP tx = session.transaction().read()) {
                 List<ConceptMap> derivedRPTriples = tx.execute(Graql.<GraqlGet>parse("match (inferredRole: $x, inferredRole: $y, inferredRole: $z) isa derivedRelation; get;"));
                 List<ConceptMap> derivedRelations = tx.execute(Graql.<GraqlGet>parse("match $r (inferredRole: $x, inferredRole: $y, inferredRole: $z) isa derivedRelation; get;"));
 
@@ -733,6 +753,7 @@ public class ReasoningIT {
                 //three symmetric roles hence 3! results
                 assertEquals("Rule body is not rewritten correctly!", 6, derivedRPTriples.size());
                 assertEquals("Rule body is not rewritten correctly!", 6, derivedRelations.size());
+                assertEquals(1, derivedRelations.stream().map(ans -> ans.get("r")).collect(Collectors.toSet()).size());
             }
         }
     }

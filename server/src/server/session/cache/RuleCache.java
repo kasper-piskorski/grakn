@@ -47,7 +47,7 @@ public class RuleCache {
     //TODO: these should be eventually stored together with statistics
     private Set<Type> absentTypes = new HashSet<>();
     private Set<Type> checkedTypes = new HashSet<>();
-    private Set<Rule> fruitlessRules = new HashSet<>();
+    private Set<Rule> unmatchableRules = new HashSet<>();
     private Set<Rule> checkedRules = new HashSet<>();
 
     public RuleCache(TransactionOLTP tx) {
@@ -127,7 +127,7 @@ public class RuleCache {
 
         return getTypes(type, direct).stream()
                 .flatMap(SchemaConcept::thenRules)
-                .filter(this::checkRule)
+                .filter(this::isRuleMatchable)
                 .peek(rule -> ruleMap.put(type, rule));
     }
 
@@ -136,10 +136,10 @@ public class RuleCache {
         long start = System.currentTimeMillis();
         checkedTypes.add(type);
         boolean instancePresent = type.instances().findFirst().isPresent()
-                || type.thenRules().anyMatch(this::checkRule);
+                || type.thenRules().anyMatch(this::isRuleMatchable);
         if (!instancePresent){
             absentTypes.add(type);
-            type.whenRules().forEach(r -> fruitlessRules.add(r));
+            type.whenRules().forEach(r -> unmatchableRules.add(r));
         }
 
         tx.profiler().updateTime(getClass().getSimpleName() + "::typeHasInstances", System.currentTimeMillis() - start);
@@ -151,11 +151,11 @@ public class RuleCache {
      * @param rule to be checked for matchability
      * @return true if rule is matchable (can provide answers)
      */
-    private boolean checkRule(Rule rule){
-        if (fruitlessRules.contains(rule)) return false;
+    private boolean isRuleMatchable(Rule rule){
+        if (unmatchableRules.contains(rule)) return false;
         if (checkedRules.contains(rule)) return true;
         checkedRules.add(rule);
-        return rule.whenTypes()
+        return rule.whenPositiveTypes()
                 .allMatch(this::typeHasInstances);
     }
 
@@ -183,6 +183,6 @@ public class RuleCache {
         absentTypes.clear();
         checkedTypes.clear();
         checkedRules.clear();
-        fruitlessRules.clear();
+        unmatchableRules.clear();
     }
 }
