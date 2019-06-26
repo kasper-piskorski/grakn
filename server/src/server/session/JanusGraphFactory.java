@@ -102,14 +102,10 @@ final public class JanusGraphFactory {
             STORAGE_REPLICATION_FACTOR, JANUS_PREFIX + STORAGE_REPLICATION_FACTOR
     );
 
-    //This maps the storage backend to the needed value
-    private static final Map<String, String> storageBackendMapper = ImmutableMap.of("grakn-production", "cassandra");
-
-
-    public synchronized JanusGraph openGraph(String keyspace) {
-        JanusGraph JanusGraph = configureGraph(keyspace, config);
-        buildJanusIndexes(JanusGraph);
-        JanusGraph.tx().onClose(org.apache.tinkerpop.gremlin.structure.Transaction.CLOSE_BEHAVIOR.ROLLBACK);
+    public synchronized StandardJanusGraph openGraph(String keyspace) {
+        StandardJanusGraph janusGraph = configureGraph(keyspace, config);
+        buildJanusIndexes(janusGraph);
+        janusGraph.tx().onClose(org.apache.tinkerpop.gremlin.structure.Transaction.CLOSE_BEHAVIOR.ROLLBACK);
         if (!strategiesApplied.getAndSet(true)) {
             TraversalStrategies strategies = TraversalStrategies.GlobalCache.getStrategies(StandardJanusGraph.class);
             strategies = strategies.clone().addStrategies(new JanusPreviousPropertyStepStrategy());
@@ -119,7 +115,7 @@ final public class JanusGraphFactory {
             TraversalStrategies.GlobalCache.registerStrategies(StandardJanusGraphTx.class, strategies);
         }
 
-        return JanusGraph;
+        return janusGraph;
     }
 
     public void drop(String keyspace) {
@@ -133,7 +129,7 @@ final public class JanusGraphFactory {
     }
 
 
-    private static JanusGraph configureGraph(String keyspace, Config config) {
+    private static StandardJanusGraph configureGraph(String keyspace, Config config) {
         org.janusgraph.core.JanusGraphFactory.Builder builder = org.janusgraph.core.JanusGraphFactory.build().
                 set(STORAGE_HOSTNAME, config.getProperty(ConfigKey.STORAGE_HOSTNAME)).
                 set(STORAGE_KEYSPACE, keyspace).
@@ -144,12 +140,6 @@ final public class JanusGraphFactory {
 
         //Load Passed in properties
         config.properties().forEach((key, value) -> {
-
-            //Overwrite storage
-            if (key.equals(STORAGE_BACKEND)) {
-                value = storageBackendMapper.get(value);
-            }
-
             //Inject properties into other default properties
             if (janusConfig.containsKey(key)) {
                 builder.set(janusConfig.get(key), value);
@@ -159,7 +149,7 @@ final public class JanusGraphFactory {
         });
 
         LOG.debug("Opening graph {}", keyspace);
-        return builder.open();
+        return (StandardJanusGraph) builder.open();
     }
 
 

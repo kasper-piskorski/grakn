@@ -300,6 +300,11 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     }
 
     /**
+     * @return true if this query has a unique (single) answer if any
+     */
+    public boolean hasUniqueAnswer(){ return isGround();}
+
+    /**
      * @return true if this query contains disconnected atoms that are unbounded
      */
     public boolean isBoundlesslyDisconnected(){
@@ -572,21 +577,15 @@ public class ReasonerQueryImpl implements ResolvableQuery {
         /*
         if (isCacheComplete()) return false;
         Set<InferenceRule> dependentRules = RuleUtils.getDependentRules(this);
-        return RuleUtils.subGraphIsCyclical(dependentRules)||
+        return RuleUtils.subGraphIsCyclical(dependentRules, tx())||
                 RuleUtils.subGraphHasRulesWithHeadSatisfyingBody(dependentRules);
 
          */
     }
 
-    @Override
-    public Stream<ConceptMap> resolve() {
-        return resolve(new HashSet<>(), this.requiresReiteration());
-    }
-
-    @Override
-    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals, boolean reiterate){
+    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals){
         return isRuleResolvable()?
-                new ResolutionIterator(this, subGoals, reiterate).hasStream() :
+                new ResolutionIterator(this, subGoals).hasStream() :
                 tx.stream(getQuery());
     }
 

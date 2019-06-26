@@ -67,6 +67,8 @@ public abstract class Atom extends AtomicBase {
         throw GraqlQueryException.illegalAtomConversion(this, RelationAtom.class);
     }
 
+    public AttributeAtom toAttributeAtom() { throw GraqlQueryException.illegalAtomConversion(this, AttributeAtom.class); }
+
     public IsaAtom toIsaAtom() {
         throw GraqlQueryException.illegalAtomConversion(this, IsaAtom.class);
     }
@@ -125,6 +127,11 @@ public abstract class Atom extends AtomicBase {
                 .collect(toSet());
         return mappedVars.containsAll(getVarNames());
     }
+
+    /**
+     * @return true if the query corresponding to this atom has a unique (single) answer if any
+     */
+    public boolean hasUniqueAnswer(){ return isGround();}
 
     /**
      * @return true if this atom is bounded - via substitution/specific resource or schema

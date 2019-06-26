@@ -121,13 +121,17 @@ public abstract class AttributeAtom extends Binary{
     public Class<? extends VarProperty> getVarPropertyClass() { return HasAttributeProperty.class;}
 
     @Override
+    public AttributeAtom toAttributeAtom(){ return this; }
+
+    @Override
     public RelationAtom toRelationAtom(){
         SchemaConcept type = getSchemaConcept();
         if (type == null) throw GraqlQueryException.illegalAtomConversion(this, RelationAtom.class);
         TransactionOLTP tx = getParentQuery().tx();
         Label typeLabel = Schema.ImplicitType.HAS.getLabel(type.label());
-        return RelationAtom.create(
-                Graql.var()
+
+        RelationAtom relationAtom = RelationAtom.create(
+                Graql.var(getRelationVariable())
                         .rel(Schema.ImplicitType.HAS_OWNER.getLabel(type.label()).getValue(), new Statement(getVarName()))
                         .rel(Schema.ImplicitType.HAS_VALUE.getLabel(type.label()).getValue(), new Statement(getAttributeVariable()))
                         .isa(typeLabel.getValue()),
@@ -135,6 +139,11 @@ public abstract class AttributeAtom extends Binary{
                 tx.getSchemaConcept(typeLabel).id(),
                 getParentQuery()
         );
+
+        Set<Statement> patterns = new HashSet<>(relationAtom.getCombinedPattern().statements());
+        this.getPredicates().map(Predicate::getPattern).forEach(patterns::add);
+        this.getMultiPredicate().stream().map(Predicate::getPattern).forEach(patterns::add);
+        return ReasonerQueries.atomic(Graql.and(patterns), tx()).getAtom().toRelationAtom();
     }
 
     /**
@@ -147,10 +156,11 @@ public abstract class AttributeAtom extends Binary{
      */
     @Override
     public IsaAtom toIsaAtom(){
-        IsaAtom isaAtom = IsaAtom.create(getAttributeVariable(), new Variable(), getTypeId(), false, getParentQuery());
-        Set<Statement> patterns = new HashSet<>();
-        ReasonerQueries.atomic(isaAtom).getPattern().getPatterns().stream().flatMap(p -> p.statements().stream()).forEach(patterns::add);
-        getMultiPredicate().stream().map(Predicate::getPattern).forEach(patterns::add);
+        IsaAtom isaAtom = IsaAtom.create(getAttributeVariable(), getPredicateVariable(), getTypeId(), false, getParentQuery());
+
+        Set<Statement> patterns = new HashSet<>(isaAtom.getCombinedPattern().statements());
+        this.getPredicates().map(Predicate::getPattern).forEach(patterns::add);
+        this.getMultiPredicate().stream().map(Predicate::getPattern).forEach(patterns::add);
         return ReasonerQueries.atomic(Graql.and(patterns), tx()).getAtom().toIsaAtom();
     }
 
@@ -254,6 +264,21 @@ public abstract class AttributeAtom extends Binary{
     public boolean isSelectable(){ return true;}
 
     public boolean isValueEquality(){ return getMultiPredicate().stream().anyMatch(p -> p.getPredicate().isValueEquality());}
+
+    @Override
+    public boolean hasUniqueAnswer(){
+        ConceptMap sub = getParentQuery().getSubstitution();
+        if (sub.vars().containsAll(getVarNames())) return true;
+
+        SchemaConcept type = getSchemaConcept();
+        if (type == null) return false;
+
+        boolean isBottomType = !type.subs().anyMatch(t -> !t.equals(type));
+        boolean relationVarMapped = !getRelationVariable().isReturned() || sub.containsVar(getRelationVariable());
+        return isBottomType
+                && isValueEquality() && sub.containsVar(getVarName())
+                && relationVarMapped;
+    }
 
     @Override
     public boolean requiresMaterialisation(){ return true;}

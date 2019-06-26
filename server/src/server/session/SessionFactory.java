@@ -18,6 +18,8 @@
 
 package grakn.core.server.session;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import grakn.core.common.config.Config;
 import grakn.core.concept.ConceptId;
 import grakn.core.server.keyspace.KeyspaceImpl;
@@ -26,13 +28,16 @@ import grakn.core.server.session.cache.KeyspaceCache;
 import grakn.core.server.statistics.KeyspaceStatistics;
 import grakn.core.server.util.LockManager;
 import org.janusgraph.core.JanusGraph;
+import org.janusgraph.graphdb.database.StandardJanusGraph;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Grakn Server's internal {@link SessionImpl} Factory
@@ -40,6 +45,12 @@ import java.util.concurrent.locks.Lock;
  * it is possible to also update the Keyspace Store (which tracks all existing keyspaces).
  */
 public class SessionFactory {
+    // NOTE: this field is used by Grakn KGMS and should be kept public
+    protected final static int TIMEOUT_MINUTES_ATTRIBUTES_CACHE = 2;
+
+    // NOTE: this field is used by Grakn KGMS and should be kept public
+    protected final static int ATTRIBUTES_CACHE_MAX_SIZE = 10000;
+
     private final JanusGraphFactory janusGraphFactory;
     protected final KeyspaceManager keyspaceManager;
     protected Config config;
@@ -64,10 +75,11 @@ public class SessionFactory {
      */
     public SessionImpl session(KeyspaceImpl keyspace) {
         SharedKeyspaceData cacheContainer;
-        JanusGraph graph;
+        StandardJanusGraph graph;
         KeyspaceCache cache;
         KeyspaceStatistics keyspaceStatistics;
-        ConcurrentHashMap<String, ConceptId> attributesMap;
+        Cache<String, ConceptId> attributesCache;
+        ReadWriteLock graphLock;
 
         Lock lock = lockManager.getLock(getLockingKey(keyspace));
         lock.lock();
@@ -79,17 +91,22 @@ public class SessionFactory {
                 graph = cacheContainer.graph();
                 cache = cacheContainer.cache();
                 keyspaceStatistics = cacheContainer.keyspaceStatistics();
-                attributesMap = cacheContainer.attributesMap();
+                attributesCache = cacheContainer.attributesCache();
+                graphLock = cacheContainer.graphLock();
             } else { // If keyspace reference not cached, put keyspace in keyspace manager, open new graph and instantiate new keyspace cache
                 keyspaceManager.putKeyspace(keyspace);
                 graph = janusGraphFactory.openGraph(keyspace.name());
                 cache = new KeyspaceCache();
                 keyspaceStatistics = new KeyspaceStatistics();
-                attributesMap = new ConcurrentHashMap<>();
-                cacheContainer = new SharedKeyspaceData(cache, graph, keyspaceStatistics, attributesMap);
+                attributesCache = CacheBuilder.newBuilder()
+                        .expireAfterAccess(TIMEOUT_MINUTES_ATTRIBUTES_CACHE, TimeUnit.MINUTES)
+                        .maximumSize(ATTRIBUTES_CACHE_MAX_SIZE)
+                        .build();
+                graphLock = new ReentrantReadWriteLock();
+                cacheContainer = new SharedKeyspaceData(cache, graph, keyspaceStatistics, attributesCache, graphLock);
                 sharedKeyspaceDataMap.put(keyspace, cacheContainer);
             }
-            SessionImpl session = new SessionImpl(keyspace, config, cache, graph, keyspaceStatistics, attributesMap);
+            SessionImpl session = new SessionImpl(keyspace, config, cache, graph, keyspaceStatistics, attributesCache, graphLock);
             session.setOnClose(this::onSessionClose);
             cacheContainer.addSessionReference(session);
             return session;
@@ -156,26 +173,32 @@ public class SessionFactory {
      */
     protected class SharedKeyspaceData {
 
-        private KeyspaceCache keyspaceCache;
+        private final KeyspaceCache keyspaceCache;
         // Graph is cached here because concurrently created sessions don't see writes to JanusGraph DB cache
-        private JanusGraph graph;
+        private final StandardJanusGraph graph;
         // Keep track of sessions so that if a user deletes a keyspace we make sure to invalidate all associated sessions
-        private List<SessionImpl> sessions;
+        private final List<SessionImpl> sessions;
 
         // Shared keyspace statistics
-        private KeyspaceStatistics keyspaceStatistics;
+        private final KeyspaceStatistics keyspaceStatistics;
 
         // Map<AttributeIndex, ConceptId> used to map an attribute index to a unique id
-        // so that AttributeDeduplicator and new transactions can all refer to the same ID when working with newly created attributes,
-        // eliminating the risk of fetching attribute ids that will be removed by deduplication (leading to ghost vertex)
-        private ConcurrentHashMap<String, ConceptId> attributesMap;
+        // so that concurrent transactions can merge the same attribute indexes using a unique id
+        private final Cache<String, ConceptId> attributesCache;
 
-        public SharedKeyspaceData(KeyspaceCache keyspaceCache, JanusGraph graph, KeyspaceStatistics keyspaceStatistics, ConcurrentHashMap<String, ConceptId> attributesMap) {
+        private final ReadWriteLock graphLock;
+
+        public SharedKeyspaceData(KeyspaceCache keyspaceCache, StandardJanusGraph graph, KeyspaceStatistics keyspaceStatistics, Cache<String, ConceptId> attributesCache, ReadWriteLock graphLock) {
             this.keyspaceCache = keyspaceCache;
             this.graph = graph;
             this.sessions = new ArrayList<>();
             this.keyspaceStatistics = keyspaceStatistics;
-            this.attributesMap = attributesMap;
+            this.attributesCache = attributesCache;
+            this.graphLock = graphLock;
+        }
+
+        public ReadWriteLock graphLock() {
+            return graphLock;
         }
 
         public KeyspaceCache cache() {
@@ -198,13 +221,17 @@ public class SessionFactory {
             sessions.forEach(SessionImpl::invalidate);
         }
 
-        public JanusGraph graph() {
+        public StandardJanusGraph graph() {
             return graph;
         }
 
-        public KeyspaceStatistics keyspaceStatistics() { return keyspaceStatistics; }
+        public KeyspaceStatistics keyspaceStatistics() {
+            return keyspaceStatistics;
+        }
 
-        public ConcurrentHashMap<String, ConceptId> attributesMap() { return attributesMap;}
+        public Cache<String, ConceptId> attributesCache() {
+            return attributesCache;
+        }
 
     }
 

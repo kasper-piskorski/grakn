@@ -49,7 +49,7 @@ public abstract class AtomicQueryCacheBase<
 
     final private Set<ReasonerAtomicQuery> completeQueries = new HashSet<>();
     final private Set<QE> completeEntries = new HashSet<>();
-
+    
     boolean isDBComplete(ReasonerAtomicQuery query){
         long start = System.currentTimeMillis();
         boolean complete = dbCompleteEntries.contains(queryToKey(query))
@@ -67,6 +67,7 @@ public abstract class AtomicQueryCacheBase<
     }
 
     public void ackCompleteness(ReasonerAtomicQuery query) {
+        ackDBCompleteness(query);
         if (query.getAtom().getPredicates(IdPredicate.class).findFirst().isPresent()) {
             completeQueries.add(query);
         } else {

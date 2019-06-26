@@ -26,7 +26,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import grakn.core.concept.ConceptId;
 import grakn.core.graql.gremlin.fragment.Fragment;
-import grakn.core.server.kb.Schema;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal;
@@ -109,22 +108,14 @@ public abstract class GraqlTraversal {
      */
     private GraphTraversal<Vertex, Map<String, Element>> getConjunctionTraversal(
             TransactionOLTP tx, GraphTraversal<Vertex, Vertex> traversal, Set<Variable> vars,
-            ImmutableList<Fragment> fragmentList
-    ) {
-        GraphTraversal<Vertex, ? extends Element> newTraversal = traversal;
+            ImmutableList<Fragment> fragmentList) {
 
-        // If the first fragment can operate on edges, then we have to navigate all edges as well
-        if (fragmentList.get(0).canOperateOnEdges()) {
-            newTraversal = traversal.union(__.identity(), __.outE(Schema.EdgeLabel.ATTRIBUTE.getLabel()));
-        }
-
-        return applyFragments(tx, vars, fragmentList, newTraversal);
+        return applyFragments(tx, vars, fragmentList, traversal);
     }
 
     private GraphTraversal<Vertex, Map<String, Element>> applyFragments(
             TransactionOLTP tx, Set<Variable> vars, ImmutableList<Fragment> fragmentList,
-            GraphTraversal<Vertex, ? extends Element> traversal
-    ) {
+            GraphTraversal<Vertex, ? extends Element> traversal) {
         Set<Variable> foundVars = new HashSet<>();
 
         // Apply fragments in order into one single traversal
