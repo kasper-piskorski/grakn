@@ -194,9 +194,9 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
     }
 
     @Override
-    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals, boolean reiterate){
+    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals){
         return isRuleResolvable()?
-                new ResolutionIterator(this, subGoals, reiterate).hasStream() :
+                new ResolutionIterator(this, subGoals).hasStream() :
                 tx().queryCache().getAnswerStream(this);
     }
 
