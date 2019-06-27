@@ -33,47 +33,6 @@ subResource sub reattachable-resource-string;
 
 #Rules
 
-transferResourceToEntity sub rule,
-    when {
-    	$x isa genericEntity, has reattachable-resource-string $r1;
-    	$y isa genericEntity;
-    },
-    then {
-    	$y has reattachable-resource-string $r1;
-    };
-
-transferResourceToRelation sub rule,
-    when {
-        $x isa genericEntity, has reattachable-resource-string $y;
-        $z isa relation0;
-    },
-    then {
-        $z has reattachable-resource-string $y;
-    };
-
-attachResourceValueToResourceOfDifferentType sub rule,
-	when {
-		$x isa genericEntity, has reattachable-resource-string $r1;
-	},
-	then {
-		$x has subResource $r1;
-	};
-
-setResourceFlagBasedOnOtherResourceValue sub rule,
-    when {
-        $x isa anotherEntity, has resource-long > 0;
-    },
-    then {
-        $x has derived-resource-boolean true;
-    };
-
-attachResourceToEntity sub rule,
-    when {
-        $x isa yetAnotherEntity;
-    },
-    then {
-        $x has derived-resource-string 'value';
-    };
 
 attachUnattachedResourceToEntity sub rule,
     when {

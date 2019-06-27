@@ -379,6 +379,14 @@ public abstract class AttributeAtom extends Binary{
      * @return implicit relation of the attribute
      */
     private Relation attachAttribute(Concept owner, Attribute attribute){
+        if (owner.asThing().attributes(getSchemaConcept().asAttributeType()).anyMatch(at -> at.equals(attribute))){
+
+            ReasonerAtomicQuery query = ReasonerQueries.atomic(this).withSubstitution(new ConceptMap(ImmutableMap.of(getAttributeVariable(), attribute)));
+            ConceptMap answer = tx().queryCache().getAnswerStream(query).findFirst().orElse(null);
+            System.out.println();
+        }
+        System.out.println("attaching attribute: " + attribute.id() + " to " + owner.id());
+
         //NB: this inserts the implicit relation based on the type of the attribute.
         //We can have cases when we want to specialise the relation while retaining the existing attribute.
         //In such cases at the moment we still insert the attribute type relation whilst retaining an appropriate cache entry.
@@ -393,12 +401,22 @@ public abstract class AttributeAtom extends Binary{
         return relation;
     }
 
-    private ConceptMap findAnswer(ConceptMap sub){
+    private ConceptMap findAnswer(ConceptMap sub, Concept owner, Attribute attribute){
         AttributeAtom atom = getRelationVariable().isReturned()? this.rewriteWithRelationVariable() : this;
         ReasonerAtomicQuery query = ReasonerQueries.atomic(atom).withSubstitution(sub);
+
+
+
         ConceptMap answer = tx().queryCache().getAnswerStream(query).findFirst().orElse(null);
 
-        if (answer == null) tx().queryCache().ackDBCompleteness(query);
+        if (answer == null){
+            if (owner.asThing().attributes(getSchemaConcept().asAttributeType()).anyMatch(at -> at.equals(attribute))){
+                System.out.println();
+                tx().queryCache().getAnswerStream(query).findFirst().orElse(null);
+            }
+            System.out.println("findAnswer::ackDBCopleteness: " + query);
+            tx().queryCache().ackDBCompleteness(query);
+        }
         else tx().queryCache().record(query.withSubstitution(answer), answer);
         return answer;
     }
@@ -410,7 +428,10 @@ public abstract class AttributeAtom extends Binary{
      * @return inserted implicit relation if didn't exist, null otherwise
      */
     private Relation putImplicitRelation(ConceptMap sub, Concept owner, Attribute attribute){
-        ConceptMap answer = findAnswer(ConceptUtils.mergeAnswers(sub, new ConceptMap(ImmutableMap.of(getAttributeVariable(), attribute))));
+        ConceptMap answer = findAnswer(
+                ConceptUtils.mergeAnswers(sub, new ConceptMap(ImmutableMap.of(getAttributeVariable(), attribute))),
+                owner, attribute
+        );
         if (answer == null) return attachAttribute(owner, attribute);
         return getRelationVariable().isReturned()? answer.get(getRelationVariable()).asRelation() : null;
     }
@@ -427,8 +448,11 @@ public abstract class AttributeAtom extends Binary{
         Attribute attribute;
         if(this.isValueEquality()){
             Object value = Iterables.getOnlyElement(getMultiPredicate()).getPredicate().value();
-            Attribute existingAttribute = attributeType.attribute(value);
-            attribute = existingAttribute == null? attributeType.putAttributeInferred(value) : existingAttribute;
+            attribute = attributeType.attribute(value);
+            if(attribute == null){
+                attribute = attributeType.putAttributeInferred(value);
+                System.out.println("created attribute of type: " + attribute.type() + " :" + attribute);
+            }
         } else {
             attribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
         }

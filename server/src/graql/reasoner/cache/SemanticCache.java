@@ -137,9 +137,12 @@ public abstract class SemanticCache<
     public Set<QE> getParents(ReasonerAtomicQuery child){
         Set<QE> parents = this.parents.get(queryToKey(child));
         if (parents.isEmpty()) parents = computeParents(child);
+        //return parents;
+
         return parents.stream()
                 .filter(parent -> child.subsumes(keyToQuery(parent)))
                 .collect(toSet());
+
     }
 
     public Set<QE> getFamily(SchemaConcept type){
@@ -176,7 +179,7 @@ public abstract class SemanticCache<
         Set<QE> computedParents = new HashSet<>();
         getFamily(child)
                 .map(this::keyToQuery)
-                .filter(child::subsumes)
+                .filter(parent -> child.subsumes(parent))
                 .map(this::queryToKey)
                 .peek(computedParents::add)
                 .forEach(parent -> parents.put(queryToKey(child), parent));
@@ -220,7 +223,6 @@ public abstract class SemanticCache<
 
         assert(query.isPositive());
         validateAnswer(answer, query, query.getVarNames());
-        if (query.hasUniqueAnswer()) ackCompleteness(query);
 
         /*
          * find SE entry
@@ -240,7 +242,12 @@ public abstract class SemanticCache<
                     .forEach(answerSet::add);
             return match;
         }
-        return addEntry(createEntry(query, Sets.newHashSet(answer)));
+        CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, Sets.newHashSet(answer)));
+        if (query.hasUniqueAnswer()){
+            System.out.println("ack completeness: " + query);
+            ackCompleteness(query);
+        }
+        return newEntry;
     }
 
     @Override

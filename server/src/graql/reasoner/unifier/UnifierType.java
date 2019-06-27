@@ -283,15 +283,26 @@ public enum UnifierType implements UnifierComparison, EquivalenceCoupling {
 
         @Override
         public boolean typeCompatibility(Set<? extends SchemaConcept> parentTypes, Set<? extends SchemaConcept> childTypes) {
+            /*
             return super.typeCompatibility(parentTypes, childTypes)
                     && (parentTypes.stream().allMatch(t -> t.subs().anyMatch(childTypes::contains)))
                     && !ConceptUtils.areDisjointTypeSets(parentTypes, childTypes, false);
+
+
+             */
+            return super.typeCompatibility(parentTypes, childTypes)
+                    && parentTypes.equals(childTypes);
         }
 
         @Override
         public boolean idCompatibility(Atomic parent, Atomic child) {
             return parent == null
                     || child != null && child.subsumes(parent);
+        }
+
+        @Override
+        public boolean idCompatibility(Set<Atomic> parent, Set<Atomic> child){
+            return isEquivalentCollection(parent, child, this::idCompatibility);
         }
 
         @Override

@@ -113,6 +113,11 @@ public class IdPredicate extends Predicate<ConceptId> {
     }
 
     @Override
+    public boolean subsumes(Atomic atom){
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "[" + getVarName() + "/" + getPredicateValue() + "]";
     }
