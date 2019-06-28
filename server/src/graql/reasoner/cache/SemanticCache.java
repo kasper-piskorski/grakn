@@ -100,7 +100,7 @@ public abstract class SemanticCache<
      * @param query to be checked for answers
      * @return true if cache answers the input query
      */
-    protected abstract boolean answersQuery(ReasonerAtomicQuery query);
+    protected abstract boolean containsAnswersToQuery(ReasonerAtomicQuery query);
 
     abstract CacheEntry<ReasonerAtomicQuery, SE> createEntry(ReasonerAtomicQuery query, Set<ConceptMap> answers);
 
@@ -129,7 +129,7 @@ public abstract class SemanticCache<
                     CacheEntry<ReasonerAtomicQuery, SE> childEntry = getEntry(child);
                     if (childEntry != null) {
                         propagateAnswersToQuery(child, childEntry, true);
-                        ackCompleteness(child);
+                        //ackCompleteness(child);
                     }
                 });
     }
@@ -200,13 +200,14 @@ public abstract class SemanticCache<
         getParents(target)
                 .forEach(parent -> {
                     boolean parentDbComplete = isDBComplete(keyToQuery(parent));
+                    //TODO might be worth trying to relax the completeness check here
                     if (parentDbComplete || childGround){
                         boolean parentComplete = isComplete(keyToQuery(parent));
                         CacheEntry<ReasonerAtomicQuery, SE> parentMatch = getEntry(keyToQuery(parent));
 
                         boolean propagateInferred = fetchInferred || parentComplete || child.getAtom().getVarName().isReturned();
                         boolean newAnswers = propagateAnswers(parentMatch, childMatch, propagateInferred);
-                        newAnswersFound[0] = newAnswers;
+                        newAnswersFound[0] = newAnswersFound[0] || newAnswers;
                         if (parentDbComplete || newAnswers) ackDBCompleteness(target);
                         if (parentComplete) ackCompleteness(target);
                     }
@@ -284,7 +285,8 @@ public abstract class SemanticCache<
             boolean queryDBComplete = isDBComplete(query);
             if (queryGround) {
                 boolean newAnswersPropagated = propagateAnswersToQuery(query, match, true);
-                if (newAnswersPropagated) answersToGroundQuery = answersQuery(query);
+                //since ids in the parent entries are only placeholders, even if new answers are propagated they may not answer the query
+                if (newAnswersPropagated) answersToGroundQuery = containsAnswersToQuery(query);
             }
 
             //extra check is a quasi-completeness check if there's no parent present we have no guarantees about completeness with respect to the db.

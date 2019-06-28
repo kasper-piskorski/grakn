@@ -38,6 +38,7 @@ import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -506,6 +507,65 @@ public class QueryCacheIT {
                     ).collect(toSet()),
                     cacheAnswers);
             assertTrue(cacheAnswers.contains(specificAnswer));
+        }
+    }
+
+    @Test
+    public void whenGettingAndMatchExists_queryGround_queryDBComplete_answerNotFound_answersFetchedFromDbAndCache(){
+        try(TransactionOLTP tx = genericSchemaSession.transaction().read()) {
+            MultilevelSemanticCache cache = new MultilevelSemanticCache();
+
+            Concept mConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 'm';get;")).iterator().next().get("x");
+            Concept sConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 's';get;")).iterator().next().get("x");
+            Concept fConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 'f';get;")).iterator().next().get("x");
+
+            ReasonerAtomicQuery genericQuery = ReasonerQueries.atomic(conjunction("{(subRole1: $x, subRole2: $y) isa binary;};"), tx);
+            ReasonerAtomicQuery parentQuery = ReasonerQueries.atomic(conjunction(
+                    "{" +
+                            "(subRole1: $x, subRole2: $y) isa binary;" +
+                            "$y id " + sConcept.id().getValue() + ";" +
+                            "};"),
+                    tx);
+
+            tx.stream(genericQuery.getQuery(), false)
+                    .filter(ans -> ans.get("y").equals(sConcept))
+                    .map(ans -> ans.explain(new LookupExplanation(parentQuery.getPattern())))
+                    .forEach(ans -> cache.record(parentQuery, ans));
+
+            //mock a rule explained answer
+            ConceptMap inferredAnswer = new ConceptMap(
+                    ImmutableMap.of(
+                            Graql.var("x").var(), mConcept,
+                            Graql.var("y").var(), fConcept
+                    ),
+                    new RuleExplanation(parentQuery.getPattern(), tx.getMetaRule().id())
+            );
+            cache.record(parentQuery, inferredAnswer);
+
+            ReasonerAtomicQuery initialChildQuery = ReasonerQueries.atomic(conjunction(
+                    "{" +
+                            "(subRole1: $x1, subRole2: $y1) isa binary;" +
+                            "$x1 id " + mConcept.id().getValue() + ";" +
+                            "$y1 id " + sConcept.id().getValue() + ";" +
+                            "};"),
+                    tx);
+            ReasonerAtomicQuery childQuery = ReasonerQueries.atomic(conjunction(
+                    "{" +
+                            "(subRole1: $x2, subRole2: $y2) isa binary;" +
+                            "$x2 id " + mConcept.id().getValue() + ";" +
+                            "$y2 id " + fConcept.id().getValue() + ";" +
+                            "};"),
+                    tx);
+
+            tx.stream(initialChildQuery.getQuery(), false)
+                    .map(ans -> ans.explain(new LookupExplanation(initialChildQuery.getPattern())))
+                    .forEach(ans -> cache.record(initialChildQuery, ans));
+
+            cache.ackDBCompleteness(initialChildQuery);
+            cache.ackDBCompleteness(childQuery);
+
+            Set<ConceptMap> answers = cache.getAnswers(childQuery);
+            assertTrue(answers.contains(inferredAnswer));
         }
     }
 

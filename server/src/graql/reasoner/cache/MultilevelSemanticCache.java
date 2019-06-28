@@ -65,7 +65,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
     }
 
     @Override
-    protected boolean answersQuery(ReasonerAtomicQuery query) {
+    protected boolean containsAnswersToQuery(ReasonerAtomicQuery query) {
         CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> entry = getEntry(query);
         if (entry == null) return false;
         ReasonerAtomicQuery cacheQuery = entry.query();
