@@ -65,7 +65,7 @@ public class RuleUtils {
     private static HashMultimap<Type, Type> persistedTypeSubGraph(Set<InferenceRule> rules){
         HashMultimap<Type, Type> graph = HashMultimap.create();
         rules.stream()
-                .flatMap(rule -> persistedRuleToTypePair.apply(rule))
+                .flatMap(persistedRuleToTypePair)
                 .forEach(p -> graph.put(p.getKey(), p.getValue()));
         return graph;
     }
@@ -77,12 +77,12 @@ public class RuleUtils {
         HashMultimap<Type, Type> graph = HashMultimap.create();
         tx.getMetaRule().subs()
                 .filter(rule -> !Schema.MetaSchema.isMetaLabel(rule.label()))
-                .flatMap(rule -> ruleToTypePair.apply(rule))
+                .flatMap(ruleToTypePair)
                 .forEach(p -> graph.put(p.getKey(), p.getValue()));
         return graph;
     }
 
-    private static Function<InferenceRule, Stream<Pair<Type, Type>>> persistedRuleToTypePair = rule ->
+    final private static Function<InferenceRule, Stream<Pair<Type, Type>>> persistedRuleToTypePair = rule ->
             rule.getBody()
                     .getAtoms(Atom.class)
                     .flatMap(at -> at.getPossibleTypes().stream())
@@ -100,7 +100,7 @@ public class RuleUtils {
                                     .map(thenType -> new Pair<>(whenType, thenType))
                     );
 
-    private static Function<Rule, Stream<Pair<Type, Type>>> ruleToTypePair = rule ->
+    final private static Function<Rule, Stream<Pair<Type, Type>>> ruleToTypePair = rule ->
             rule.whenTypes()
                     .flatMap(Type::subs)
                     .filter(t -> !t.isAbstract())
@@ -151,6 +151,7 @@ public class RuleUtils {
                     .filter(q -> tx.queryCache().getParents(q).isEmpty())
                     .filter(q -> q.getAtom().isRelation() || q.getAtom().isResource())
                     .collect(toSet());
+            //if we don't have full information (query answers in cache), we assume reiteration is needed
             if (!queries.stream().allMatch(q -> tx.queryCache().isDBComplete(q))) return true;
 
             HashMultimap<Concept, Concept> conceptMap = HashMultimap.create();
@@ -221,6 +222,30 @@ public class RuleUtils {
             }
         }
         return rules;
+    }
+
+    /**
+     * @param entryType type of interest
+     * @return all types that are dependent on the entryType - deletion of which triggers possible retraction of inferences
+     */
+    public static Set<Type> getDependentTypes(Type entryType){
+        Set<Type> types = new HashSet<>();
+        types.add(entryType);
+        Set<Type> visitedTypes = new HashSet<>();
+        Stack<Type> typeStack = new Stack<>();
+        typeStack.add(entryType);
+        while(!typeStack.isEmpty()) {
+            Type type = typeStack.pop();
+            if (!visitedTypes.contains(type) && type != null){
+                type.whenRules()
+                        .flatMap(Rule::thenTypes)
+                        .peek(types::add)
+                        .filter(at -> !visitedTypes.contains(at))
+                        .forEach(typeStack::add);
+                visitedTypes.add(type);
+            }
+        }
+        return types;
     }
 
 }

@@ -16,23 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package grakn.core.server.util;
-
-import com.google.common.util.concurrent.Striped;
-
-import java.util.concurrent.locks.Lock;
+package grakn.core.console;
 
 /**
- * Simple locking mechanism that can be used in case of single server execution
+ * Class for storing the Grakn Version.
  */
-public class ServerLockManager implements LockManager {
-
-    private Striped<Lock> locks = Striped.lazyWeakLock(128);
-
-    public ServerLockManager() {
-    }
-
-    public Lock getLock(String lockToObtain) {
-        return locks.get(lockToObtain);
-    }
+public class Version {
+    public static final String VERSION = "{version}";
 }

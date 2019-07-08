@@ -67,6 +67,7 @@ pip_import(
     name = "graknlabs_build_tools_ci_pip",
     requirements = "@graknlabs_build_tools//ci:requirements.txt",
 )
+
 load("@graknlabs_build_tools_ci_pip//:requirements.bzl",
 graknlabs_build_tools_ci_pip_install = "pip_install")
 graknlabs_build_tools_ci_pip_install()
@@ -153,7 +154,7 @@ google_common_workspace_rules()
 
 
 # Generate a JSON document of commit hashes of all external workspace dependencies
-load("@graknlabs_build_tools//bazel:rules.bzl", "workspace_refs")
+load("@graknlabs_bazel_distribution//common:rules.bzl", "workspace_refs")
 workspace_refs(
     name = "graknlabs_grakn_core_workspace_refs"
 )

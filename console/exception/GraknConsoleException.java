@@ -18,15 +18,15 @@
 
 package grakn.core.console.exception;
 
-import grakn.core.common.exception.GraknException;
+import grakn.client.exception.GraknClientException;
 
-public class GraknConsoleException extends GraknException {
+public class GraknConsoleException extends GraknClientException {
 
     public GraknConsoleException(String error) {
         super(error);
     }
 
-    public GraknConsoleException(String error, Exception e) {
+    public GraknConsoleException(String error, RuntimeException e) {
         super(error, e);
     }
 

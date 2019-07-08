@@ -44,6 +44,7 @@ import grakn.core.graql.reasoner.cache.VariableDefinition;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQuery;
+import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
@@ -60,6 +61,7 @@ import graql.lang.property.HasAttributeProperty;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -102,20 +104,6 @@ public abstract class AttributeAtom extends Binary{
 
     @Override
     public Atomic copy(ReasonerQuery parent){ return create(this, parent);}
-
-    @Override
-    public Atomic neqPositive(){
-        return create(
-                this.getPattern(),
-                this.getAttributeVariable(),
-                this.getRelationVariable(),
-                this.getPredicateVariable(),
-                this.getTypeId(),
-                this.getMultiPredicate().stream()
-                        .filter(at -> !(at.getPredicate().comparator().equals(Graql.Token.Comparator.NEQV)))
-                        .collect(Collectors.toSet()),
-                this.getParentQuery());
-    }
 
     @Override
     public Class<? extends VarProperty> getVarPropertyClass() { return HasAttributeProperty.class;}
@@ -183,7 +171,7 @@ public abstract class AttributeAtom extends Binary{
         AttributeAtom a2 = (AttributeAtom) obj;
         return Objects.equals(this.getTypeId(), a2.getTypeId())
                 && this.getVarName().equals(a2.getVarName())
-                && this.multiPredicateEquivalent(a2, AtomicEquivalence.Equality);
+                && this.multiPredicateEqual(a2);
     }
 
     @Override
@@ -193,8 +181,8 @@ public abstract class AttributeAtom extends Binary{
         return this.getRelationVariable().isReturned() == that.getRelationVariable().isReturned();
     }
 
-    private boolean multiPredicateEquivalent(AttributeAtom that, AtomicEquivalence equiv){
-        return isEquivalentCollection(this.getMultiPredicate(), that.getMultiPredicate(), equiv);
+    private boolean multiPredicateEqual(AttributeAtom that){
+        return isEquivalentCollection(this.getMultiPredicate(), that.getMultiPredicate(), AtomicEquivalence.Equality);
     }
 
     @Override
@@ -255,7 +243,7 @@ public abstract class AttributeAtom extends Binary{
         SchemaConcept type = getSchemaConcept();
         if (type == null) return false;
 
-        boolean isBottomType = !type.subs().anyMatch(t -> !t.equals(type));
+        boolean isBottomType = type.subs().allMatch(t -> t.equals(type));
         boolean relationVarMapped = !getRelationVariable().isReturned() || sub.containsVar(getRelationVariable());
         return isBottomType
                 && isValueEquality() && sub.containsVar(getVarName())
@@ -402,11 +390,8 @@ public abstract class AttributeAtom extends Binary{
     }
 
     private ConceptMap findAnswer(ConceptMap sub, Concept owner, Attribute attribute){
-        AttributeAtom atom = getRelationVariable().isReturned()? this.rewriteWithRelationVariable() : this;
-        ReasonerAtomicQuery query = ReasonerQueries.atomic(atom).withSubstitution(sub);
-
-
-
+        //NB: we are only interested in this atom and its subs, not any other constraints
+        ReasonerAtomicQuery query = ReasonerQueries.atomic(Collections.singleton(this), tx()).withSubstitution(sub);
         ConceptMap answer = tx().queryCache().getAnswerStream(query).findFirst().orElse(null);
 
         if (answer == null){
@@ -445,7 +430,7 @@ public abstract class AttributeAtom extends Binary{
         Variable resourceVariable = getAttributeVariable();
 
         //if the attribute already exists, only attach a new link to the owner, otherwise create a new attribute
-        Attribute attribute;
+        Attribute attribute = null;
         if(this.isValueEquality()){
             Object value = Iterables.getOnlyElement(getMultiPredicate()).getPredicate().value();
             attribute = attributeType.attribute(value);
@@ -454,16 +439,30 @@ public abstract class AttributeAtom extends Binary{
                 System.out.println("created attribute of type: " + attribute.type() + " :" + attribute);
             }
         } else {
-            attribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
+            Attribute existingAttribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
+            //even if the attribute exists but is of different type (supertype for instance) we create a new one
+            //to make sure the attribute index will be different
+            if (existingAttribute != null){
+                Object value = existingAttribute.value();
+                attribute = existingAttribute;
+                if (!existingAttribute.type().equals(attributeType)){
+                    existingAttribute = attributeType.attribute(value);
+                    attribute = existingAttribute == null? attributeType.putAttributeInferred(value) : existingAttribute;
+                }
+            }
         }
 
         if (attribute != null) {
-            Relation relation = putImplicitRelation(substitution, owner, attribute);
-            ConceptMap answer = new ConceptMap(ImmutableMap.of(resourceVariable, attribute));
+            ConceptMap answer = new ConceptMap(ImmutableMap.of(
+                    getVarName(), substitution.get(getVarName()),
+                    resourceVariable, attribute));
+
+            Relation relation = putImplicitRelation(answer, owner, attribute);
+
             if (getRelationVariable().isReturned()){
                 answer = ConceptUtils.mergeAnswers(answer, new ConceptMap(ImmutableMap.of(getRelationVariable(), relation)));
             }
-            return Stream.of(ConceptUtils.mergeAnswers(substitution, answer));
+            return Stream.of(answer);
         }
         return Stream.empty();
     }
