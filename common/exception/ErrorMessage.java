@@ -54,7 +54,6 @@ public enum ErrorMessage {
     HAS_INVALID("The type [%s] is not allowed to have an attribute of type [%s]"),
     BACKEND_EXCEPTION("Backend Exception."),
     INITIALIZATION_EXCEPTION("Graph for keyspace [%s] not properly initialized. Missing keyspace name resource"),
-    CONNECTION_CLOSED("The connection to the database is closed"),
     TX_CLOSED("The transaction for keyspace [%s] is closed. Use the session to get a new transaction for the graph."),
     SESSION_CLOSED("The session for graph [%s] is closed. Create a new session to interact with the graph."),
     TX_CLOSED_ON_ACTION("The transaction was %s and closed for graph [%s]. Use the session to get a new transaction for the graph."),
@@ -161,7 +160,6 @@ public enum ErrorMessage {
     UNKNOWN_AGGREGATE("unknown aggregate '%s'"),
 
     MATCH_INVALID("cannot match on property of type [%s]"),
-    MULTIPLE_TX("a graph has been specified twice for this query"),
 
     INSERT_UNDEFINED_VARIABLE("%s doesn't have an 'isa', a 'sub' or an 'id'"),
     INSERT_PREDICATE("cannot insert a concept with a predicate"),
@@ -201,11 +199,7 @@ public enum ErrorMessage {
     ATTRIBUTE_TYPE_NOT_SPECIFIED("No attribute type provided for compute query."),
     K_SMALLER_THAN_TWO("k can't be smaller than 2."),
     INSTANCE_DOES_NOT_EXIST("Instance does not exist in the subgraph."),
-    MAX_ITERATION_REACHED("Max iteration of [%s] reached."),
-
-    //--------------------------------------------- Shell Errors ---------------------------------------------------
-    COULD_NOT_CONNECT("Could not connect to Grakn. Have you run 'grakn server start'?"),
-    NO_VARIABLE_IN_QUERY("There was no variable specified in the query. Perhaps you forgot to escape `\\` a `$`?");
+    MAX_ITERATION_REACHED("Max iteration of [%s] reached.");
 
     private final String message;
 

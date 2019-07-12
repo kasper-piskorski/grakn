@@ -55,5 +55,5 @@ public abstract class QueryState<Q extends ReasonerQueryImpl> extends QueryState
     /**
      * @return query corresponding to this query state
      */
-    public Q getQuery(){ return query;}
+    Q getQuery(){ return query;}
 }

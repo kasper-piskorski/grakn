@@ -29,7 +29,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import grakn.core.common.exception.ErrorMessage;
-import grakn.core.common.util.CommonUtil;
+import grakn.core.common.util.Streams;
 import grakn.core.concept.Concept;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.Label;
@@ -77,6 +77,8 @@ import graql.lang.statement.Statement;
 import graql.lang.statement.StatementInstance;
 import graql.lang.statement.StatementThing;
 import graql.lang.statement.Variable;
+
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -91,7 +93,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 import static grakn.core.server.kb.concept.ConceptUtils.bottom;
 import static grakn.core.server.kb.concept.ConceptUtils.top;
@@ -119,9 +120,9 @@ public abstract class RelationAtom extends IsaAtomBase {
         ImmutableSet<Label> roleLabels = ImmutableSet.<Label>builder().addAll(
                 relationPlayers.stream()
                         .map(RelationProperty.RolePlayer::getRole)
-                        .flatMap(CommonUtil::optionalToStream)
+                        .flatMap(Streams::optionalToStream)
                         .map(Statement::getType)
-                        .flatMap(CommonUtil::optionalToStream)
+                        .flatMap(Streams::optionalToStream)
                         .map(Label::of).iterator()
         ).build();
         return new AutoValue_RelationAtom(pattern.var(), pattern, parent, predicateVar, predicateId, relationPlayers, roleLabels);
@@ -168,8 +169,8 @@ public abstract class RelationAtom extends IsaAtomBase {
     private void checkPattern(){
         getPattern().getProperties(RelationProperty.class)
                 .flatMap(p -> p.relationPlayers().stream())
-                .map(RelationProperty.RolePlayer::getRole).flatMap(CommonUtil::optionalToStream)
-                .map(Statement::getType).flatMap(CommonUtil::optionalToStream)
+                .map(RelationProperty.RolePlayer::getRole).flatMap(Streams::optionalToStream)
+                .map(Statement::getType).flatMap(Streams::optionalToStream)
                 .map(Label::of)
                 .forEach(roleId -> {
                     SchemaConcept schemaConcept = tx().getSchemaConcept(roleId);
@@ -307,7 +308,7 @@ public abstract class RelationAtom extends IsaAtomBase {
     private Set<Variable> getRoleVariables(){
         return getRelationPlayers().stream()
                 .map(RelationProperty.RolePlayer::getRole)
-                .flatMap(CommonUtil::optionalToStream)
+                .flatMap(Streams::optionalToStream)
                 .map(Statement::var)
                 .filter(Variable::isReturned)
                 .collect(Collectors.toSet());
@@ -356,17 +357,13 @@ public abstract class RelationAtom extends IsaAtomBase {
         return var;
     }
 
-    private boolean isBaseEquivalent(Object obj){
-        if (obj == null || this.getClass() != obj.getClass()) return false;
-        if (obj == this) return true;
-        long start =System.currentTimeMillis();
+    @Override
+    boolean isBaseEquivalent(Object obj){
+        if (!super.isBaseEquivalent(obj)) return false;
+        long start = System.currentTimeMillis();
         RelationAtom that = (RelationAtom) obj;
-        boolean equivalent = this.isUserDefined() == that.isUserDefined()
-                && this.getPredicateVariable().isReturned() == that.getPredicateVariable().isReturned()
-                && this.isDirect() == that.isDirect()
-                && Objects.equals(this.getTypeId(), that.getTypeId())
-                //check relation players equivalent
-                && this.getRolePlayers().size() == that.getRolePlayers().size()
+        //check relation players equivalent
+        boolean equivalent = this.getRolePlayers().size() == that.getRolePlayers().size()
                 && this.getRelationPlayers().size() == that.getRelationPlayers().size()
                 && this.getRoleLabels().equals(that.getRoleLabels());
 
@@ -379,27 +376,6 @@ public abstract class RelationAtom extends IsaAtomBase {
         baseHashCode = baseHashCode * 37 + (this.getTypeId() != null ? this.getTypeId().hashCode() : 0);
         baseHashCode = baseHashCode * 37 + this.getRoleLabels().hashCode();
         return baseHashCode;
-    }
-
-    @Override
-    public boolean isAlphaEquivalent(Object obj) {
-        long start =System.currentTimeMillis();
-        if (!isBaseEquivalent(obj)) return false;
-        RelationAtom that = (RelationAtom) obj;
-        boolean equivalent = !this.getMultiUnifier(that, UnifierType.EXACT).equals(MultiUnifierImpl.nonExistent());
-        tx().profiler().updateTime(getClass().getSimpleName() + "::isAlphaEquivalent", System.currentTimeMillis() - start);
-        return equivalent;
-    }
-
-    @Override
-    public boolean isStructurallyEquivalent(Object obj) {
-        long start =System.currentTimeMillis();
-        tx().profiler().updateCallCount(getClass().getSimpleName() + "::isStructurallyEquivalent");
-        if (!isBaseEquivalent(obj)) return false;
-        RelationAtom that = (RelationAtom) obj;
-        boolean equivalent = !this.getMultiUnifier(that, UnifierType.STRUCTURAL).equals(MultiUnifierImpl.nonExistent());
-        tx().profiler().updateTime(getClass().getSimpleName() + "::isStructurallyEquivalent", System.currentTimeMillis() - start);
-        return equivalent;
     }
 
     @Memoized
@@ -519,7 +495,7 @@ public abstract class RelationAtom extends IsaAtomBase {
     public Stream<IdPredicate> getRolePredicates(){
         return getRelationPlayers().stream()
                 .map(RelationProperty.RolePlayer::getRole)
-                .flatMap(CommonUtil::optionalToStream)
+                .flatMap(Streams::optionalToStream)
                 .filter(var -> var.var().isReturned())
                 .filter(vp -> vp.getType().isPresent())
                 .map(vp -> {
@@ -577,9 +553,9 @@ public abstract class RelationAtom extends IsaAtomBase {
 
         return getRelationPlayers().stream()
                 .map(RelationProperty.RolePlayer::getRole)
-                .flatMap(CommonUtil::optionalToStream)
+                .flatMap(Streams::optionalToStream)
                 .map(Statement::getType)
-                .flatMap(CommonUtil::optionalToStream)
+                .flatMap(Streams::optionalToStream)
                 .map(tx::getRole)
                 .filter(Objects::nonNull);
     }
@@ -743,7 +719,7 @@ public abstract class RelationAtom extends IsaAtomBase {
     public Set<Variable> getRoleExpansionVariables(){
         return getRelationPlayers().stream()
                 .map(RelationProperty.RolePlayer::getRole)
-                .flatMap(CommonUtil::optionalToStream)
+                .flatMap(Streams::optionalToStream)
                 .filter(p -> p.var().isReturned())
                 .filter(p -> !p.getType().isPresent())
                 .map(Statement::var)
@@ -756,7 +732,7 @@ public abstract class RelationAtom extends IsaAtomBase {
                 super.getInnerPredicates(),
                 getRelationPlayers().stream()
                         .map(RelationProperty.RolePlayer::getRole)
-                        .flatMap(CommonUtil::optionalToStream)
+                        .flatMap(Streams::optionalToStream)
                         .filter(vp -> vp.var().isReturned())
                         .map(vp -> new Pair<>(vp.var(), vp.getType().orElse(null)))
                         .filter(p -> Objects.nonNull(p.getValue()))
@@ -776,8 +752,8 @@ public abstract class RelationAtom extends IsaAtomBase {
         boolean roleRecomputationViable = allRolesMeta && (!sub.isEmpty() || !Sets.intersection(varTypeMap.keySet(), getRolePlayers()).isEmpty());
         if (explicitRoles.size() == getRelationPlayers().size() && !roleRecomputationViable) return this;
 
-        TransactionOLTP graph = getParentQuery().tx();
-        Role metaRole = graph.getMetaRole();
+        TransactionOLTP tx = getParentQuery().tx();
+        Role metaRole = tx.getMetaRole();
         List<RelationProperty.RolePlayer> allocatedRelationPlayers = new ArrayList<>();
         SchemaConcept schemaConcept = getSchemaConcept();
         RelationType relType = null;
@@ -861,19 +837,19 @@ public abstract class RelationAtom extends IsaAtomBase {
         long start = System.currentTimeMillis();
         ImmutableMultimap.Builder<Role, Variable> builder = ImmutableMultimap.builder();
 
-        TransactionOLTP graph = getParentQuery().tx();
+        TransactionOLTP tx = getParentQuery().tx();
         getRelationPlayers().forEach(c -> {
             Variable varName = c.getPlayer().var();
             Statement rolePattern = c.getRole().orElse(null);
             if (rolePattern != null) {
                 //try directly
                 String typeLabel = rolePattern.getType().orElse(null);
-                Role role = typeLabel != null ? graph.getRole(typeLabel) : null;
+                Role role = typeLabel != null ? tx.getRole(typeLabel) : null;
                 //try indirectly
                 if (role == null && rolePattern.var().isReturned()) {
                     IdPredicate rolePredicate = getIdPredicate(rolePattern.var());
                     if (rolePredicate != null){
-                        Role r = graph.getConcept(rolePredicate.getPredicate());
+                        Role r = tx.getConcept(rolePredicate.getPredicate());
                         if (r == null) throw GraqlCheckedException.idNotFound(rolePredicate.getPredicate());
                         role = r;
                     }
@@ -1031,7 +1007,7 @@ public abstract class RelationAtom extends IsaAtomBase {
             Set<List<Pair<RelationProperty.RolePlayer, RelationProperty.RolePlayer>>> rpMappings = getRelationPlayerMappings(parent, unifierType);
             boolean containsRoleVariables = parent.getRelationPlayers().stream()
                     .map(RelationProperty.RolePlayer::getRole)
-                    .flatMap(CommonUtil::optionalToStream)
+                    .flatMap(Streams::optionalToStream)
                     .anyMatch(rp -> rp.var().isReturned());
 
             //NB: if two atoms are equal and their rp mappings are complete we return the identity unifier
@@ -1111,10 +1087,10 @@ public abstract class RelationAtom extends IsaAtomBase {
             if(parentRoleVars.contains(parentVar)){
                 Set<Label> roleLabels = this.getRelationPlayers().stream()
                         .map(RelationProperty.RolePlayer::getRole)
-                        .flatMap(CommonUtil::optionalToStream)
+                        .flatMap(Streams::optionalToStream)
                         .filter(roleStatement -> roleStatement.var().equals(childVar))
                         .map(Statement::getType)
-                        .flatMap(CommonUtil::optionalToStream)
+                        .flatMap(Streams::optionalToStream)
                         .map(Label::of)
                         .collect(toSet());
                 if (!roleLabels.isEmpty()){
@@ -1135,12 +1111,16 @@ public abstract class RelationAtom extends IsaAtomBase {
         tx().profiler().updateTime(getClass().getSimpleName() + "::findRelation", System.currentTimeMillis() - start);
         return answer != null? answer.get(getVarName()).asRelation() : null;
     }
-
-
+    
     @Override
     public Stream<ConceptMap> materialise(){
         long start = System.currentTimeMillis();
         RelationType relationType = getSchemaConcept().asRelationType();
+        //in case the roles are variable, we wouldn't have enough information if converted to attribute
+        if (relationType.isImplicit()){
+            ConceptMap roleSub = getRoleSubstitution();
+            return this.toAttributeAtom().materialise().map(ans -> ConceptUtils.mergeAnswers(ans, roleSub));
+        }
         Multimap<Role, Variable> roleVarMap = getRoleVarMap();
         ConceptMap substitution = getParentQuery().getSubstitution();
 

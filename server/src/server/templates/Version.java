@@ -16,18 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package grakn.core.common.exception;
+package grakn.core.server;
 
-import java.util.regex.Pattern;
-
-public class Validator {
-
-    private static final int KEYSPACE_NAME_MAX_LENGTH = 48;
-
-    public static boolean isValidKeyspaceName(String name) {
-        if(!Pattern.matches("[a-z_][a-z_0-9]*", name) || name.length() > KEYSPACE_NAME_MAX_LENGTH) {
-            return false;
-        }
-        return true;
-    }
+/**
+ * Class for storing the Grakn Version.
+ */
+public class Version {
+    public static final String VERSION = "{version}";
 }

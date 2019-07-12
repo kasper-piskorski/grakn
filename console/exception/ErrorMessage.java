@@ -16,11 +16,26 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package grakn.core.common.util;
+package grakn.core.console.exception;
 
 /**
- * Class for storing the Grakn Version.
+ * Enum containing error messages.
+ *
+ * Each error message contains a single format string, with a method {@link ErrorMessage#getMessage(Object...)} that
+ * accepts arguments to be passed to the format string.
+ *
  */
-public class GraknVersion {
-    public static final String VERSION = "VERSION_PLACEHOLDER";
+public enum ErrorMessage {
+
+    COULD_NOT_CONNECT("Could not connect to Grakn. Have you run 'grakn server start'?");
+
+    private final String message;
+
+    ErrorMessage(String message) {
+        this.message = message;
+    }
+
+    public String getMessage(Object... args) {
+        return String.format(message, args);
+    }
 }

@@ -21,7 +21,7 @@ package grakn.core.graql.reasoner.state;
 import com.google.common.collect.HashMultimap;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.answer.ConceptMap;
-import grakn.core.graql.reasoner.ResolutionIterator;
+import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.cache.CacheEntry;
 import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.explanation.RuleExplanation;
@@ -33,7 +33,6 @@ import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.server.kb.concept.ConceptUtils;
 import graql.lang.statement.Variable;
-
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,9 +47,7 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
 
     private MultiUnifier cacheUnifier = null;
     private CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> cacheEntry = null;
-    private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
-
-    private HashMultimap<ConceptId, ConceptMap> consumed = HashMultimap.create();
+    final private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
 
     public AtomicState(ReasonerAtomicQuery query,
                 ConceptMap sub,
@@ -152,7 +149,7 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
         }
         materialised.put(rule.getRule().id(), sub);
 
-        Set<Variable> queryVars = query.getVarNames().size() < ruleHead.getVarNames().size() ?
+        Set<Variable> headVars = query.getVarNames().size() < ruleHead.getVarNames().size() ?
                 unifier.keySet() :
                 ruleHead.getVarNames();
 
@@ -162,8 +159,16 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
         ConceptMap materialisedSub = ruleHead.materialise(answer).findFirst().orElse(null);
         getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start2);
         if (materialisedSub != null) {
-            getQuery().tx().queryCache().record(ruleHead, materialisedSub.explain(new RuleExplanation(query.getPattern(), rule.getRule().id())));
-            answer = unifier.apply(materialisedSub.project(queryVars));
+            RuleExplanation ruleExplanation = new RuleExplanation(query.getPattern(), rule.getRule().id());
+            ConceptMap ruleAnswer = materialisedSub.explain(ruleExplanation);
+            getQuery().tx().queryCache().record(ruleHead, ruleAnswer);
+            Atom ruleAtom = ruleHead.getAtom();
+            //if it's an implicit relation also record it as an attribute
+            if (ruleAtom.isRelation() && ruleAtom.getSchemaConcept() != null && ruleAtom.getSchemaConcept().isImplicit()) {
+                ReasonerAtomicQuery attributeHead = ReasonerQueries.atomic(ruleHead.getAtom().toAttributeAtom());
+                getQuery().tx().queryCache().record(attributeHead, ruleAnswer.project(attributeHead.getVarNames()));
+            }
+            answer = unifier.apply(materialisedSub.project(headVars));
         }
         if (answer.isEmpty()){
             getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialisedAnswer", System.currentTimeMillis() - start);
@@ -172,6 +177,7 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
 
         ConceptMap explain = ConceptUtils
                 .mergeAnswers(answer, query.getSubstitution())
+                .project(query.getVarNames())
                 .explain(new RuleExplanation(query.getPattern(), rule.getRule().id()));
 
         getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialisedAnswer", System.currentTimeMillis() - start);

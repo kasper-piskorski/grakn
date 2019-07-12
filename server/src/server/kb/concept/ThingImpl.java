@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static grakn.core.server.kb.Schema.EdgeProperty.ROLE_LABEL_ID;
@@ -123,6 +124,7 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
         this.edgeRelations().forEach(Concept::delete);
 
         vertex().tx().cache().removedInstance(type().id());
+        vertex().tx().queryCache().ackDeletion(type());
         deleteNode();
 
         relations.forEach(relation -> {
@@ -190,8 +192,8 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
      * @return All the Casting which this instance is cast into the role
      */
     Stream<Casting> castingsInstance() {
-        return vertex().getEdgesOfType(Direction.IN, Schema.EdgeLabel.ROLE_PLAYER).
-                map(edge -> Casting.withThing(edge, this));
+        return vertex().getEdgesOfType(Direction.IN, Schema.EdgeLabel.ROLE_PLAYER)
+                .map(edge -> Casting.withThing(edge, this));
     }
 
     private Set<Integer> implicitLabelsToIds(Set<Label> labels, Set<Schema.ImplicitType> implicitTypes) {
@@ -282,8 +284,12 @@ public abstract class ThingImpl<T extends Thing, V extends Type> extends Concept
 
         if (!roleSet.isEmpty()) {
             stream = stream.filter(edge -> {
-                Role roleOwner = vertex().tx().getSchemaConcept(LabelId.of(edge.property(Schema.EdgeProperty.RELATION_ROLE_OWNER_LABEL_ID)));
-                return roleSet.contains(roleOwner);
+                Set<Role> edgeRoles = new HashSet<>();
+                edgeRoles.add(vertex().tx().getSchemaConcept(LabelId.of(edge.property(Schema.EdgeProperty.RELATION_ROLE_OWNER_LABEL_ID))));
+                if (this.isAttribute()){
+                    edgeRoles.add(vertex().tx().getSchemaConcept(LabelId.of(edge.property(Schema.EdgeProperty.RELATION_ROLE_VALUE_LABEL_ID))));
+                }
+                return !Sets.intersection(roleSet, edgeRoles).isEmpty();
             });
         }
 
