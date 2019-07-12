@@ -61,22 +61,33 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
               subGoals);
     }
 
+    public static long consumeTime = 0;
+    public static long propagateTime = 0;
+
     @Override
     ResolutionState propagateAnswer(AnswerState state) {
+        long start = System.currentTimeMillis();
         ConceptMap answer = state.getAnswer();
         ReasonerAtomicQuery query = getQuery();
         if (answer.isEmpty()) return null;
 
+        ResolutionState newState;
         if (state.getRule() != null && query.getAtom().requiresRoleExpansion()) {
             //NB: we set the parent state as this AtomicState, otherwise we won't acknowledge expanded answers (won't cache)
-            return new RoleExpansionState(answer, getUnifier(), query.getAtom().getRoleExpansionVariables(), this);
+            newState = new RoleExpansionState(answer, getUnifier(), query.getAtom().getRoleExpansionVariables(), this);
+        } else {
+            newState = new AnswerState(answer, getUnifier(), getParentState());
         }
-        return new AnswerState(answer, getUnifier(), getParentState());
+        propagateTime += System.currentTimeMillis() - start;
+        return newState;
     }
+
 
     @Override
     ConceptMap consumeAnswer(AnswerState state) {
+        long start = System.currentTimeMillis();
         ConceptMap answer;
+
         ReasonerAtomicQuery query = getQuery();
         ConceptMap baseAnswer = state.getSubstitution();
         InferenceRule rule = state.getRule();
@@ -89,7 +100,10 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
                     materialisedAnswer(baseAnswer, rule, unifier) :
                     ruleAnswer(baseAnswer, rule, unifier);
         }
-        return recordAnswer(query, answer);
+        ConceptMap recordedAnswer = recordAnswer(query, answer);
+        consumeTime += System.currentTimeMillis() - start;
+        return recordedAnswer;
+
     }
 
     /**
