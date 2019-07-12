@@ -71,6 +71,9 @@ public  class TarjanSCC<T> {
 
     private final HashMultimap<T, T> successors = HashMultimap.create();
 
+    /**
+     * @return the successor map - transitive closure over the type graph - all types that are reachable from a given type
+     */
     public HashMultimap<T, T> successorMap(){ return successors;}
 
     private void dfs(T node) {

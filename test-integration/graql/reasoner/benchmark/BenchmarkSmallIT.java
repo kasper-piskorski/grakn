@@ -31,6 +31,8 @@ import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
 import grakn.core.graql.reasoner.graph.PathTreeGraph;
 import grakn.core.graql.reasoner.graph.TransitivityChainGraph;
 import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
+import grakn.core.graql.reasoner.state.AtomicState;
+import grakn.core.graql.reasoner.state.TransitiveClosureState;
 import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.rule.GraknTestServer;
 import grakn.core.server.session.SessionImpl;
@@ -199,7 +201,7 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        int N = 5000;
+        int N = 2000;
         int limit = 10;
         int answers = (N+1)*N/2;
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -216,6 +218,10 @@ public class BenchmarkSmallIT {
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
+        List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
+        System.out.println("consume time: " + AtomicState.consumeTime);
+        System.out.println("propagate time: " + AtomicState.propagateTime);
+        System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);
         /*
         assertEquals(executeQuery(query, tx, "full").size(), answers);
         assertEquals(executeQuery(query2, tx, "With specific resource").size(), N);
@@ -236,7 +242,7 @@ public class BenchmarkSmallIT {
         successorMap.entries()
                 .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
         System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
-        //GraqlTestUtil.assertCollectionsEqual(resAnswers, tarjanAnswers);
+        GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
         assertEquals(answers, tarjanAnswers.size());
         System.out.println();
         tx.close();

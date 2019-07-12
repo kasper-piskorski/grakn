@@ -37,6 +37,7 @@ import grakn.core.graql.reasoner.query.ResolvableQuery;
 import grakn.core.graql.reasoner.state.QueryStateBase;
 import grakn.core.graql.reasoner.state.ResolutionState;
 import grakn.core.graql.reasoner.state.RuleState;
+import grakn.core.graql.reasoner.state.TransitiveClosureState;
 import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
@@ -389,6 +390,12 @@ public class InferenceRule {
                 parentAtom.getParentQuery().getSubstitution()
         );
 
+        //TODO: more robust condition
+        boolean isTransitive = getBody().getAtoms(RelationAtom.class)
+                .allMatch(at -> at.isAlphaEquivalent(getHead().getAtom()));
+        if (isTransitive){
+            return new TransitiveClosureState(getHead(),partialSubPrime, ruleUnifier, parent);
+        }
         return new RuleState(this.propagateConstraints(parentAtom, ruleUnifierInverse), partialSubPrime, ruleUnifier, parent, visitedSubGoals);
     }
 

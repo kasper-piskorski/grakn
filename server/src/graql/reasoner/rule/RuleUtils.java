@@ -141,6 +141,8 @@ public class RuleUtils {
         List<Set<Type>> typeCycles = typeSCC.getCycles();
         HashMultimap<Type, Type> typeTCinverse = HashMultimap.create();
 
+        //NB: successor map holds all nodes (then types) reachable via when->then edges (from when types)
+        //we compute the inverse to get all when types reachable from each then type
         typeSCC.successorMap().entries().forEach(e -> typeTCinverse.put(e.getValue(), e.getKey()));
 
         return typeCycles.stream().anyMatch(typeSet -> {
