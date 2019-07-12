@@ -33,9 +33,9 @@ import grakn.core.graql.reasoner.atom.binary.OntologicalAtom;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
 import grakn.core.graql.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
-import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
 import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
+import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.cache.VariableDefinition;
 import grakn.core.graql.reasoner.rule.InferenceRule;
@@ -46,14 +46,13 @@ import grakn.core.graql.reasoner.unifier.UnifierType;
 import graql.lang.property.IsaProperty;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Variable;
-
-import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -67,6 +66,8 @@ public abstract class Atom extends AtomicBase {
     public RelationAtom toRelationAtom() {
         throw GraqlQueryException.illegalAtomConversion(this, RelationAtom.class);
     }
+
+    public AttributeAtom toAttributeAtom() { throw GraqlQueryException.illegalAtomConversion(this, AttributeAtom.class); }
 
     public IsaAtom toIsaAtom() {
         throw GraqlQueryException.illegalAtomConversion(this, IsaAtom.class);
@@ -126,6 +127,11 @@ public abstract class Atom extends AtomicBase {
                 .collect(toSet());
         return mappedVars.containsAll(getVarNames());
     }
+
+    /**
+     * @return true if the query corresponding to this atom has a unique (single) answer if any
+     */
+    public boolean hasUniqueAnswer(){ return isGround();}
 
     /**
      * @return true if this atom is bounded - via substitution/specific resource or schema

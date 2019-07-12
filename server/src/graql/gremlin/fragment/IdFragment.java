@@ -32,14 +32,14 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Element;
+import org.apache.tinkerpop.gremlin.structure.Graph;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-
-import static grakn.core.concept.printer.StringPrinter.conceptId;
 
 @AutoValue
 public abstract class IdFragment extends Fragment {
@@ -53,10 +53,18 @@ public abstract class IdFragment extends Fragment {
     }
 
     @Override
-    public GraphTraversal<Vertex, ? extends Element> applyTraversalInner(
-            GraphTraversal<Vertex, ? extends Element> traversal, TransactionOLTP graph, Collection<Variable> vars) {
+    public GraphTraversal<Vertex, ? extends Element> selectVariable(GraphTraversal<Vertex, ? extends Element> traversal) {
         if (canOperateOnEdges()) {
-            // Handle both edges and vertices
+            traverseToEdges(traversal);
+        }
+        traversal.as(start().symbol());
+        return traversal;
+    }
+
+    @Override
+    public GraphTraversal<Vertex, ? extends Element> applyTraversalInner(
+            GraphTraversal<Vertex, ? extends Element> traversal, TransactionOLTP tx, Collection<Variable> vars) {
+        if (canOperateOnEdges()) {
             return traversal.or(
                     edgeTraversal(),
                     vertexTraversal(__.identity())
@@ -81,7 +89,7 @@ public abstract class IdFragment extends Fragment {
 
     @Override
     public String name() {
-        return "[id:" + conceptId(id()) + "]";
+        return "[id:" + id().getValue() + "]";
     }
 
     @Override
@@ -94,9 +102,15 @@ public abstract class IdFragment extends Fragment {
         return true;
     }
 
-    @Override
-    public boolean canOperateOnEdges() {
+    boolean canOperateOnEdges() {
         return Schema.isEdgeId(id());
+    }
+
+    void traverseToEdges(GraphTraversal<Vertex, ? extends Element> traversal) {
+        // if the ID may be for an edge,
+        // we must extend the traversal that normally just operates on vertices
+        // to operate on both edges and vertices
+        traversal.union(__.identity(), __.outE(Schema.EdgeLabel.ATTRIBUTE.getLabel()));
     }
 
     @Override

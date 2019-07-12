@@ -23,7 +23,6 @@ import grakn.core.common.config.ConfigKey;
 import grakn.core.server.GraknStorage;
 import grakn.core.server.Server;
 import grakn.core.server.ServerFactory;
-import grakn.core.server.deduplicator.AttributeDeduplicatorDaemon;
 import grakn.core.server.keyspace.KeyspaceImpl;
 import grakn.core.server.keyspace.KeyspaceManager;
 import grakn.core.server.rpc.KeyspaceService;
@@ -33,9 +32,8 @@ import grakn.core.server.rpc.SessionService;
 import grakn.core.server.session.JanusGraphFactory;
 import grakn.core.server.session.SessionFactory;
 import grakn.core.server.session.SessionImpl;
-import grakn.core.server.util.LockManager;
 import grakn.core.server.util.ServerID;
-import grakn.core.server.util.ServerLockManager;
+import grakn.core.server.util.LockManager;
 import io.grpc.ServerBuilder;
 import org.apache.commons.io.FileUtils;
 import org.junit.rules.ExternalResource;
@@ -131,7 +129,7 @@ public class GraknTestServer extends ExternalResource {
     // Getters
 
     public String grpcUri() {
-        return serverConfig.getProperty(ConfigKey.SERVER_HOST_NAME) + ":" +serverConfig.getProperty(ConfigKey.GRPC_PORT);
+        return serverConfig.getProperty(ConfigKey.SERVER_HOST_NAME) + ":" + serverConfig.getProperty(ConfigKey.GRPC_PORT);
     }
 
     public int nativeTransportPort() {
@@ -153,6 +151,10 @@ public class GraknTestServer extends ExternalResource {
 
     public SessionFactory sessionFactory() {
         return sessionFactory;
+    }
+
+    public Config serverConfig() {
+        return serverConfig;
     }
 
     // Cassandra Helpers
@@ -210,20 +212,19 @@ public class GraknTestServer extends ExternalResource {
         ServerID id = ServerID.me();
 
         // distributed locks
-        LockManager lockManager = new ServerLockManager();
+        LockManager lockManager = new LockManager();
         JanusGraphFactory janusGraphFactory = new JanusGraphFactory(serverConfig);
 
         keyspaceStore = new KeyspaceManager(janusGraphFactory, serverConfig);
         sessionFactory = new SessionFactory(lockManager, janusGraphFactory, keyspaceStore, serverConfig);
 
-        AttributeDeduplicatorDaemon attributeDeduplicatorDaemon = new AttributeDeduplicatorDaemon(sessionFactory);
         OpenRequest requestOpener = new ServerOpenRequest(sessionFactory);
 
         io.grpc.Server serverRPC = ServerBuilder.forPort(grpcPort)
-                .addService(new SessionService(requestOpener, attributeDeduplicatorDaemon))
+                .addService(new SessionService(requestOpener))
                 .addService(new KeyspaceService(keyspaceStore, sessionFactory, janusGraphFactory))
                 .build();
 
-        return ServerFactory.createServer(id, serverRPC, lockManager, attributeDeduplicatorDaemon, keyspaceStore);
+        return ServerFactory.createServer(id, serverRPC, keyspaceStore);
     }
 }

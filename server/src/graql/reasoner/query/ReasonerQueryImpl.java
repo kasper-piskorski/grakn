@@ -155,10 +155,9 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     }
 
     @Override
-    public ReasonerQueryImpl neqPositive(){
+    public ReasonerQueryImpl constantValuePredicateQuery(){
         return ReasonerQueries.create(
                 getAtoms().stream()
-                        .map(Atomic::neqPositive)
                         .filter(at -> !(at instanceof VariablePredicate))
                         .collect(Collectors.toSet()),
                 tx());
@@ -283,6 +282,11 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     public boolean isGround(){
         return getSubstitution().vars().containsAll(getVarNames());
     }
+
+    /**
+     * @return true if this query has a unique (single) answer if any
+     */
+    public boolean hasUniqueAnswer(){ return isGround();}
 
     /**
      * @return true if this query contains disconnected atoms that are unbounded
@@ -551,19 +555,14 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     public boolean requiresReiteration() {
         if (isCacheComplete()) return false;
         Set<InferenceRule> dependentRules = RuleUtils.getDependentRules(this);
-        return RuleUtils.subGraphIsCyclical(dependentRules)||
-                RuleUtils.subGraphHasRulesWithHeadSatisfyingBody(dependentRules);
+        return RuleUtils.subGraphIsCyclical(dependentRules, tx())
+                || RuleUtils.subGraphHasRulesWithHeadSatisfyingBody(dependentRules)
+                || selectAtoms().filter(Atom::isDisconnected).filter(Atom::isRuleResolvable).count() > 1;
     }
 
-    @Override
-    public Stream<ConceptMap> resolve() {
-        return resolve(new HashSet<>(), this.requiresReiteration());
-    }
-
-    @Override
-    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals, boolean reiterate){
+    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals){
         return isRuleResolvable()?
-                new ResolutionIterator(this, subGoals, reiterate).hasStream() :
+                new ResolutionIterator(this, subGoals).hasStream() :
                 tx.stream(getQuery());
     }
 

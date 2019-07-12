@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.concept.Concept;
+import grakn.core.concept.ConceptId;
 import grakn.core.concept.answer.Answer;
 import grakn.core.concept.answer.AnswerGroup;
 import grakn.core.concept.answer.ConceptList;
@@ -37,6 +38,8 @@ import grakn.core.graql.gremlin.TraversalPlanner;
 import grakn.core.graql.reasoner.DisjunctionIterator;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.server.exception.GraknServerException;
+import grakn.core.server.kb.concept.RelationImpl;
+import grakn.core.server.kb.concept.RelationReified;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.pattern.Conjunction;
@@ -80,7 +83,6 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * QueryExecutor is the class that executes Graql queries onto the database
@@ -349,26 +351,29 @@ public class QueryExecutor {
         answers = filter(query, answers);
 
         // TODO: We should not need to collect toSet, once we fix ConceptId.id() to not use cache.
-        // Stream.distinct() will then work properly when it calls ConceptImpl.equals()
         List<Concept> conceptsToDelete = answers
                 .flatMap(answer -> answer.concepts().stream())
-                // delete relations first: if the RPs are deleted, the relation is removed, so null by the time we try to delete it here
+                .distinct()
+                // delete relations first: if the RPs are deleted, the relation is removed, so null by the time we try to delete it
+                // this minimises number of `concept was already removed` exceptions
                 .sorted(Comparator.comparing(concept -> !concept.isRelation()))
                 .collect(Collectors.toList());
 
+
+        Set<ConceptId> deletedConceptIds = new HashSet<>();
         conceptsToDelete.forEach(concept -> {
             // a concept is either a schema concept or a thing
             if (concept.isSchemaConcept()) {
                 throw GraqlSemanticException.deleteSchemaConcept(concept.asSchemaConcept());
             } else if (concept.isThing()) {
                 try {
-                    // if it's not inferred, we can delete it
-                    if (!concept.asThing().isInferred()) {
-                        concept.delete();
-                    }
+                    deletedConceptIds.add(concept.id());
+                    // a concept may have been cleaned up already
+                    // for instance if role players of an implicit attribute relation are deleted, the janus edge disappears
+                    concept.delete();
                 } catch (IllegalStateException janusVertexDeleted) {
                     if (janusVertexDeleted.getMessage().contains("was removed")) {
-                        // Tinkerpop throws this exception if we try to operate (including check `isInferred()`) on a vertex that was already deleted
+                        // Tinkerpop throws this exception if we try to operate on a vertex that was already deleted
                         // With the ordering of deletes, this edge case should only be hit when relations play roles in relations
                         LOG.debug("Trying to deleted concept that was already removed", janusVertexDeleted);
                     } else {
@@ -381,7 +386,7 @@ public class QueryExecutor {
         });
 
         // TODO: return deleted Concepts instead of ConceptIds
-        return new ConceptSet(conceptsToDelete.stream().map(Concept::id).collect(toSet()));
+        return new ConceptSet(deletedConceptIds);
     }
 
     public Stream<ConceptMap> get(GraqlGet query) {

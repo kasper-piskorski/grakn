@@ -28,7 +28,6 @@ import grakn.core.concept.Label;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Attribute;
 import grakn.core.concept.thing.Relation;
-import grakn.core.concept.type.Role;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.concept.type.Type;
@@ -42,8 +41,10 @@ import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.cache.VariableDefinition;
+import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQuery;
+import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
@@ -60,7 +61,7 @@ import graql.lang.property.HasAttributeProperty;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
-
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -105,21 +106,10 @@ public abstract class AttributeAtom extends Binary{
     public Atomic copy(ReasonerQuery parent){ return create(this, parent);}
 
     @Override
-    public Atomic neqPositive(){
-        return create(
-                this.getPattern(),
-                this.getAttributeVariable(),
-                this.getRelationVariable(),
-                this.getPredicateVariable(),
-                this.getTypeId(),
-                this.getMultiPredicate().stream()
-                        .filter(at -> !(at.getPredicate().comparator().equals(Graql.Token.Comparator.NEQV)))
-                        .collect(Collectors.toSet()),
-                this.getParentQuery());
-    }
+    public Class<? extends VarProperty> getVarPropertyClass() { return HasAttributeProperty.class;}
 
     @Override
-    public Class<? extends VarProperty> getVarPropertyClass() { return HasAttributeProperty.class;}
+    public AttributeAtom toAttributeAtom(){ return this; }
 
     @Override
     public RelationAtom toRelationAtom(){
@@ -127,8 +117,9 @@ public abstract class AttributeAtom extends Binary{
         if (type == null) throw GraqlQueryException.illegalAtomConversion(this, RelationAtom.class);
         TransactionOLTP tx = getParentQuery().tx();
         Label typeLabel = Schema.ImplicitType.HAS.getLabel(type.label());
-        return RelationAtom.create(
-                Graql.var()
+
+        RelationAtom relationAtom = RelationAtom.create(
+                Graql.var(getRelationVariable())
                         .rel(Schema.ImplicitType.HAS_OWNER.getLabel(type.label()).getValue(), new Statement(getVarName()))
                         .rel(Schema.ImplicitType.HAS_VALUE.getLabel(type.label()).getValue(), new Statement(getAttributeVariable()))
                         .isa(typeLabel.getValue()),
@@ -136,6 +127,11 @@ public abstract class AttributeAtom extends Binary{
                 tx.getSchemaConcept(typeLabel).id(),
                 getParentQuery()
         );
+
+        Set<Statement> patterns = new HashSet<>(relationAtom.getCombinedPattern().statements());
+        this.getPredicates().map(Predicate::getPattern).forEach(patterns::add);
+        this.getMultiPredicate().stream().map(Predicate::getPattern).forEach(patterns::add);
+        return ReasonerQueries.atomic(Graql.and(patterns), tx()).getAtom().toRelationAtom();
     }
 
     /**
@@ -148,10 +144,11 @@ public abstract class AttributeAtom extends Binary{
      */
     @Override
     public IsaAtom toIsaAtom(){
-        IsaAtom isaAtom = IsaAtom.create(getAttributeVariable(), new Variable(), getTypeId(), false, getParentQuery());
-        Set<Statement> patterns = new HashSet<>();
-        ReasonerQueries.atomic(isaAtom).getPattern().getPatterns().stream().flatMap(p -> p.statements().stream()).forEach(patterns::add);
-        getMultiPredicate().stream().map(Predicate::getPattern).forEach(patterns::add);
+        IsaAtom isaAtom = IsaAtom.create(getAttributeVariable(), getPredicateVariable(), getTypeId(), false, getParentQuery());
+
+        Set<Statement> patterns = new HashSet<>(isaAtom.getCombinedPattern().statements());
+        this.getPredicates().map(Predicate::getPattern).forEach(patterns::add);
+        this.getMultiPredicate().stream().map(Predicate::getPattern).forEach(patterns::add);
         return ReasonerQueries.atomic(Graql.and(patterns), tx()).getAtom().toIsaAtom();
     }
 
@@ -174,11 +171,18 @@ public abstract class AttributeAtom extends Binary{
         AttributeAtom a2 = (AttributeAtom) obj;
         return Objects.equals(this.getTypeId(), a2.getTypeId())
                 && this.getVarName().equals(a2.getVarName())
-                && this.multiPredicateEquivalent(a2, AtomicEquivalence.Equality);
+                && this.multiPredicateEqual(a2);
     }
 
-    private boolean multiPredicateEquivalent(AttributeAtom that, AtomicEquivalence equiv){
-        return isEquivalentCollection(this.getMultiPredicate(), that.getMultiPredicate(), equiv);
+    @Override
+    boolean isBaseEquivalent(Object obj){
+        if (!super.isBaseEquivalent(obj)) return false;
+        AttributeAtom that = (AttributeAtom) obj;
+        return this.getRelationVariable().isReturned() == that.getRelationVariable().isReturned();
+    }
+
+    private boolean multiPredicateEqual(AttributeAtom that){
+        return isEquivalentCollection(this.getMultiPredicate(), that.getMultiPredicate(), AtomicEquivalence.Equality);
     }
 
     @Override
@@ -194,13 +198,6 @@ public abstract class AttributeAtom extends Binary{
         hashCode = hashCode * 37 + (this.getTypeId() != null? this.getTypeId().hashCode() : 0);
         hashCode = hashCode * 37 + AtomicEquivalence.equivalenceHash(this.getMultiPredicate(), AtomicEquivalence.AlphaEquivalence);
         return hashCode;
-    }
-
-    @Override
-    boolean predicateBindingsEquivalent(Binary at, AtomicEquivalence equiv) {
-        if (!(at instanceof AttributeAtom && super.predicateBindingsEquivalent(at, equiv))) return false;
-        AttributeAtom that = (AttributeAtom) at;
-        return predicateBindingsEquivalent(this.getAttributeVariable(), that.getAttributeVariable(), that, equiv);
     }
 
     @Override
@@ -237,6 +234,21 @@ public abstract class AttributeAtom extends Binary{
     public boolean isSelectable(){ return true;}
 
     public boolean isValueEquality(){ return getMultiPredicate().stream().anyMatch(p -> p.getPredicate().isValueEquality());}
+
+    @Override
+    public boolean hasUniqueAnswer(){
+        ConceptMap sub = getParentQuery().getSubstitution();
+        if (sub.vars().containsAll(getVarNames())) return true;
+
+        SchemaConcept type = getSchemaConcept();
+        if (type == null) return false;
+
+        boolean isBottomType = type.subs().allMatch(t -> t.equals(type));
+        boolean relationVarMapped = !getRelationVariable().isReturned() || sub.containsVar(getRelationVariable());
+        return isBottomType
+                && isValueEquality() && sub.containsVar(getVarName())
+                && relationVarMapped;
+    }
 
     @Override
     public boolean requiresMaterialisation(){ return true;}
@@ -333,32 +345,6 @@ public abstract class AttributeAtom extends Binary{
         return Stream.concat(super.getInnerPredicates(), getMultiPredicate().stream());
     }
 
-    /**
-     * exhibits put behaviour - attributed is attached only if the link doesn't exist already
-     * @param owner attribute owner
-     * @param attribute attribute itself
-     * @return implicit relation of the attribute
-     */
-    private Relation attachAttribute(Concept owner, Attribute attribute){
-        //check if link exists
-        if (owner.asThing().attributes(attribute.type()).noneMatch(a -> a.equals(attribute))) {
-            if (owner.isEntity()) {
-                return EntityImpl.from(owner.asEntity()).attributeInferred(attribute);
-            } else if (owner.isRelation()) {
-                return RelationImpl.from(owner.asRelation()).attributeInferred(attribute);
-            } else if (owner.isAttribute()) {
-                return AttributeImpl.from(owner.asAttribute()).attributeInferred(attribute);
-            }
-            return null;
-        } else {
-            Role ownerRole = tx().getRole(Schema.ImplicitType.HAS_OWNER.getLabel(attribute.type().label()).getValue());
-            Role valueRole = tx().getRole(Schema.ImplicitType.HAS_VALUE.getLabel(attribute.type().label()).getValue());
-            return owner.asThing().relations(ownerRole)
-                    .filter(relation -> relation.rolePlayersMap().get(valueRole).contains(attribute))
-                    .findFirst().orElse(null);
-        }
-    }
-
     @Override
     public SemanticDifference semanticDifference(Atom p, Unifier unifier) {
         SemanticDifference baseDiff = super.semanticDifference(p, unifier);
@@ -375,6 +361,48 @@ public abstract class AttributeAtom extends Binary{
         return baseDiff.merge(new SemanticDifference(diff));
     }
 
+    /**
+     * @param owner attribute owner
+     * @param attribute attribute itself
+     * @return implicit relation of the attribute
+     */
+    private Relation attachAttribute(Concept owner, Attribute attribute){
+        //NB: this inserts the implicit relation based on the type of the attribute.
+        //We can have cases when we want to specialise the relation while retaining the existing attribute.
+        //In such cases at the moment we still insert the attribute type relation whilst retaining an appropriate cache entry.
+        Relation relation = null;
+        if (owner.isEntity()) {
+            relation = EntityImpl.from(owner.asEntity()).attributeInferred(attribute);
+        } else if (owner.isRelation()) {
+            relation = RelationImpl.from(owner.asRelation()).attributeInferred(attribute);
+        } else if (owner.isAttribute()) {
+            relation = AttributeImpl.from(owner.asAttribute()).attributeInferred(attribute);
+        }
+        return relation;
+    }
+
+    private ConceptMap findAnswer(ConceptMap sub){
+        //NB: we are only interested in this atom and its subs, not any other constraints
+        ReasonerAtomicQuery query = ReasonerQueries.atomic(Collections.singleton(this), tx()).withSubstitution(sub);
+        ConceptMap answer = tx().queryCache().getAnswerStream(query).findFirst().orElse(null);
+
+        if (answer == null) tx().queryCache().ackDBCompleteness(query);
+        else tx().queryCache().record(query.withSubstitution(answer), answer);
+        return answer;
+    }
+
+    /**
+     * @param sub partial substitution
+     * @param owner attribute owner
+     * @param attribute attribute concept
+     * @return inserted implicit relation if didn't exist, null otherwise
+     */
+    private Relation putImplicitRelation(ConceptMap sub, Concept owner, Attribute attribute){
+        ConceptMap answer = findAnswer(sub);
+        if (answer == null) return attachAttribute(owner, attribute);
+        return getRelationVariable().isReturned()? answer.get(getRelationVariable()).asRelation() : null;
+    }
+
     @Override
     public Stream<ConceptMap> materialise(){
         ConceptMap substitution = getParentQuery().getSubstitution();
@@ -384,24 +412,36 @@ public abstract class AttributeAtom extends Binary{
         Variable resourceVariable = getAttributeVariable();
 
         //if the attribute already exists, only attach a new link to the owner, otherwise create a new attribute
-        Attribute attribute;
+        Attribute attribute = null;
         if(this.isValueEquality()){
             Object value = Iterables.getOnlyElement(getMultiPredicate()).getPredicate().value();
             Attribute existingAttribute = attributeType.attribute(value);
             attribute = existingAttribute == null? attributeType.putAttributeInferred(value) : existingAttribute;
         } else {
-            attribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
+            Attribute existingAttribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
+            //even if the attribute exists but is of different type (supertype for instance) we create a new one
+            //to make sure the attribute index will be different
+            if (existingAttribute != null){
+                Object value = existingAttribute.value();
+                attribute = existingAttribute;
+                if (!existingAttribute.type().equals(attributeType)){
+                    existingAttribute = attributeType.attribute(value);
+                    attribute = existingAttribute == null? attributeType.putAttributeInferred(value) : existingAttribute;
+                }
+            }
         }
 
         if (attribute != null) {
-            Relation relation = attachAttribute(owner, attribute);
-            if (relation != null) {
-                ConceptMap answer = new ConceptMap(ImmutableMap.of(resourceVariable, attribute));
-                if (getRelationVariable().isReturned()){
-                    answer = ConceptUtils.mergeAnswers(answer, new ConceptMap(ImmutableMap.of(getRelationVariable(), relation)));
-                }
-                return Stream.of(ConceptUtils.mergeAnswers(substitution, answer));
+            ConceptMap answer = new ConceptMap(ImmutableMap.of(
+                    getVarName(), substitution.get(getVarName()),
+                    resourceVariable, attribute));
+
+            Relation relation = putImplicitRelation(answer, owner, attribute);
+
+            if (getRelationVariable().isReturned()){
+                answer = ConceptUtils.mergeAnswers(answer, new ConceptMap(ImmutableMap.of(getRelationVariable(), relation)));
             }
+            return Stream.of(answer);
         }
         return Stream.empty();
     }

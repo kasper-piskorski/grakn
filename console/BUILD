@@ -23,14 +23,22 @@ load("@graknlabs_bazel_distribution//common:rules.bzl", "assemble_targz", "java_
 load("@graknlabs_bazel_distribution//rpm:rules.bzl", "assemble_rpm", "deploy_rpm")
 load("@graknlabs_build_tools//checkstyle:rules.bzl", "checkstyle_test")
 
+genrule(
+    name = "version",
+    srcs = [
+        "templates/Version.java",
+        ":VERSION",
+    ],
+    cmd = "VERSION=`cat $(location :VERSION)`;sed -e \"s/{version}/$$VERSION/g\" $(location templates/Version.java) >> $@",
+    outs = ["Version.java"],
+    visibility = ["//visibility:public"]
+)
 
 java_library(
     name = "console",
-    srcs = glob(["**/*.java"]),
+    srcs = glob(["**/*.java"], exclude=["templates/**", "**/test/**"]) + [":version"],
     deps = [
-        # Grakn Core dependencies
-        "//common:common",
-        "//concept",
+        "//concept", # TODO: To be removed with issue #5288
         "@graknlabs_client_java//:client-java",
         "@graknlabs_graql//java:graql",
 
@@ -38,6 +46,7 @@ java_library(
         # External dependencies
         "//dependencies/maven/artifacts/commons-cli",
         "//dependencies/maven/artifacts/commons-lang:commons-lang", # PREVIOUSLY UNDECLARED
+        "//dependencies/maven/artifacts/com/google/code/findbugs:jsr305",
         "//dependencies/maven/artifacts/io/grpc:grpc-core",
         "//dependencies/maven/artifacts/jline:jline",
         "//dependencies/maven/artifacts/org/slf4j:slf4j-api",
@@ -45,7 +54,7 @@ java_library(
     visibility = ["//visibility:public"],
     resources = ["LICENSE"],
     resource_strip_prefix = "console",
-    tags = ["maven_coordinates=io.grakn.core:console:{pom_version}"],
+    tags = ["maven_coordinates=io.grakn.core:grakn-console:{pom_version}"],
 )
 
 checkstyle_test(
@@ -105,6 +114,7 @@ assemble_zip(
     visibility = ["//visibility:public"]
 )
 
+# TODO: To be removed with issue #5269
 assemble_maven(
     name = "assemble-maven",
     target = ":console",
@@ -113,6 +123,7 @@ assemble_maven(
     workspace_refs = "@graknlabs_grakn_core_workspace_refs//:refs.json"
 )
 
+# TODO: To be removed with issue #5269
 deploy_maven(
     name = "deploy-maven",
     target = ":assemble-maven"
@@ -163,9 +174,4 @@ deploy_rpm(
     name = "deploy-rpm",
     target = ":assemble-linux-rpm",
     deployment_properties = "@graknlabs_build_tools//:deployment.properties",
-)
-
-test_suite(
-    name = "console-test-integration",
-    tests = []
 )

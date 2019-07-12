@@ -26,6 +26,7 @@ import grakn.core.graql.reasoner.unifier.Unifier;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 
+import java.util.HashSet;
 import javax.annotation.CheckReturnValue;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -57,10 +58,10 @@ public interface ResolvableQuery extends ReasonerQuery {
     ResolvableQuery withSubstitution(ConceptMap sub);
 
     /**
-     * @return corresponding neqPositive query (with neq predicates removed)
+     * @return corresponding query with variable predicates removed
      */
     @CheckReturnValue
-    ResolvableQuery neqPositive();
+    ResolvableQuery constantValuePredicateQuery();
 
     /**
      * @return corresponding reasoner query with inferred types
@@ -108,16 +109,17 @@ public interface ResolvableQuery extends ReasonerQuery {
      * @return stream of answers
      */
     @CheckReturnValue
-    Stream<ConceptMap> resolve();
+    default Stream<ConceptMap> resolve(){
+        return resolve(new HashSet<>());
+    }
 
     /**
      *
      * @param subGoals already visited subgoals
-     * @param reiterate true if reiteration should be performed
      * @return stream of resolved answers
      */
     @CheckReturnValue
-    Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals, boolean reiterate);
+    Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals);
 
     /**
      * @param sub partial substitution

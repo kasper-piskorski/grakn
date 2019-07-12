@@ -19,6 +19,7 @@
 package grakn.core.server.keyspace;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.cache.CacheBuilder;
 import grakn.core.common.config.Config;
 import grakn.core.concept.Label;
 import grakn.core.concept.thing.Attribute;
@@ -32,7 +33,7 @@ import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
 import grakn.core.server.session.cache.KeyspaceCache;
 import grakn.core.server.statistics.KeyspaceStatistics;
-import org.janusgraph.core.JanusGraph;
+import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,13 +43,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
- * Default implementation of KeyspaceManager that uses an SessionImpl to access a knowledge
- * base and store keyspace information.
+ * KeyspaceManager used to store all existing keyspaces inside Grakn system keyspace.
  */
 public class KeyspaceManager {
-    // This will eventually be configurable and obtained the same way the factory is obtained
-    // from Server. For now, we just make sure Server and Core use the same system keyspace name.
-    // If there is a more natural home for this constant, feel free to put it there!
     private static final Label KEYSPACE_RESOURCE = Label.of("keyspace-name");
     private static final Label KEYSPACE_ENTITY = Label.of("keyspace");
     private final static KeyspaceImpl SYSTEM_KB_KEYSPACE = KeyspaceImpl.of("graknsystem");
@@ -56,17 +53,17 @@ public class KeyspaceManager {
     private static final Logger LOG = LoggerFactory.getLogger(KeyspaceManager.class);
     private final Set<KeyspaceImpl> existingKeyspaces;
     private final SessionImpl systemKeyspaceSession;
-    private final JanusGraph graph;
+    private final StandardJanusGraph graph;
 
     public KeyspaceManager(JanusGraphFactory janusGraphFactory, Config config) {
         KeyspaceCache keyspaceCache = new KeyspaceCache();
         this.graph = janusGraphFactory.openGraph(SYSTEM_KB_KEYSPACE.name());
-        this.systemKeyspaceSession = new SessionImpl(SYSTEM_KB_KEYSPACE, config, keyspaceCache, graph, new KeyspaceStatistics(), new ConcurrentHashMap<>());
+        this.systemKeyspaceSession = new SessionImpl(SYSTEM_KB_KEYSPACE, config, keyspaceCache, graph, new KeyspaceStatistics(), CacheBuilder.newBuilder().build(), new ReentrantReadWriteLock());
         this.existingKeyspaces = ConcurrentHashMap.newKeySet();
     }
 
     /**
-     * Logs a new KeyspaceImpl to the KeyspaceManager.
+     * Add new keyspace in graknsystem if it does not exist already.
      *
      * @param keyspace The new KeyspaceImpl we have just created
      */
@@ -79,9 +76,7 @@ public class KeyspaceManager {
                 throw GraknServerException.initializationException(keyspace);
             }
             Attribute<String> attribute = keyspaceName.create(keyspace.name());
-            if (attribute.owner() == null) {
-                tx.<EntityType>getSchemaConcept(KEYSPACE_ENTITY).create().has(attribute);
-            }
+            tx.<EntityType>getSchemaConcept(KEYSPACE_ENTITY).create().has(attribute);
             tx.commit();
 
             // add to cache
@@ -96,8 +91,8 @@ public class KeyspaceManager {
         this.graph.close();
     }
 
-    public boolean containsKeyspace(KeyspaceImpl keyspace) {
-        //Check the local cache to see which keyspaces we already have open
+    private boolean containsKeyspace(KeyspaceImpl keyspace) {
+        //Check local cache
         if (existingKeyspaces.contains(keyspace)) {
             return true;
         }
@@ -109,28 +104,27 @@ public class KeyspaceManager {
         }
     }
 
-    public boolean deleteKeyspace(KeyspaceImpl keyspace) {
+    public void deleteKeyspace(KeyspaceImpl keyspace) {
         if (keyspace.equals(SYSTEM_KB_KEYSPACE)) {
-            return false;
+            throw GraknServerException.create("It is not possible to delete the Grakn system keyspace.");
         }
-        return deleteReferenceInSystemKeyspace(keyspace);
+        deleteReferenceInSystemKeyspace(keyspace);
     }
 
-    private boolean deleteReferenceInSystemKeyspace(KeyspaceImpl keyspace) {
+    private void deleteReferenceInSystemKeyspace(KeyspaceImpl keyspace) {
         try (TransactionOLTP tx = systemKeyspaceSession.transaction().write()) {
             AttributeType<String> keyspaceName = tx.getSchemaConcept(KEYSPACE_RESOURCE);
             Attribute<String> attribute = keyspaceName.attribute(keyspace.name());
-
-            if (attribute == null) return false;
+            if (attribute == null) {
+                throw GraknServerException.create("It is not possible to delete keyspace [" + keyspace.name() + "] as it does not exist.");
+            }
             Thing thing = attribute.owner();
-            if (thing != null) thing.delete();
+            thing.delete();
             attribute.delete();
 
             existingKeyspaces.remove(keyspace);
-
             tx.commit();
         }
-        return true;
     }
 
     public Set<KeyspaceImpl> keyspaces() {
@@ -163,12 +157,9 @@ public class KeyspaceManager {
     }
 
     /**
-     * Loads the system schema inside the provided Transaction.
-     *
-     * @param tx The tx to contain the system schema
+     * Loads the system schema using the provided Transaction.
      */
     private void loadSystemSchema(TransactionOLTP tx) {
-        //Keyspace data
         AttributeType<String> keyspaceName = tx.putAttributeType("keyspace-name", AttributeType.DataType.STRING);
         tx.putEntityType("keyspace").key(keyspaceName);
     }

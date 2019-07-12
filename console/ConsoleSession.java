@@ -19,9 +19,9 @@
 package grakn.core.console;
 
 import grakn.client.GraknClient;
-import grakn.core.common.exception.GraknException;
+import grakn.client.exception.GraknClientException;
 import grakn.core.console.exception.GraknConsoleException;
-import grakn.core.concept.printer.Printer;
+import grakn.core.console.printer.Printer;
 import graql.lang.Graql;
 import graql.lang.query.GraqlQuery;
 import jline.console.ConsoleReader;
@@ -110,7 +110,7 @@ public class ConsoleSession implements AutoCloseable {
             executeQuery(queries, false);
             commit();
             consoleReader.println("Successful commit: " + filePath.getFileName().toString());
-        } catch (GraknException e) {
+        } catch (GraknClientException e) {
             String error = "Failed to load file: " + filePath.getFileName().toString();
             throw new GraknConsoleException(error, e);
         } finally {

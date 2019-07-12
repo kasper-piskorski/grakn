@@ -29,25 +29,36 @@ exports_files(
     visibility = ["//visibility:public"]
 )
 
+
+genrule(
+    name = "version",
+    srcs = [
+        "src/server/templates/Version.java",
+        "//:VERSION",
+    ],
+    cmd = "VERSION=`cat $(location //:VERSION)`;sed -e \"s/{version}/$$VERSION/g\" $(location src/server/templates/Version.java) >> $@",
+    outs = ["Version.java"],
+    visibility = ["//common:__subpackages__"],
+)
+
 java_library(
     name = "server",
-    srcs = glob(["src/**/*.java"]),
+    srcs = glob(["src/**/*.java"], exclude=["**/templates/**", "**/test/**"]) + [":version"],
     deps = [
         # Internal dependencies
         "//api:api",
         "//common:common",
         "//concept:concept",
-        "//protocol:protocol-java",
 
         # External dependencies from @graknlabs
         "@graknlabs_graql//java:graql",
+        "@graknlabs_protocol//grpc/java:protocol",
         "@graknlabs_benchmark//lib:server-instrumentation",
 
         # External dependencies from Maven
 
         "//dependencies/maven/artifacts/com/datastax/cassandra:cassandra-driver-core", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/com/google/auto/value:auto-value",
-        "//dependencies/maven/artifacts/com/google/code/findbugs:annotations",
         "//dependencies/maven/artifacts/com/google/code/findbugs:jsr305",
         "//dependencies/maven/artifacts/com/google/guava:guava",
         "//dependencies/maven/artifacts/commons-cli:commons-cli", # PREVIOUSLY UNDECLARED
@@ -83,8 +94,7 @@ java_library(
     ],
     resources = ["LICENSE"] + glob(["resources/*"]),
     resource_strip_prefix = "server",
-    tags = ["maven_coordinates=io.grakn.core:server:{pom_version}"],
-    javacopts = ["-XepDisableAllChecks"], # TODO: THIS NEEDS TO BE REMOVED
+    tags = ["maven_coordinates=io.grakn.core:grakn-server:{pom_version}"],
     visibility = ["//visibility:public"]
 
 )

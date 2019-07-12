@@ -68,7 +68,9 @@ java_test(
         "//test-integration/util:graql-test-util",
         "@graknlabs_graql//java:graql",
     ],
-    classpath_resources = ["//test-integration/resources:logback-test"],
+    classpath_resources = [
+        "//test-integration/resources:logback-test",
+    ],
 )
 
 java_test(
@@ -109,10 +111,10 @@ java_test(
 )
 
 java_test(
-    name = "type-conversion-it",
+    name = "number-casting-it",
     size = "medium",
-    srcs = ["TypeConversionIT.java"],
-    test_class = "grakn.core.graql.query.TypeConversionIT",
+    srcs = ["NumberCastingIT.java"],
+    test_class = "grakn.core.graql.query.NumberCastingIT",
     deps = [
         "//concept",
         "//dependencies/maven/artifacts/com/google/guava",
@@ -216,6 +218,6 @@ checkstyle_test(
         ":query-error-it",
         ":query-planner-it",
         ":query-validity-it",
-        ":type-conversion-it",
+        ":number-casting-it",
     ],
 )

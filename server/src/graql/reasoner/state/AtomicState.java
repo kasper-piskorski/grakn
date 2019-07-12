@@ -19,9 +19,9 @@
 package grakn.core.graql.reasoner.state;
 
 import com.google.common.collect.HashMultimap;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.cache.CacheEntry;
 import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.explanation.RuleExplanation;
@@ -30,6 +30,7 @@ import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
+import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.server.kb.concept.ConceptUtils;
 import graql.lang.statement.Variable;
 import java.util.Set;
@@ -37,12 +38,14 @@ import java.util.Set;
 /**
  * Query state corresponding to an atomic query (ReasonerAtomicQuery) in the resolution tree.
  */
-@SuppressFBWarnings("BC_UNCONFIRMED_CAST_OF_RETURN_VALUE")
 public class AtomicState extends QueryState<ReasonerAtomicQuery> {
+
+    //TODO: remove it once we introduce multi answer states
+    private MultiUnifier ruleUnifier = null;
 
     private MultiUnifier cacheUnifier = null;
     private CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> cacheEntry = null;
-    private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
+    final private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
 
     public AtomicState(ReasonerAtomicQuery query,
                 ConceptMap sub,
@@ -95,6 +98,11 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
         return cacheUnifier;
     }
 
+    private MultiUnifier getRuleUnifier(InferenceRule rule) {
+        if (ruleUnifier == null) this.ruleUnifier = rule.getHead().getMultiUnifier(this.getQuery(), UnifierType.RULE);
+        return ruleUnifier;
+    }
+
     private ConceptMap recordAnswer(ReasonerAtomicQuery query, ConceptMap answer) {
         if (answer.isEmpty()) return answer;
         if (cacheEntry == null) {
@@ -122,28 +130,35 @@ public class AtomicState extends QueryState<ReasonerAtomicQuery> {
         ReasonerAtomicQuery query = getQuery();
         ReasonerAtomicQuery ruleHead = ReasonerQueries.atomic(rule.getHead(), answer);
         ConceptMap sub = ruleHead.getSubstitution();
-        if(materialised.get(rule.getRule().id()).contains(sub)) return new ConceptMap();
+        if(materialised.get(rule.getRule().id()).contains(sub)
+            && getRuleUnifier(rule).isUnique()){
+            return new ConceptMap();
+        }
         materialised.put(rule.getRule().id(), sub);
 
-        ReasonerAtomicQuery subbedQuery = ReasonerQueries.atomic(query, answer);
-        boolean queryEquivalentToHead = subbedQuery.isEquivalent(ruleHead);
-        Set<Variable> queryVars = query.getVarNames().size() < ruleHead.getVarNames().size() ?
+        Set<Variable> headVars = query.getVarNames().size() < ruleHead.getVarNames().size() ?
                 unifier.keySet() :
                 ruleHead.getVarNames();
 
         //materialise exhibits put behaviour - duplicates won't be created
         ConceptMap materialisedSub = ruleHead.materialise(answer).findFirst().orElse(null);
         if (materialisedSub != null) {
-            if (!queryEquivalentToHead) {
-                getQuery().tx().queryCache().record(ruleHead, materialisedSub.explain(new RuleExplanation(query.getPattern(), rule.getRule().id())));
+            RuleExplanation ruleExplanation = new RuleExplanation(query.getPattern(), rule.getRule().id());
+            ConceptMap ruleAnswer = materialisedSub.explain(ruleExplanation);
+            getQuery().tx().queryCache().record(ruleHead, ruleAnswer);
+            Atom ruleAtom = ruleHead.getAtom();
+            //if it's an implicit relation also record it as an attribute
+            if (ruleAtom.isRelation() && ruleAtom.getSchemaConcept() != null && ruleAtom.getSchemaConcept().isImplicit()) {
+                ReasonerAtomicQuery attributeHead = ReasonerQueries.atomic(ruleHead.getAtom().toAttributeAtom());
+                getQuery().tx().queryCache().record(attributeHead, ruleAnswer.project(attributeHead.getVarNames()));
             }
-            answer = unifier.apply(materialisedSub.project(queryVars));
+            answer = unifier.apply(materialisedSub.project(headVars));
         }
-
         if (answer.isEmpty()) return answer;
 
         return ConceptUtils
                 .mergeAnswers(answer, query.getSubstitution())
+                .project(query.getVarNames())
                 .explain(new RuleExplanation(query.getPattern(), rule.getRule().id()));
     }
 }

@@ -33,9 +33,8 @@ java_library(
 
         # External dependencies from Maven
         "//dependencies/maven/artifacts/com/google/code/findbugs:jsr305",
-        "//dependencies/maven/artifacts/com/google/code/findbugs:annotations",
     ],
-    tags = ["maven_coordinates=io.grakn.core:concept:{pom_version}"],
+    tags = ["maven_coordinates=io.grakn.core:grakn-concept:{pom_version}"],
 )
 
 
