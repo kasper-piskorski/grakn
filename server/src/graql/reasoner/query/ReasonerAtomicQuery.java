@@ -51,6 +51,7 @@ import graql.lang.statement.Statement;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -147,6 +148,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
     @Override
     public MultiUnifier getMultiUnifier(ReasonerQuery p, UnifierType unifierType){
         if (p == this) return MultiUnifierImpl.trivial();
+        long start = System.currentTimeMillis();
         Preconditions.checkArgument(p instanceof ReasonerAtomicQuery);
 
         //NB: this is a defensive check and potentially expensive
@@ -156,7 +158,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         MultiUnifier multiUnifier = this.getAtom().getMultiUnifier(parent.getAtom(), unifierType);
 
         Set<TypeAtom> childTypes = this.getAtom().getTypeConstraints().collect(Collectors.toSet());
-        if (multiUnifier.isEmpty() || childTypes.isEmpty()) return multiUnifier;
+        if (multiUnifier.isEmpty() || childTypes.isEmpty()){
+            tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier",  System.currentTimeMillis()- start);
+            return multiUnifier;
+        }
 
         //get corresponding type unifiers
         Set<TypeAtom> parentTypes = parent.getAtom().getTypeConstraints().collect(Collectors.toSet());
@@ -164,7 +169,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         Set<Unifier> unifiers = multiUnifier.unifiers().stream()
                 .map(unifier -> ReasonerUtils.typeUnifier(childTypes, parentTypes, unifier, unifierType))
                 .collect(Collectors.toSet());
-        return new MultiUnifierImpl(unifiers);
+        MultiUnifierImpl u = new MultiUnifierImpl(unifiers);
+
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier",  System.currentTimeMillis()- start);
+        return u;
     }
 
     /**
@@ -217,10 +225,13 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
     public Iterator<ResolutionState> queryStateIterator(QueryStateBase parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
         long start = System.currentTimeMillis();
         Pair<Stream<ConceptMap>, MultiUnifier> cacheEntry = tx().queryCache().getAnswerStreamWithUnifier(this);
-        Iterator<AnswerState> dbIterator = cacheEntry.getKey()
+
+        List<AnswerState> dbStates = cacheEntry.getKey()
                 .map(a -> a.explain(a.explanation().setPattern(this.getPattern())))
                 .map(ans -> new AnswerState(ans, parent.getUnifier(), parent))
-                .iterator();
+                .collect(Collectors.toList());
+        tx().profiler().updateTime(getClass().getSimpleName() + "::dbTime", System.currentTimeMillis() - start);
+        Iterator<AnswerState> dbIterator = dbStates.iterator();
 
         Iterator<ResolutionState> dbCompletionIterator =
                 Iterators.singletonIterator(new CacheCompletionState(this, new ConceptMap(), null));

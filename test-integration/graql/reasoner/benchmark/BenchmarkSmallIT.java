@@ -246,6 +246,7 @@ public class BenchmarkSmallIT {
     }
 
     public void printTimes(){
+        System.out.println("ConceptMap::project: " + ConceptMap.projectTime);
         System.out.println("UnifierImpl::apply: " + UnifierImpl.unifyTime);
         System.out.println("IndexedAnswerSet:add " + IndexedAnswerSet.addTime);
         System.out.println("ConceptUtils::merge: " + ConceptUtils.mergeTime);
@@ -292,7 +293,7 @@ public class BenchmarkSmallIT {
         List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
         System.out.println("consume time: " + AtomicState.consumeTime);
         System.out.println("propagate time: " + AtomicState.propagateTime);
-        System.out.println("unify time: " + UnifierImpl.unifyTime);
+        printTimes();
         System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);
 
         tx.profiler().print();

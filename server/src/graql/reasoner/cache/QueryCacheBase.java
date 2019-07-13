@@ -128,6 +128,7 @@ public abstract class QueryCacheBase<
     }
 
     static <T extends ReasonerQueryImpl> void validateAnswer(ConceptMap answer, T query, Set<Variable> expectedVars){
+        long start = System.currentTimeMillis();
         if (!answer.vars().equals(expectedVars)
                 || answer.explanation() == null
                 || (
@@ -135,5 +136,6 @@ public abstract class QueryCacheBase<
                                 && !answer.explanation().isLookupExplanation())){
             throw GraqlQueryException.invalidQueryCacheEntry(query, answer);
         }
+        query.tx().profiler().updateTime( "QueryCache::validateAnswer", System.currentTimeMillis() - start);
     }
 }

@@ -137,8 +137,11 @@ public class UnifierImpl implements Unifier {
     public static long unifyTime = 0;
 
     public ConceptMap apply(ConceptMap answer) {
-        if (this.isEmpty()) return answer;
         long start = System.currentTimeMillis();
+        if (this.isEmpty()){
+            unifyTime += System.currentTimeMillis() - start;
+            return answer;
+        }
         Map<Variable, Concept> unified = new HashMap<>();
 
         for (Map.Entry<Variable, Concept> e : answer.map().entrySet()) {

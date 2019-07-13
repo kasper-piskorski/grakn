@@ -130,17 +130,22 @@ public class ConceptMap extends Answer {
         return new ConceptMap(this.map, exp.childOf(this));
     }
 
+    public static long projectTime = 0;
+
     /**
      * @param vars variables defining the projection
      * @return project the answer retaining the requested variables
      */
     @CheckReturnValue
     public ConceptMap project(Set<Variable> vars) {
-        return new ConceptMap(
+        long start = System.currentTimeMillis();
+        ConceptMap projected = new ConceptMap(
                 this.map.entrySet().stream()
                         .filter(e -> vars.contains(e.getKey()))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                 this.explanation()
         );
+        projectTime += System.currentTimeMillis() - start;
+        return projected;
     }
 }

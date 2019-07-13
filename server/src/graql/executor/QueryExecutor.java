@@ -36,6 +36,7 @@ import grakn.core.graql.executor.property.PropertyExecutor;
 import grakn.core.graql.gremlin.GraqlTraversal;
 import grakn.core.graql.gremlin.TraversalPlanner;
 import grakn.core.graql.reasoner.DisjunctionIterator;
+import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.server.exception.GraknServerException;
 import grakn.core.server.kb.concept.RelationImpl;
@@ -131,8 +132,14 @@ public class QueryExecutor {
 
                 int disjunctionSpanId = ServerTracing.startScopedChildSpanWithParentContext("QueryExecutor.match disjunction iterator", createStreamSpanId);
 
-                Stream<ConceptMap> stream = new DisjunctionIterator(matchClause, transaction).hasStream();
-                answerStream = stream.map(result -> result.project(matchClause.getSelectedNames()));
+                //Stream<ConceptMap> stream = new DisjunctionIterator(matchClause, transaction).hasStream();
+                long start = System.currentTimeMillis();
+                List<ConceptMap> answers = matchClause.getPatterns().getNegationDNF().getPatterns().stream()
+                        .map(conj -> ReasonerQueries.resolvable(conj, transaction).rewrite())
+                        .flatMap(query -> new ResolutionIterator(query, new HashSet<>()).hasStream())
+                        .collect(toList());
+                transaction.profiler().updateTime(getClass().getSimpleName() + "::getAnswers", System.currentTimeMillis() - start);
+                answerStream = answers.stream();//.map(result -> result.project(matchClause.getSelectedNames()));
 
                 ServerTracing.closeScopedChildSpan(disjunctionSpanId);
             }
@@ -396,10 +403,14 @@ public class QueryExecutor {
     }
 
     public Stream<ConceptMap> get(GraqlGet query) {
-        Stream<ConceptMap> answers = match(query.match()).map(result -> result.project(query.vars())).distinct();
+        MatchClause matchClause = query.match();
+        Set<Variable> variablesToGet = query.vars();
+        Stream<ConceptMap> answers = match(matchClause);
 
+        if (!matchClause.getSelectedNames().equals(variablesToGet)){
+            answers = answers.map(ans -> ans.project(variablesToGet));
+        }
         answers = filter(query, answers);
-
         return answers;
     }
 

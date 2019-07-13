@@ -84,8 +84,10 @@ public class ResolutionIterator extends ReasonerQueryIterator {
 
     @Override
     public ConceptMap next(){
+        long start = System.currentTimeMillis();
         if (nextAnswer == null) throw new NoSuchElementException();
         answers.add(nextAnswer);
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::next", System.currentTimeMillis() - start);
         return nextAnswer;
     }
 
@@ -104,9 +106,12 @@ public class ResolutionIterator extends ReasonerQueryIterator {
      */
     @Override
     public boolean hasNext() {
+        long start = System.currentTimeMillis();
         nextAnswer = findNextAnswer();
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::findNextAnswer", System.currentTimeMillis() - start);
         if (nextAnswer != null) return true;
 
+        long start2 = System.currentTimeMillis();
         //iter finished
         if (reiterate()) {
             long dAns = answers.size() - oldAns;
@@ -122,6 +127,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         subGoals.forEach(query.tx().queryCache()::ackCompleteness);
         query.tx().queryCache().propagateAnswers();
 
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::postIterProcessing", System.currentTimeMillis() - start2);
         return false;
     }
 }

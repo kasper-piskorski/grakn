@@ -397,6 +397,7 @@ public class InferenceRule {
         //TODO: more robust condition
         boolean isTransitive = getBody().getAtoms(RelationAtom.class)
                 .allMatch(at -> at.isAlphaEquivalent(getHead().getAtom()));
+
         if (isTransitive){
             return new TransitiveClosureState(getHead(),partialSubPrime, ruleUnifier, parent);
         }

@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static scala.collection.mutable.Leaf.iterator;
 
 public class TransitiveClosureState extends ResolutionState {
 
@@ -49,18 +52,24 @@ public class TransitiveClosureState extends ResolutionState {
         });
 
         HashMultimap<Concept, Concept> transitiveClosure = new TarjanSCC<>(conceptGraph).successorMap();
-        tarjanTime += System.currentTimeMillis() - start;
-        return transitiveClosure.entries().stream()
+
+        List<AnswerState> states = transitiveClosure.entries().stream()
                 .map(e -> new ConceptMap(
                         ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
                         new LookupExplanation(query.getPattern()))
                 )
                 .map(ans -> new AnswerState(ans, unifier, getParentState()))
-                .iterator();
+                .collect(Collectors.toList());
+        System.out.println("STATES: " + states.size());
+        tarjanTime += System.currentTimeMillis() - start;
+        return states.iterator();
     }
 
     @Override
     public ResolutionState generateSubGoal() {
-        return answerStateIterator.hasNext()? answerStateIterator.next() : null;
+        long start = System.currentTimeMillis();
+        AnswerState answerState = answerStateIterator.hasNext() ? answerStateIterator.next() : null;
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::generateSubGoal", System.currentTimeMillis() - start);
+        return answerState;
     }
 }

@@ -239,11 +239,13 @@ public abstract class SemanticCache<
             @Nullable MultiUnifier unifier) {
 
         long start = System.currentTimeMillis();
-        query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::recordCalls");
+        //query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::recordCalls");
 
-        assert(query.isPositive());
-        validateAnswer(answer, query, query.getVarNames());
-        if (query.hasUniqueAnswer()) ackCompleteness(query);
+        //assert(query.isPositive());
+        //validateAnswer(answer, query, query.getVarNames());
+        //if (query.hasUniqueAnswer()) ackCompleteness(query);
+
+        //query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordInitTime", System.currentTimeMillis() - start);
 
         /*
          * find SE entry
@@ -261,7 +263,7 @@ public abstract class SemanticCache<
                     .apply(answer)
                     .peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
                     .forEach(answerSet::add);
-            query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
+            //query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
             return match;
         }
         CacheEntry<ReasonerAtomicQuery, SE> reasonerAtomicQuerySECacheEntry = addEntry(createEntry(query, Sets.newHashSet(answer)));

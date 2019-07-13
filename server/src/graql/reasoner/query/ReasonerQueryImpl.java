@@ -573,10 +573,14 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     @Override
     public boolean requiresReiteration() {
         if (isCacheComplete()) return false;
+        long start = System.currentTimeMillis();
         Set<InferenceRule> dependentRules = RuleUtils.getDependentRules(this);
-        return RuleUtils.subGraphIsCyclical(dependentRules, tx())
+        boolean requiresReiteration = RuleUtils.subGraphIsCyclical(dependentRules, tx())
                 || RuleUtils.subGraphHasRulesWithHeadSatisfyingBody(dependentRules)
                 || selectAtoms().filter(Atom::isDisconnected).filter(Atom::isRuleResolvable).count() > 1;
+
+        tx().profiler().updateTime(getClass().getSimpleName() + "::requiresReiteration", System.currentTimeMillis() - start);
+        return requiresReiteration;
     }
 
     public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals){
