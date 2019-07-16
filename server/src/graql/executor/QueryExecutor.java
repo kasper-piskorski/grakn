@@ -403,7 +403,7 @@ public class QueryExecutor {
     public Stream<ConceptMap> get(GraqlGet query) {
         //NB: we need distinct as projection can produce duplicates
         Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(query.vars())).distinct();
-        
+
         answers = filter(query, answers);
 
         return answers;

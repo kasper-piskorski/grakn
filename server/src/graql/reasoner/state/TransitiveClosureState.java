@@ -28,7 +28,7 @@ public class TransitiveClosureState extends ResolutionState {
     private final Unifier unifier;
     private final Iterator<AnswerState> answerStateIterator;
 
-    public TransitiveClosureState(ReasonerAtomicQuery q, ConceptMap sub, Unifier u, QueryStateBase parent) {
+    public TransitiveClosureState(ReasonerAtomicQuery q, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
         super(sub, parent);
         this.query = q;
         this.unifier = u;
@@ -66,7 +66,7 @@ public class TransitiveClosureState extends ResolutionState {
     }
 
     @Override
-    public ResolutionState generateSubGoal() {
+    public ResolutionState generateChildState() {
         long start = System.currentTimeMillis();
         AnswerState answerState = answerStateIterator.hasNext() ? answerStateIterator.next() : null;
         query.tx().profiler().updateTime(getClass().getSimpleName() + "::generateSubGoal", System.currentTimeMillis() - start);
