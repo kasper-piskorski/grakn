@@ -80,7 +80,7 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         } else {
             newState = new AnswerState(answer, getUnifier(), getParentState());
         }
-        propagateTime += System.currentTimeMillis() - start;
+        getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::propagateAnswer", System.currentTimeMillis() - start);
         return newState;
     }
 
@@ -95,15 +95,18 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         InferenceRule rule = state.getRule();
         Unifier unifier = state.getUnifier();
         if (rule == null) {
+            long start2 = System.currentTimeMillis();
             answer = ConceptUtils.mergeAnswers(baseAnswer, query.getSubstitution())
                     .project(query.getVarNames());
+            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::answerManip", System.currentTimeMillis() - start2);
         } else {
             answer = rule.requiresMaterialisation(query.getAtom()) ?
                     materialisedAnswer(baseAnswer, rule, unifier) :
                     ruleAnswer(baseAnswer, rule, unifier);
         }
         ConceptMap recordedAnswer = recordAnswer(query, answer);
-        consumeTime += System.currentTimeMillis() - start;
+        getQuery().tx().profiler().updateCallCount(getClass().getSimpleName() + "::consumeAnswer");
+        getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer", System.currentTimeMillis() - start);
         return recordedAnswer;
 
     }

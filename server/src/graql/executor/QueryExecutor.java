@@ -132,14 +132,12 @@ public class QueryExecutor {
 
                 int disjunctionSpanId = ServerTracing.startScopedChildSpanWithParentContext("QueryExecutor.match disjunction iterator", createStreamSpanId);
 
-                //Stream<ConceptMap> stream = new DisjunctionIterator(matchClause, transaction).hasStream();
+                //answerStream = new DisjunctionIterator(matchClause, transaction).hasStream();
                 long start = System.currentTimeMillis();
-                List<ConceptMap> answers = matchClause.getPatterns().getNegationDNF().getPatterns().stream()
+                answerStream = matchClause.getPatterns().getNegationDNF().getPatterns().stream()
                         .map(conj -> ReasonerQueries.resolvable(conj, transaction).rewrite())
-                        .flatMap(query -> new ResolutionIterator(query, new HashSet<>()).hasStream())
-                        .collect(toList());
+                        .flatMap(query -> new ResolutionIterator(query, new HashSet<>()).hasStream());
                 transaction.profiler().updateTime(getClass().getSimpleName() + "::getAnswers", System.currentTimeMillis() - start);
-                answerStream = answers.stream();
 
                 ServerTracing.closeScopedChildSpan(disjunctionSpanId);
             }
@@ -402,9 +400,10 @@ public class QueryExecutor {
 
     public Stream<ConceptMap> get(GraqlGet query) {
         //NB: we need distinct as projection can produce duplicates
-        Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(query.vars())).distinct();
+        Set<Variable> getVars = query.vars();
+        Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(getVars)).distinct();
 
-        answers = filter(query, answers);
+        //answers = filter(query, answers);
 
         return answers;
     }

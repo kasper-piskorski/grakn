@@ -248,10 +248,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         if(doNotResolveFurther){
             subGoalIterator = Collections.emptyIterator();
         } else {
-            tx().profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);
             subGoalIterator = getRuleStream()
                     .map(rulePair -> rulePair.getKey().subGoal(this.getAtom(), rulePair.getValue(), parent, visitedSubGoals))
                     .iterator();
+            tx().profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);
         }
         if (!visited) visitedSubGoals.add(this);
 

@@ -33,7 +33,7 @@ public class Profiler {
         System.out.println();
 
         registeredCalls.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .sorted(Comparator.comparing(Map.Entry::getValue))
                 .forEach(System.out::println);
         System.out.println();
     }

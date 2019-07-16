@@ -323,13 +323,13 @@ public class ReasonerQueryImpl implements ResolvableQuery {
 
     @Override
     public Set<Variable> getVarNames() {
+        long start = System.currentTimeMillis();
         if (varNames == null) {
-            long start = System.currentTimeMillis();
             Set<Variable> vars = new HashSet<>();
             getAtoms().forEach(atom -> vars.addAll(atom.getVarNames()));
             varNames = vars;
-            tx().profiler().updateTime(getClass().getSimpleName() + "::getVarNames", System.currentTimeMillis() - start);
         }
+        tx().profiler().updateTime(getClass().getSimpleName() + "::getVarNames", System.currentTimeMillis() - start);
         return varNames;
     }
 

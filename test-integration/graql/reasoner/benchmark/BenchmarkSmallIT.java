@@ -245,8 +245,12 @@ public class BenchmarkSmallIT {
         session.close();
     }
 
-    public void printTimes(){
+    private void printTimes(TransactionOLTP tx){
+        System.out.println("consume time: " + AtomicState.consumeTime);
+        System.out.println("propagate time: " + AtomicState.propagateTime);
+        System.out.println("ConceptMap::hashCode: " + ConceptMap.hashCodeTime);
         System.out.println("ConceptMap::project: " + ConceptMap.projectTime);
+        System.out.println("ConceptMap::project calls: " + ConceptMap.projectCalls);
         System.out.println("UnifierImpl::apply: " + UnifierImpl.unifyTime);
         System.out.println("IndexedAnswerSet:add " + IndexedAnswerSet.addTime);
         System.out.println("ConceptUtils::merge: " + ConceptUtils.mergeTime);
@@ -255,6 +259,23 @@ public class BenchmarkSmallIT {
         System.out.println("    ConceptUtils::varIntersectionTime: " + ConceptUtils.varIntersectionTime);
         System.out.println("ConceptUtils::disjointSet: " + ConceptUtils.disjointSetTime);
         System.out.println("ConceptUtils::disjointType: " + ConceptUtils.disjointTypeTime);
+
+        AtomicState.consumeTime = 0;
+        AtomicState.propagateTime= 0;
+        ConceptMap.hashCodeTime = 0;
+        ConceptMap.projectTime= 0;
+        ConceptMap.projectCalls= 0;
+        UnifierImpl.unifyTime= 0;
+        IndexedAnswerSet.addTime= 0;
+        ConceptUtils.mergeTime= 0;
+        ConceptUtils.setTime= 0;
+        ConceptUtils.setEqualityTime= 0;
+        ConceptUtils.varIntersectionTime= 0;
+        ConceptUtils.disjointSetTime= 0;
+        ConceptUtils.disjointTypeTime= 0;
+
+        tx.profiler().print();
+        System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);
     }
 
     /**
@@ -274,7 +295,7 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        int N = 1000;
+        int N = 100;
         int limit = 10;
         int answers = (N+1)*N/2;
         SessionImpl session = server.sessionWithNewKeyspace();
@@ -283,20 +304,15 @@ public class BenchmarkSmallIT {
         long start = System.currentTimeMillis();
         transitivityChainGraph.load(N);
         System.out.println("load time: " + (System.currentTimeMillis() - start));
-        TransactionOLTP tx = session.transaction().write();
 
         String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
         GraqlGet query = Graql.parse(queryString).asGet();
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
-        List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
-        System.out.println("consume time: " + AtomicState.consumeTime);
-        System.out.println("propagate time: " + AtomicState.propagateTime);
-        printTimes();
-        System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);
-
-        tx.profiler().print();
+        try(TransactionOLTP tx = session.transaction().write()) {
+            List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
+            printTimes(tx);
         /*
         assertEquals(executeQuery(query, tx, "full").size(), answers);
         assertEquals(executeQuery(query2, tx, "With specific resource").size(), N);
@@ -305,22 +321,27 @@ public class BenchmarkSmallIT {
         executeQuery(query2.match().get().limit(limit), tx, "limit " + limit);
          */
 
-        long start2 = System.currentTimeMillis();
-        List<ConceptMap> dbAnswers = tx.execute(query, false);
-        System.out.println("Db time: " + (System.currentTimeMillis() - start2));
+            long start2 = System.currentTimeMillis();
+            List<ConceptMap> dbAnswers = tx.execute(query, false);
+            System.out.println("Db time: " + (System.currentTimeMillis() - start2));
 
-        HashMultimap<Concept, Concept> graph = HashMultimap.create();
-        dbAnswers.forEach(ans -> graph.put(ans.get("x"), ans.get("y")));
+            HashMultimap<Concept, Concept> graph = HashMultimap.create();
+            dbAnswers.forEach(ans -> graph.put(ans.get("x"), ans.get("y")));
 
-        List<ConceptMap> tarjanAnswers = new ArrayList<>();
-        HashMultimap<Concept, Concept> successorMap = new TarjanSCC<>(graph).successorMap();
-        successorMap.entries()
-                .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
-        System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
-        GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
-        assertEquals(answers, tarjanAnswers.size());
-        System.out.println();
-        tx.close();
+            List<ConceptMap> tarjanAnswers = new ArrayList<>();
+            HashMultimap<Concept, Concept> successorMap = new TarjanSCC<>(graph).successorMap();
+            successorMap.entries()
+                    .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
+            System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
+            GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
+            assertEquals(answers, tarjanAnswers.size());
+            System.out.println();
+        }
+
+        try(TransactionOLTP tx = session.transaction().write()) {
+            executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
+            printTimes(tx);
+        }
         session.close();
     }
 
@@ -347,8 +368,9 @@ public class BenchmarkSmallIT {
     @Test
     public void testTransitiveMatrix(){
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
-        int N = 100;
-        int limit = 100;
+        int N = 50;
+        int limit = 1000;
+        int limit2 = 100000;
 
         SessionImpl session = server.sessionWithNewKeyspace();
         TransitivityMatrixGraph transitivityMatrixGraph = new TransitivityMatrixGraph(session);
@@ -358,11 +380,11 @@ public class BenchmarkSmallIT {
         //results @N = 25 105625    ?       ?     50s    11 s
         //results @N = 30 216225    ?       ?      ?     30 s
         //results @N = 35 396900   ?        ?      ?     76 s
+        //results @N = 40 672400
+        //results @N = 50 1625625
         long start = System.currentTimeMillis();
         transitivityMatrixGraph.load(N, N);
-
         System.out.println("load time: " + (System.currentTimeMillis() - start));
-        TransactionOLTP tx = session.transaction().write();
 
         //full result
         String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
@@ -372,36 +394,43 @@ public class BenchmarkSmallIT {
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
-        //with substitution
-        Concept id = tx.execute(Graql.parse("match $x has index 'a'; get;").asGet()).iterator().next().get("x");
-        String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + id.id().getValue() + "; get;";
-        GraqlGet query3 = Graql.parse(queryString3).asGet();
+        try(TransactionOLTP tx = session.transaction().write()) {
+            //with substitution
+            Concept id = tx.execute(Graql.parse("match $x has index 'a'; get;").asGet()).iterator().next().get("x");
+            String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + id.id().getValue() + "; get;";
+            GraqlGet query3 = Graql.parse(queryString3).asGet();
 
-        //List<ConceptMap> answers = executeQuery(query, tx, "full");
-        int answers = 396900;
-        //List<ConceptMap> resAnswers = executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
+            List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
+            printTimes(tx);
+            int answers = 396900;
+            //List<ConceptMap> resAnswers = executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
 
-        long start2 = System.currentTimeMillis();
-        List<ConceptMap> dbAnswers = tx.execute(query, false);
-        System.out.println("Db time: " + (System.currentTimeMillis() - start2));
+            long start2 = System.currentTimeMillis();
+            List<ConceptMap> dbAnswers = tx.execute(query, false);
+            System.out.println("Db time: " + (System.currentTimeMillis() - start2));
 
-        HashMultimap<Concept, Concept> graph = HashMultimap.create();
-        dbAnswers.forEach(ans -> graph.put(ans.get("x"), ans.get("y")));
+            HashMultimap<Concept, Concept> graph = HashMultimap.create();
+            dbAnswers.forEach(ans -> graph.put(ans.get("x"), ans.get("y")));
 
-        List<ConceptMap> tarjanAnswers = new ArrayList<>();
-        HashMultimap<Concept, Concept> successorMap = new TarjanSCC<>(graph).successorMap();
-        successorMap.entries()
-                .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
-        System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
-        //GraqlTestUtil.assertCollectionsEqual(resAnswers, tarjanAnswers);
-        System.out.println();
+            List<ConceptMap> tarjanAnswers = new ArrayList<>();
+            HashMultimap<Concept, Concept> successorMap = new TarjanSCC<>(graph).successorMap();
+            successorMap.entries()
+                    .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
+            System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
+            GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
+            System.out.println();
         /*
         executeQuery(query2, tx, "With specific resource");
         executeQuery(query3, tx, "Single argument bound");
         executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
          */
 
-        tx.close();
+        }
+        try(TransactionOLTP tx = session.transaction().write()) {
+            executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
+            printTimes(tx);
+        }
+
         session.close();
     }
 

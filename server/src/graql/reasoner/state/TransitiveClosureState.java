@@ -10,6 +10,7 @@ import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.unifier.Unifier;
+import grakn.core.graql.reasoner.utils.IterativeTarjanTC;
 import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.server.session.TransactionOLTP;
@@ -51,6 +52,7 @@ public class TransitiveClosureState extends ResolutionState {
             conceptGraph.put(from, to);
         });
 
+        /*
         HashMultimap<Concept, Concept> transitiveClosure = new TarjanSCC<>(conceptGraph).successorMap();
 
         List<AnswerState> states = transitiveClosure.entries().stream()
@@ -63,6 +65,15 @@ public class TransitiveClosureState extends ResolutionState {
         System.out.println("STATES: " + states.size());
         tarjanTime += System.currentTimeMillis() - start;
         return states.iterator();
+         */
+
+        return new IterativeTarjanTC<>(conceptGraph).stream()
+                .map(e -> new ConceptMap(
+                        ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
+                        new LookupExplanation(query.getPattern()))
+                )
+                .map(ans -> new AnswerState(ans, unifier, getParentState()))
+                .iterator();
     }
 
     @Override

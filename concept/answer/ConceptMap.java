@@ -109,12 +109,20 @@ public class ConceptMap extends Answer {
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
+        long start = System.currentTimeMillis();
         ConceptMap a2 = (ConceptMap) obj;
-        return map.equals(a2.map);
+        boolean equals = map.equals(a2.map);
+        hashCodeTime += System.currentTimeMillis() - start;
+        return equals;
     }
 
     @Override
-    public int hashCode() { return map.hashCode();}
+    public int hashCode() {
+        long start = System.currentTimeMillis();
+        int hashCode = map.hashCode();
+        hashCodeTime += System.currentTimeMillis() - start;
+        return hashCode;
+    }
 
     public void forEach(BiConsumer<Variable, Concept> consumer) {
         map.forEach(consumer);
@@ -131,6 +139,8 @@ public class ConceptMap extends Answer {
     }
 
     public static long projectTime = 0;
+    public static long hashCodeTime = 0;
+    public static long projectCalls = 0;
 
     /**
      * @param vars variables defining the projection
@@ -146,6 +156,7 @@ public class ConceptMap extends Answer {
                 this.explanation()
         );
         projectTime += System.currentTimeMillis() - start;
+        projectCalls++;
         return projected;
     }
 }

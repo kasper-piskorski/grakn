@@ -263,7 +263,7 @@ public abstract class SemanticCache<
                     .apply(answer)
                     .peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
                     .forEach(answerSet::add);
-            //query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
             return match;
         }
         CacheEntry<ReasonerAtomicQuery, SE> reasonerAtomicQuerySECacheEntry = addEntry(createEntry(query, Sets.newHashSet(answer)));
