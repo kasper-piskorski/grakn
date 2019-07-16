@@ -139,7 +139,7 @@ public class QueryExecutor {
                         .flatMap(query -> new ResolutionIterator(query, new HashSet<>()).hasStream())
                         .collect(toList());
                 transaction.profiler().updateTime(getClass().getSimpleName() + "::getAnswers", System.currentTimeMillis() - start);
-                answerStream = answers.stream();//.map(result -> result.project(matchClause.getSelectedNames()));
+                answerStream = answers.stream();
 
                 ServerTracing.closeScopedChildSpan(disjunctionSpanId);
             }
@@ -290,7 +290,6 @@ public class QueryExecutor {
     public Stream<ConceptMap> insert(GraqlInsert query) {
         int createExecSpanId = ServerTracing.startScopedChildSpan("QueryExecutor.insert create executors");
 
-
         Collection<Statement> statements = query.statements().stream()
                 .flatMap(statement -> statement.innerStatements().stream())
                 .collect(Collectors.toList());
@@ -305,7 +304,6 @@ public class QueryExecutor {
         ServerTracing.closeScopedChildSpan(createExecSpanId);
 
         int answerStreamSpanId = ServerTracing.startScopedChildSpan("QueryExecutor.insert create answer stream");
-
 
         Stream<ConceptMap> answerStream;
         if (query.match() != null) {
@@ -403,14 +401,11 @@ public class QueryExecutor {
     }
 
     public Stream<ConceptMap> get(GraqlGet query) {
-        MatchClause matchClause = query.match();
-        Set<Variable> variablesToGet = query.vars();
-        Stream<ConceptMap> answers = match(matchClause);
-
-        if (!matchClause.getSelectedNames().equals(variablesToGet)){
-            answers = answers.map(ans -> ans.project(variablesToGet));
-        }
+        //NB: we need distinct as projection can produce duplicates
+        Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(query.vars())).distinct();
+        
         answers = filter(query, answers);
+
         return answers;
     }
 
