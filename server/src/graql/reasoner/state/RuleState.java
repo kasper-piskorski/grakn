@@ -61,6 +61,8 @@ public class RuleState extends AnswerPropagatorState<ResolvableQuery> {
     @Override
     ResolutionState propagateAnswer(AnswerState state){
         ConceptMap answer = consumeAnswer(state);
+        //NB: we assign the rule here
+        //TODO we can also only assign unifier here and do not propagate it further
         return !answer.isEmpty()? new AnswerState(answer, getUnifier(), getParentState(), rule) : null;
     }
 
