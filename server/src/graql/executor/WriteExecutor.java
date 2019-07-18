@@ -18,6 +18,7 @@
 
 package grakn.core.graql.executor;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -307,7 +308,7 @@ public class WriteExecutor {
 
     private Concept buildConcept(Variable var, ConceptBuilder builder) {
         Concept concept = builder.build();
-        assert concept != null : String.format("build() should never return null. var: %s", var);
+        Preconditions.checkNotNull(concept, "build() should never return null. var: %s", var);
         concepts.put(var, concept);
         return concept;
     }
@@ -411,7 +412,7 @@ public class WriteExecutor {
      */
     public Concept getConcept(Variable var) {
         var = equivalentVars.componentOf(var);
-        assert var != null;
+        Preconditions.checkNotNull(var);
 
         @Nullable Concept concept = concepts.get(var);
 

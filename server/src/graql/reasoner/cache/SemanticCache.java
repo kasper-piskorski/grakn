@@ -240,8 +240,6 @@ public abstract class SemanticCache<
 
         long start = System.currentTimeMillis();
         query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::recordCalls");
-
-        assert(query.isPositive());
         validateAnswer(answer, query, query.getVarNames());
         if (query.hasUniqueAnswer()) ackCompleteness(query);
 
@@ -282,10 +280,7 @@ public abstract class SemanticCache<
     @Override
     public Pair<Stream<ConceptMap>, MultiUnifier> getAnswerStreamWithUnifier(ReasonerAtomicQuery query) {
         long start = System.currentTimeMillis();
-        //LOG.debug("Cache GET: {}", query);
         query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::getCalls");
-
-        assert(query.isPositive());
         CacheEntry<ReasonerAtomicQuery, SE> match = getEntry(query);
         boolean queryGround = query.isGround();
 

@@ -37,10 +37,9 @@ public class Profiler {
         System.out.println();
     }
 
-    private static long cutOff = 20;
+    private static long cutOff = 100;
 
     public void logTimes(){
-
         registeredTimes.entrySet().stream()
                 .filter(e -> e.getValue() > cutOff)
                 .sorted(Comparator.comparing(Map.Entry::getValue))
@@ -48,7 +47,8 @@ public class Profiler {
         LOG.debug("");
 
         registeredCalls.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .filter(e -> e.getValue() > cutOff)
+                .sorted(Comparator.comparing(Map.Entry::getValue))
                 .forEach(e -> LOG.debug(e.toString()));
         clear();
 
