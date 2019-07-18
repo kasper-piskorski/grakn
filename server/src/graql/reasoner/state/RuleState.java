@@ -40,18 +40,9 @@ public class RuleState extends AnswerPropagatorState<ResolvableQuery> {
 
     private final InferenceRule rule;
 
-<<<<<<< HEAD
-    public RuleState(InferenceRule rule, ConceptMap sub, Unifier unifier, QueryStateBase parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
-        super(sub, unifier, parent, visitedSubGoals);
-        long start = System.currentTimeMillis();
-        //NB; sub gets propagated to the body here
-        this.bodyIterator = Iterators.singletonIterator(rule.getBody().subGoal(sub, unifier, this, visitedSubGoals));
-=======
     public RuleState(InferenceRule rule, ConceptMap sub, Unifier unifier, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
         super(rule.getBody(), sub, unifier, parent, visitedSubGoals);
->>>>>>> f6ba66c9631dc0e92c61cf07dbfe3e08014c71f0
         this.rule = rule;
-        rule.getBody().tx().profiler().updateTime(getClass().getSimpleName() + "::RuleState", System.currentTimeMillis() - start);
     }
 
     @Override
