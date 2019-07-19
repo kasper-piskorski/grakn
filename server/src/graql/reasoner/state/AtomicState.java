@@ -59,6 +59,9 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
     }
 
     @Override
+    public String toString(){ return super.toString() + "\n" + getQuery() + "\n"; }
+
+    @Override
     Iterator<ResolutionState> generateChildStateIterator() {
         return getQuery().innerStateIterator(this, getVisitedSubGoals());
     }
@@ -157,7 +160,6 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
         //materialise exhibits put behaviour - duplicates won't be created
         long start2 = System.currentTimeMillis();
-        LOG.debug("Materialise: {}", query);
         ConceptMap materialisedSub = ruleHead.materialise(answer).findFirst().orElse(null);
         getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::materialise", System.currentTimeMillis() - start2);
         if (materialisedSub != null) {

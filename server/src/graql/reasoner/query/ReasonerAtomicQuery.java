@@ -23,6 +23,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.concept.type.SchemaConcept;
 import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.Atomic;
@@ -98,7 +99,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
 
     @Override
     public String toString(){
-        return getAtoms(Atom.class).map(Atomic::toString).collect(Collectors.joining(", "));
+        SchemaConcept type = getAtom().getSchemaConcept();
+        long ruleCount = type != null ? type.thenRules().count() : 0;
+        return getAtoms(Atom.class).map(Atomic::toString).collect(Collectors.joining(", ")) +
+                (ruleCount != 0? "(*" + ruleCount + ")" : "");
     }
 
     @Override
