@@ -19,6 +19,7 @@
 package grakn.core.graql.reasoner.state;
 
 import grakn.core.concept.answer.ConceptMap;
+import java.util.List;
 
 /**
  *
@@ -32,11 +33,11 @@ import grakn.core.concept.answer.ConceptMap;
  */
 public abstract class ResolutionState {
 
-    private final ConceptMap sub;
+    private final List<ConceptMap> subs;
     private final AnswerPropagatorState parentState;
 
-    ResolutionState(ConceptMap sub, AnswerPropagatorState parent){
-        this.sub = sub;
+    ResolutionState(List<ConceptMap> subs, AnswerPropagatorState parent){
+        this.subs = subs;
         this.parentState = parent;
     }
 
@@ -51,7 +52,7 @@ public abstract class ResolutionState {
     /**
      * @return substitution this state has
      */
-    public ConceptMap getSubstitution(){ return sub;}
+    public List<ConceptMap> getSubstitutions(){ return subs;}
 
     /**
      * @return true if this resolution state is an answer state

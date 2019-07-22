@@ -21,9 +21,11 @@ package grakn.core.graql.reasoner.state;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ResolvableQuery;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -45,12 +47,12 @@ import java.util.Set;
 public abstract class AnswerPropagatorState<Q extends ResolvableQuery> extends ResolutionState {
 
     private final Q query;
-    private final Unifier unifier;
+    private final MultiUnifier unifier;
     private final Set<ReasonerAtomicQuery> visitedSubGoals;
     private final Iterator<ResolutionState> subGoalIterator;
 
-    AnswerPropagatorState(Q query, ConceptMap sub, Unifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals) {
-        super(sub, parent);
+    AnswerPropagatorState(Q query, List<ConceptMap> subs, MultiUnifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals) {
+        super(subs, parent);
         this.query = query;
         this.unifier = u;
         this.visitedSubGoals = subGoals;
@@ -77,7 +79,7 @@ public abstract class AnswerPropagatorState<Q extends ResolvableQuery> extends R
     /**
      * @return unifier of this state with parent state
      */
-    public Unifier getUnifier(){ return unifier;}
+    public MultiUnifier getMultiUnifier(){ return unifier;}
 
     /**
      *
@@ -96,5 +98,5 @@ public abstract class AnswerPropagatorState<Q extends ResolvableQuery> extends R
      * @param state answer state providing the answer
      * @return digested (acknowledged and cached) answer
      */
-    abstract ConceptMap consumeAnswer(AnswerState state);
+    abstract List<ConceptMap> consumeAnswers(AnswerState state);
 }

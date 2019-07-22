@@ -20,7 +20,9 @@ package grakn.core.graql.reasoner.state;
 
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.rule.InferenceRule;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
+import java.util.List;
 
 /**
  *
@@ -33,23 +35,23 @@ import grakn.core.graql.reasoner.unifier.Unifier;
 public class AnswerState extends ResolutionState {
 
     private final InferenceRule rule;
-    private final Unifier unifier;
+    private final MultiUnifier unifier;
 
-    public AnswerState(ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
-        this(sub, u, parent, null);
+    public AnswerState(List<ConceptMap> subs, MultiUnifier u, AnswerPropagatorState parent) {
+        this(subs, u, parent, null);
     }
 
-    AnswerState(ConceptMap sub, Unifier u, AnswerPropagatorState parent, InferenceRule rule) {
-        super(sub, parent);
+    AnswerState(List<ConceptMap> subs, MultiUnifier u, AnswerPropagatorState parent, InferenceRule rule) {
+        super(subs, parent);
         this.unifier = u;
         this.rule = rule;
     }
 
     @Override
     public String toString(){
-        return super.toString() + ": " + getSubstitution() +
+        return super.toString() + ": " + getSubstitutions() +
                 (getParentState() != null? " to @" + Integer.toHexString(getParentState().hashCode()) : "") +
-                (" with u: " + getUnifier());
+                (" with u: " + getMultiUnifier());
     }
 
     @Override
@@ -62,5 +64,5 @@ public class AnswerState extends ResolutionState {
 
     InferenceRule getRule(){ return rule;}
 
-    Unifier getUnifier(){ return unifier;}
+    MultiUnifier getMultiUnifier(){ return unifier;}
 }

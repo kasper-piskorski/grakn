@@ -21,6 +21,7 @@ package grakn.core.graql.reasoner.state;
 import com.google.common.collect.Sets;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import graql.lang.statement.Variable;
 
@@ -39,10 +40,11 @@ class RoleExpansionState extends ResolutionState {
 
     private final Iterator<AnswerState> answerStateIterator;
 
-    RoleExpansionState(ConceptMap sub, Unifier u, Set<Variable> toExpand, AnswerPropagatorState parent) {
-        super(sub, parent);
-        this.answerStateIterator = expandHierarchies(getSubstitution(), toExpand)
-                .map(ans -> new AnswerState(ans, u, getParentState()))
+    RoleExpansionState(List<ConceptMap> subs, MultiUnifier u, Set<Variable> toExpand, AnswerPropagatorState parent) {
+        super(subs, parent);
+        this.answerStateIterator = getSubstitutions().stream()
+                .map(sub -> expandHierarchies(sub, toExpand).collect(Collectors.toList()))
+                .map(answers -> new AnswerState(answers, u, getParentState()))
                 .iterator();
     }
 

@@ -24,6 +24,7 @@ import grakn.core.concept.answer.Explanation;
 import grakn.core.graql.reasoner.explanation.JoinExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.server.kb.concept.ConceptUtils;
 import java.util.ArrayList;
@@ -41,11 +42,11 @@ public class CumulativeState extends AnswerPropagatorState<ReasonerQueryImpl> {
     private final LinkedList<ReasonerQueryImpl> subQueries;
 
     public CumulativeState(List<ReasonerQueryImpl> qs,
-                           ConceptMap sub,
-                           Unifier u,
+                           List<ConceptMap> subs,
+                           MultiUnifier u,
                            AnswerPropagatorState parent,
                            Set<ReasonerAtomicQuery> subGoals) {
-        super(Iterables.getFirst(qs, null), sub, u, parent, subGoals);
+        super(Iterables.getFirst(qs, null), subs, u, parent, subGoals);
         this.subQueries = new LinkedList<>(qs);
         subQueries.removeFirst();
     }
@@ -53,34 +54,37 @@ public class CumulativeState extends AnswerPropagatorState<ReasonerQueryImpl> {
     @Override
     protected Iterator<ResolutionState> generateChildStateIterator() {
         //NB: we need lazy resolutionState initialisation here, otherwise they are marked as visited before visit happens
-        return getQuery().expandedStates(getSubstitution(), getUnifier(), this, getVisitedSubGoals()).iterator();
+        return getSubstitutions().stream()
+                        .flatMap(sub -> getQuery().expandedStates(sub, getMultiUnifier(), this, getVisitedSubGoals()))
+                        .iterator();
     }
 
 
     @Override
     public String toString(){
         return super.toString() +  "\n" +
-                getSubstitution() + "\n" +
+                getSubstitutions() + "\n" +
                 getQuery() + "\n" +
                 subQueries.stream().map(ReasonerQueryImpl::toString).collect(Collectors.joining("\n")) + "\n";
     }
 
     @Override
     public ResolutionState propagateAnswer(AnswerState state) {
-        ConceptMap accumulatedAnswer = getSubstitution();
-        ConceptMap toMerge = state.getSubstitution();
-        ConceptMap answer = new ConceptMap(
+        List<ConceptMap> accumulatedAnswers = getSubstitutions();
+        List<ConceptMap> toMerge = state.getSubstitutions();
+        ConceptMap answer = accumulatedAnswers.stream()
+                new ConceptMap(
                 ConceptUtils.mergeAnswers(accumulatedAnswer, toMerge).map(),
                 mergeExplanations(accumulatedAnswer, toMerge));
 
         if (answer.isEmpty()) return null;
-        if (subQueries.isEmpty()) return new AnswerState(answer, getUnifier(), getParentState());
-        return new CumulativeState(subQueries, answer, getUnifier(), getParentState(), getVisitedSubGoals());
+        if (subQueries.isEmpty()) return new AnswerState(answer, getMultiUnifier(), getParentState());
+        return new CumulativeState(subQueries, answer, getMultiUnifier(), getParentState(), getVisitedSubGoals());
     }
 
     @Override
-    ConceptMap consumeAnswer(AnswerState state) {
-        return state.getSubstitution();
+    List<ConceptMap> consumeAnswers(AnswerState state) {
+        return state.getSubstitutions();
     }
 
     private static Explanation mergeExplanations(ConceptMap base, ConceptMap toMerge) {

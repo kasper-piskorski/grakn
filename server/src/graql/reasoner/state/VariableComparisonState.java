@@ -24,6 +24,7 @@ import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.server.kb.concept.ConceptUtils;
 
@@ -54,7 +55,7 @@ public class VariableComparisonState extends AnswerPropagatorState<ReasonerQuery
 
     public VariableComparisonState(ReasonerQueryImpl q,
                                    ConceptMap sub,
-                                   Unifier u,
+                                   MultiUnifier u,
                                    AnswerPropagatorState parent,
                                    Set<ReasonerAtomicQuery> subGoals) {
         super(ReasonerQueries.create(q, sub), sub, u, parent, subGoals);
@@ -67,7 +68,7 @@ public class VariableComparisonState extends AnswerPropagatorState<ReasonerQuery
     @Override
     Iterator<ResolutionState> generateChildStateIterator() {
         return Iterators.singletonIterator(
-                getQuery().constantValuePredicateQuery().resolutionState(getSubstitution(), getUnifier(), this, getVisitedSubGoals())
+                getQuery().constantValuePredicateQuery().resolutionState(getSubstitution(), getMultiUnifier(), this, getVisitedSubGoals())
         );
     }
 
@@ -78,7 +79,7 @@ public class VariableComparisonState extends AnswerPropagatorState<ReasonerQuery
         boolean predicatesSatisfied = variablePredicates.stream()
                 .allMatch(p -> p.isSatisfied(fullAnswer));
         return predicatesSatisfied?
-                new AnswerState(state.getSubstitution(), getUnifier(), getParentState()) :
+                new AnswerState(state.getSubstitution(), getMultiUnifier(), getParentState()) :
                 null;
     }
 

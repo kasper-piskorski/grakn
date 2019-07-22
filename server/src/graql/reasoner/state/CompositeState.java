@@ -23,6 +23,7 @@ import grakn.core.graql.reasoner.query.CompositeQuery;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ResolvableQuery;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import java.util.Iterator;
 import java.util.Set;
@@ -61,7 +62,7 @@ public class CompositeState extends AnswerPropagatorState<CompositeQuery> {
 
     private final Set<ResolvableQuery> complements;
 
-    public CompositeState(CompositeQuery query, ConceptMap sub, Unifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals) {
+    public CompositeState(CompositeQuery query, ConceptMap sub, MultiUnifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals) {
         super(query.withSubstitution(sub), sub, u, parent, subGoals);
         this.complements = getQuery().getComplementQueries();
     }
@@ -88,7 +89,7 @@ public class CompositeState extends AnswerPropagatorState<CompositeQuery> {
                 .noneMatch(q -> q.resolve(getVisitedSubGoals()).findFirst().isPresent());
 
         return isNegationSatisfied?
-                new AnswerState(answer, getUnifier(), getParentState()) :
+                new AnswerState(answer, getMultiUnifier(), getParentState()) :
                 null;
     }
 }

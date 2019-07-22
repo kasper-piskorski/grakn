@@ -22,6 +22,7 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.ResolutionState;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
@@ -130,7 +131,7 @@ public interface ResolvableQuery extends ReasonerQuery {
      * @return resolution state formed from this query
      */
     @CheckReturnValue
-    ResolutionState resolutionState(ConceptMap sub, Unifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals);
+    ResolutionState resolutionState(ConceptMap sub, MultiUnifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals);
 
     /**
      * @param parent parent state

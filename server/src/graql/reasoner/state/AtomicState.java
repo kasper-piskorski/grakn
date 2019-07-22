@@ -19,6 +19,7 @@
 package grakn.core.graql.reasoner.state;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterators;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.atom.Atom;
@@ -34,7 +35,9 @@ import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.server.kb.concept.ConceptUtils;
 import graql.lang.statement.Variable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Query state corresponding to an atomic query (ReasonerAtomicQuery) in the resolution tree.
@@ -49,47 +52,60 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
     final private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
 
     public AtomicState(ReasonerAtomicQuery query,
-                ConceptMap sub,
-                Unifier u,
-                AnswerPropagatorState parent,
-                Set<ReasonerAtomicQuery> subGoals) {
-        super(ReasonerQueries.atomic(query, sub), sub, u, parent, subGoals);
+                       List<ConceptMap> subs,
+                       MultiUnifier u,
+                       AnswerPropagatorState parent,
+                       Set<ReasonerAtomicQuery> subGoals) {
+        super(query, subs, u, parent, subGoals);
     }
 
     @Override
     Iterator<ResolutionState> generateChildStateIterator() {
-        return getQuery().innerStateIterator(this, getVisitedSubGoals());
+        return Iterators.concat(
+                getSubstitutions().stream()
+                        .map(sub -> ReasonerQueries.atomic(getQuery(), sub))
+                        .map(q -> q.innerStateIterator(this, getVisitedSubGoals()))
+                        .iterator()
+        );
     }
 
     @Override
     ResolutionState propagateAnswer(AnswerState state) {
-        ConceptMap answer = consumeAnswer(state);
+        List<ConceptMap> answers = consumeAnswers(state);
         ReasonerAtomicQuery query = getQuery();
-        if (answer.isEmpty()) return null;
+        if (answers.isEmpty()) return null;
 
         if (state.getRule() != null && query.getAtom().requiresRoleExpansion()) {
             //NB: we set the parent state as this AtomicState, otherwise we won't acknowledge expanded answers (won't cache)
-            return new RoleExpansionState(answer, getUnifier(), query.getAtom().getRoleExpansionVariables(), this);
+            return new RoleExpansionState(answers, getMultiUnifier(), query.getAtom().getRoleExpansionVariables(), this);
         }
-        return new AnswerState(answer, getUnifier(), getParentState());
+        return new AnswerState(answers, getMultiUnifier(), getParentState());
     }
 
     @Override
-    ConceptMap consumeAnswer(AnswerState state) {
-        ConceptMap answer;
+    List<ConceptMap> consumeAnswers(AnswerState state) {
         ReasonerAtomicQuery query = getQuery();
-        ConceptMap baseAnswer = state.getSubstitution();
         InferenceRule rule = state.getRule();
-        Unifier unifier = state.getUnifier();
-        if (rule == null) {
-            answer = ConceptUtils.mergeAnswers(baseAnswer, query.getSubstitution())
-                    .project(query.getVarNames());
-        } else {
-            answer = rule.requiresMaterialisation(query.getAtom()) ?
-                    materialisedAnswer(baseAnswer, rule, unifier) :
-                    ruleAnswer(baseAnswer, rule, unifier);
-        }
-        return recordAnswer(query, answer);
+        MultiUnifier multiUnifier = state.getMultiUnifier();
+
+        //ConceptMap answer;
+        //ConceptMap baseAnswer = state.getSubstitution();
+        return state.getSubstitutions().stream()
+                .flatMap(baseAnswer ->
+                            multiUnifier.stream()
+                                    .map(unifier -> {
+                                        if (rule == null) {
+                                            return ConceptUtils.mergeAnswers(baseAnswer, query.getSubstitution())
+                                                    .project(query.getVarNames());
+                                        } else {
+                                            return rule.requiresMaterialisation(query.getAtom()) ?
+                                                    materialisedAnswer(baseAnswer, rule, unifier) :
+                                                    ruleAnswer(baseAnswer, rule, unifier);
+                                        }
+                                    })
+                )
+                .peek(answer -> recordAnswer(query, answer))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -117,9 +133,7 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
     private ConceptMap ruleAnswer(ConceptMap baseAnswer, InferenceRule rule, Unifier unifier) {
         ReasonerAtomicQuery query = getQuery();
-        ConceptMap answer = unifier.apply(ConceptUtils.mergeAnswers(
-                baseAnswer, rule.getHead().getRoleSubstitution())
-        );
+        ConceptMap answer = unifier.apply(ConceptUtils.mergeAnswers(baseAnswer, rule.getHead().getRoleSubstitution()));
         if (answer.isEmpty()) return answer;
 
         return ConceptUtils.mergeAnswers(answer, query.getSubstitution())

@@ -18,13 +18,16 @@
 
 package grakn.core.graql.reasoner.state;
 
+import com.google.common.collect.Iterators;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -33,26 +36,31 @@ import java.util.Set;
 public class ConjunctiveState extends AnswerPropagatorState<ReasonerQueryImpl> {
 
     public ConjunctiveState(ReasonerQueryImpl q,
-                            ConceptMap sub,
-                            Unifier u,
+                            List<ConceptMap> subs,
+                            MultiUnifier u,
                             AnswerPropagatorState parent,
                             Set<ReasonerAtomicQuery> visitedSubGoals) {
-        super(ReasonerQueries.create(q, sub), sub, u, parent, visitedSubGoals);
+        super(q, subs, u, parent, visitedSubGoals);
     }
 
     @Override
     Iterator<ResolutionState> generateChildStateIterator() {
-        return getQuery().innerStateIterator(this, getVisitedSubGoals());
+        return Iterators.concat(
+                getSubstitutions().stream()
+                        .map(sub -> ReasonerQueries.create(getQuery(), sub))
+                        .map(q -> q.innerStateIterator(this, getVisitedSubGoals()))
+                        .iterator()
+        );
     }
 
     @Override
     ResolutionState propagateAnswer(AnswerState state) {
-        ConceptMap answer = consumeAnswer(state);
-        return !answer.isEmpty() ? new AnswerState(answer, getUnifier(), getParentState()) : null;
+        List<ConceptMap> answers = consumeAnswers(state);
+        return !answers.isEmpty() ? new AnswerState(answers, getMultiUnifier(), getParentState()) : null;
     }
 
     @Override
-    ConceptMap consumeAnswer(AnswerState state) {
-        return state.getSubstitution();
+    List<ConceptMap> consumeAnswers(AnswerState state) {
+        return state.getSubstitutions();
     }
 }

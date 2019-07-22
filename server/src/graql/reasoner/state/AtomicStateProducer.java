@@ -20,6 +20,7 @@ package grakn.core.graql.reasoner.state;
 
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
+import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 
 import java.util.Iterator;
@@ -35,7 +36,7 @@ import java.util.Set;
  */
 public class AtomicStateProducer extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
-    public AtomicStateProducer(ReasonerAtomicQuery query, ConceptMap sub, Unifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals) {
+    public AtomicStateProducer(ReasonerAtomicQuery query, ConceptMap sub, MultiUnifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals) {
         super(query, sub, u, parent, subGoals);
     }
 

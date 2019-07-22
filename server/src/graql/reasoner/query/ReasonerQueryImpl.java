@@ -567,7 +567,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
     }
 
     @Override
-    public ResolutionState resolutionState(ConceptMap sub, Unifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals){
+    public ResolutionState resolutionState(ConceptMap sub, MultiUnifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals){
         return !containsVariablePredicates() ?
                 new ConjunctiveState(this, sub, u, parent, subGoals) :
                 new VariableComparisonState(this, sub, u, parent, subGoals);
@@ -580,7 +580,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
      * @param subGoals set of visited sub goals
      * @return resolution subGoals formed from this query obtained by expanding the inferred types contained in the query
      */
-    public Stream<ResolutionState> expandedStates(ConceptMap sub, Unifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals){
+    public Stream<ResolutionState> expandedStates(ConceptMap sub, MultiUnifier u, AnswerPropagatorState parent, Set<ReasonerAtomicQuery> subGoals){
         return getQueryStream(sub)
                 .map(q -> q.resolutionState(sub, u, parent, subGoals));
     }
@@ -612,7 +612,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
             else {
                 dbIterator = tx.stream(getQuery(), false)
                         .map(ans -> ans.explain(new JoinExplanation(this.getPattern(), this.splitToPartialAnswers(ans))))
-                        .map(ans -> new AnswerState(ans, parent.getUnifier(), parent))
+                        .map(ans -> new AnswerState(ans, parent.getMultiUnifier(), parent))
                         .iterator();
             }
             subGoalIterator = Collections.emptyIterator();
@@ -620,7 +620,7 @@ public class ReasonerQueryImpl implements ResolvableQuery {
             dbIterator = Collections.emptyIterator();
 
             ResolutionQueryPlan queryPlan = new ResolutionQueryPlan(this);
-            subGoalIterator = Iterators.singletonIterator(new CumulativeState(queryPlan.queries(), new ConceptMap(), parent.getUnifier(), parent, subGoals));
+            subGoalIterator = Iterators.singletonIterator(new CumulativeState(queryPlan.queries(), new ConceptMap(), parent.getMultiUnifier(), parent, subGoals));
         }
         return Iterators.concat(dbIterator, subGoalIterator);
     }
