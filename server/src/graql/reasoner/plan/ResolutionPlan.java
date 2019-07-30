@@ -38,8 +38,8 @@ import org.slf4j.LoggerFactory;
  */
 public final class ResolutionPlan {
 
-    final private ImmutableList<Atom> plan;
-    final private ReasonerQueryImpl query;
+    private final ImmutableList<Atom> plan;
+    private final ReasonerQueryImpl query;
     private static final Logger LOG = LoggerFactory.getLogger(ResolutionPlan.class);
 
     public ResolutionPlan(ReasonerQueryImpl q){
@@ -78,7 +78,7 @@ public final class ResolutionPlan {
             Set<Variable> varNames = next.getVarNames();
             boolean planDisconnected = Sets.intersection(varNames, vars).isEmpty();
             if (planDisconnected) {
-                LOG.warn("Disconnected resolution plan produced:\n{}", this);
+                LOG.debug("Disconnected resolution plan produced:\n{}", this);
                 break;
             }
             vars.addAll(varNames);

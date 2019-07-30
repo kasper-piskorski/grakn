@@ -78,7 +78,7 @@ public class GraqlTraversalPlanner {
                         at.getInnerPredicates(ValuePredicate.class)
                 )
                         .filter(vp -> vp.getPredicate().isValueEquality())
-                )
+        )
                 .count();
     }
 
