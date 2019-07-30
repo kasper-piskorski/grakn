@@ -218,6 +218,8 @@ public abstract class Operation<T, U> {
         U thisValue = this.valueSerialised();
         U thisLeftBound = thisSignum < 0 ? lowerBound : thisValue;
         U thisRightBound = thisSignum > 0 ? upperBound : thisValue;
+        boolean thisHardLeftBound = thisSignum >= 0 && this.containsEquality();
+        boolean thisHardRightBound = thisSignum <= 0 && this.containsEquality();
 
         boolean singleNeqPresent = this.comparator().equals(Graql.Token.Comparator.NEQV)
                 != that.comparator().equals(Graql.Token.Comparator.NEQV);
@@ -227,8 +229,8 @@ public abstract class Operation<T, U> {
         return !eqInconsistency
                 && operationBounds().lowerBoundTest(thisLeftBound, thatLeftBound)
                 && operationBounds().upperBoundTest(thisRightBound, thatRightBound)
-                && (thisLeftBound != thatLeftBound || thatHardLeftBound)
-                && (thisRightBound != thatRightBound || thatHardRightBound);
+                && (!thisLeftBound.equals(thatLeftBound) || thatHardLeftBound || !thisHardLeftBound)
+                && (!thisRightBound.equals(thatRightBound) || thatHardRightBound || !thisHardRightBound);
     }
 
     @Override

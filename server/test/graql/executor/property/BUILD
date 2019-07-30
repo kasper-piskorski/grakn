@@ -21,18 +21,18 @@ load("@graknlabs_build_tools//checkstyle:rules.bzl", "checkstyle_test")
 checkstyle_test(
     name = "checkstyle",
     targets = [
-        ":regex-predicate-test",
-    ]
+        ":value-executor-test",
+    ],
 )
 
 java_test(
-    name = "regex-predicate-test",
-    test_class = "grakn.core.graql.executor.property.ValueExecutorTest",
+    name = "value-executor-test",
+    size = "small",
     srcs = ["ValueExecutorTest.java"],
+    test_class = "grakn.core.graql.executor.property.ValueExecutorTest",
     deps = [
-        "@graknlabs_graql//java:graql",
-        "//server:server",
         "//dependencies/maven/artifacts/org/apache/tinkerpop:gremlin-core",
+        "//server",
+        "@graknlabs_graql//java:graql",
     ],
-    size = "small"
 )
