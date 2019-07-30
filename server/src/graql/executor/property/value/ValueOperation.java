@@ -72,7 +72,7 @@ public abstract class ValueOperation<T, U> {
         return comparator.equals(Graql.Token.Comparator.EQV) && !(this instanceof ValueComparison.Variable);
     }
 
-    public abstract U valueSerialised();
+    abstract U valueSerialised();
 
     protected abstract P<U> predicate();
 
@@ -173,22 +173,64 @@ public abstract class ValueOperation<T, U> {
                 (this.predicate().test(that.valueSerialised()) || ((that.predicate()).test(this.valueSerialised())));
     }
 
+    //for subsumption to take place, this needs to define a subset of that
     public boolean subsumes(ValueOperation<?, ?> other) {
         if (this.comparator().equals(Graql.Token.Comparator.LIKE)) {
-            return isCompatibleWithRegex(other);
+            return this.isCompatibleWithRegex(other);
         } else if (other.comparator().equals(Graql.Token.Comparator.LIKE)) {
             return false;
         }
 
-        if (this instanceof ValueComparison.Variable || other instanceof ValueComparison.Variable) return true;
-        //NB this is potentially dangerous e.g. if a user types a long as a char in the query
-        if (!this.valueSerialised().getClass().equals(other.valueSerialised().getClass())) return false;
-
         ValueOperation<?, U> that = (ValueOperation<?, U>) other;
-        return (that.predicate()).test(this.valueSerialised()) &&
-                (this.valueSerialised().equals(that.valueSerialised()) ?
-                        (this.isValueEquality() || this.isValueEquality() == that.isValueEquality()) :
-                        (!this.predicate().test(that.valueSerialised())));
+        if (this instanceof ValueComparison.Variable || that instanceof ValueComparison.Variable) return false;
+        //NB this is potentially dangerous e.g. if a user types a long as a char in the query
+        if (!this.valueSerialised().getClass().equals(that.valueSerialised().getClass())) return false;
+        return this.hasSubRangeOf(that);
+    }
+
+    abstract BoundDefinition<U> operationBounds();
+
+    private boolean hasSubRangeOf(ValueOperation<?, U> that) {
+        U thatValue = that.valueSerialised();
+        U thatLeftBound, thatRightBound;
+        boolean thatHardLeftBound, thatHardRightBound;
+        U lowerBound = operationBounds().lowerBound();
+        U upperBound = operationBounds().upperBound();
+
+        int thatSignum = that.signum();
+        if (thatSignum < 0) {
+            thatLeftBound = lowerBound;
+            thatRightBound = thatValue;
+            thatHardLeftBound = true;
+            thatHardRightBound = that.containsEquality();
+        } else if (thatSignum > 0) {
+            thatLeftBound = thatValue;
+            thatRightBound = upperBound;
+            thatHardLeftBound = that.containsEquality();
+            thatHardRightBound = true;
+        } else {
+            thatLeftBound = thatValue;
+            thatRightBound = thatValue;
+            thatHardLeftBound = thatHardRightBound = true;
+        }
+
+        int thisSignum = this.signum();
+        U thisValue = this.valueSerialised();
+        U thisLeftBound = thisSignum < 0 ? lowerBound : thisValue;
+        U thisRightBound = thisSignum > 0 ? upperBound : thisValue;
+        boolean thisHardLeftBound = thisSignum >= 0 && this.containsEquality();
+        boolean thisHardRightBound = thisSignum <= 0 && this.containsEquality();
+
+        boolean singleNeqPresent = this.comparator().equals(Graql.Token.Comparator.NEQV)
+                != that.comparator().equals(Graql.Token.Comparator.NEQV);
+        boolean eqInconsistency = thisSignum == 0 && thatSignum == 0
+                && this.containsEquality() != that.containsEquality()
+                || singleNeqPresent;
+        return !eqInconsistency
+                && operationBounds().lowerBoundTest(thisLeftBound, thatLeftBound)
+                && operationBounds().upperBoundTest(thisRightBound, thatRightBound)
+                && (!thisLeftBound.equals(thatLeftBound) || thatHardLeftBound || !thisHardLeftBound)
+                && (!thisRightBound.equals(thatRightBound) || thatHardRightBound || !thisHardRightBound);
     }
 
     @Override

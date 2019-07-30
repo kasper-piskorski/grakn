@@ -22,7 +22,6 @@ import com.google.common.base.Preconditions;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.exception.GraqlQueryException;
-import grakn.core.graql.executor.property.value.Operation;
 import grakn.core.graql.executor.property.value.ValueOperation;
 import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.query.ReasonerQuery;
@@ -136,8 +135,8 @@ public class VariableValuePredicate extends VariablePredicate {
         if (obj == null || this.getClass() != obj.getClass()) return false;
         if (obj == this) return true;
         VariableValuePredicate that = (VariableValuePredicate) obj;
-        return Operation.of(this.operation())
-                .isCompatible(Operation.of(that.operation()));
+        return ValueOperation.of(this.operation())
+                .isCompatible(ValueOperation.of(that.operation()));
     }
 
     @Override
@@ -146,8 +145,8 @@ public class VariableValuePredicate extends VariablePredicate {
         if (atomic == null || this.getClass() != atomic.getClass()) return false;
         if (atomic == this) return true;
         VariableValuePredicate that = (VariableValuePredicate) atomic;
-        return Operation.of(this.operation())
-                .subsumes(Operation.of(that.operation()));
+        return ValueOperation.of(this.operation())
+                .subsumes(ValueOperation.of(that.operation()));
     }
 
     @Override

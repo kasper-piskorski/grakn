@@ -26,8 +26,7 @@ public abstract class BoundDefinition<U> {
     abstract U upperBound();
     abstract boolean lowerBoundTest(U a1, U a2);
     abstract boolean upperBoundTest(U a1, U a2);
-
-
+    
     static class NumberBound extends BoundDefinition<Number>{
         @Override
         Number lowerBound() {

@@ -18,7 +18,7 @@
 
 package grakn.core.graql.executor.property;
 
-import grakn.core.graql.executor.property.value.Operation;
+import grakn.core.graql.executor.property.value.ValueOperation;
 import grakn.core.graql.executor.property.value.ValueComparison;
 import graql.lang.Graql;
 import graql.lang.property.ValueProperty;
@@ -107,12 +107,12 @@ public class ValueExecutorTest {
     public void whenNumberOperationsAreCompared_subsumptionIsRecognisedCorrectly() {
         final long leftBound = 1337L;
         final long rightBound = 1667L;
-        Operation<?, ?> eqL = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.EQV, leftBound));
-        Operation<?, ?> gteL = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GTE, leftBound));
-        Operation<?, ?> gtL = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GT, leftBound));
-        Operation<?, ?> lteL = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LTE, leftBound));
-        Operation<?, ?> ltL = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LT, leftBound));
-        Operation<?, ?> neqL = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.NEQV, leftBound));
+        ValueOperation<?, ?> eqL = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.EQV, leftBound));
+        ValueOperation<?, ?> gteL = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GTE, leftBound));
+        ValueOperation<?, ?> gtL = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GT, leftBound));
+        ValueOperation<?, ?> lteL = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LTE, leftBound));
+        ValueOperation<?, ?> ltL = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LT, leftBound));
+        ValueOperation<?, ?> neqL = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.NEQV, leftBound));
 
         subsumes(eqL, Arrays.asList(gteL, lteL), Arrays.asList(neqL, gtL, ltL));
         subsumes(gteL, Collections.emptyList(), Arrays.asList(eqL, gtL, lteL, ltL, neqL));
@@ -121,12 +121,12 @@ public class ValueExecutorTest {
         subsumes(ltL, Collections.singletonList(lteL), Arrays.asList(eqL, gteL, gtL, neqL));
         subsumes(neqL, Collections.emptyList(), Arrays.asList(eqL, gteL, gtL, lteL, ltL));
 
-        Operation<?, ?> eqR = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.EQV, rightBound));
-        Operation<?, ?> gteR = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GTE, rightBound));
-        Operation<?, ?> gtR = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GT, rightBound));
-        Operation<?, ?> lteR = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LTE, rightBound));
-        Operation<?, ?> ltR = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LT, rightBound));
-        Operation<?, ?> neqR = Operation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.NEQV, rightBound));
+        ValueOperation<?, ?> eqR = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.EQV, rightBound));
+        ValueOperation<?, ?> gteR = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GTE, rightBound));
+        ValueOperation<?, ?> gtR = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.GT, rightBound));
+        ValueOperation<?, ?> lteR = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LTE, rightBound));
+        ValueOperation<?, ?> ltR = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.LT, rightBound));
+        ValueOperation<?, ?> neqR = ValueOperation.of(new ValueProperty.Operation.Comparison.Number<>(Graql.Token.Comparator.NEQV, rightBound));
     }
 
     @Test
@@ -144,7 +144,7 @@ public class ValueExecutorTest {
         //TODO
     }
 
-    private void subsumes(Operation<?, ?> src, List<Operation<?, ?>> subsumes, List<Operation<?, ?>> subsumesNot){
+    private void subsumes(ValueOperation<?, ?> src, List<ValueOperation<?, ?>> subsumes, List<ValueOperation<?, ?>> subsumesNot){
         assertTrue("Unexpected subsumption outcome: " + src + " !<= " + src, src.subsumes(src));
         subsumes.forEach(tgt -> assertTrue("Unexpected subsumption outcome: " + src + " !<= " + tgt, src.subsumes(tgt)));
         subsumesNot.forEach(tgt -> assertFalse("Unexpected subsumption outcome: " + src + " !>= " + tgt, src.subsumes(tgt)));

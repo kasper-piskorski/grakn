@@ -72,8 +72,13 @@ public abstract class ValueAssignment<T, U> extends ValueOperation<T, U> {
         }
 
         @Override
-        public N valueSerialised() {
+        N valueSerialised() {
             return new Serialiser.Default<N>().serialise(value());
+        }
+
+        @Override
+        BoundDefinition<N> operationBounds() {
+            return (BoundDefinition<N>) new BoundDefinition.NumberBound();
         }
     }
 
@@ -89,8 +94,13 @@ public abstract class ValueAssignment<T, U> extends ValueOperation<T, U> {
         }
 
         @Override
-        public java.lang.Boolean valueSerialised() {
+        java.lang.Boolean valueSerialised() {
             return Serialiser.BOOLEAN.serialise(value());
+        }
+
+        @Override
+        BoundDefinition<java.lang.Boolean> operationBounds() {
+            return new BoundDefinition.BooleanBound();
         }
     }
 
@@ -106,8 +116,13 @@ public abstract class ValueAssignment<T, U> extends ValueOperation<T, U> {
         }
 
         @Override
-        public Long valueSerialised() {
+        Long valueSerialised() {
             return Serialiser.DATE.serialise(value());
+        }
+
+        @Override
+        BoundDefinition<Long> operationBounds() {
+            return new BoundDefinition.LongBound();
         }
     }
 
@@ -123,8 +138,13 @@ public abstract class ValueAssignment<T, U> extends ValueOperation<T, U> {
         }
 
         @Override
-        public java.lang.String valueSerialised() {
+        java.lang.String valueSerialised() {
             return Serialiser.STRING.serialise(value());
+        }
+
+        @Override
+        BoundDefinition<java.lang.String> operationBounds() {
+            return new BoundDefinition.StringBound();
         }
     }
 }
