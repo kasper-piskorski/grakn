@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -941,7 +941,7 @@ public class TransactionOLTP implements Transaction {
     }
 
     private void removeInferredConcepts() {
-        Set<Thing> inferredThingsToDiscard = cache().getInferredThingsToDiscard().collect(Collectors.toSet());
+        Set<Thing> inferredThingsToDiscard = cache().getInferredInstancesToDiscard().collect(Collectors.toSet());
         inferredThingsToDiscard.forEach(inferred -> cache().remove(inferred));
         inferredThingsToDiscard.forEach(Concept::delete);
     }

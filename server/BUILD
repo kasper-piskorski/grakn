@@ -1,6 +1,6 @@
 #
 # GRAKN.AI - THE KNOWLEDGE GRAPH
-# Copyright (C) 2018 Grakn Labs Ltd
+# Copyright (C) 2019 Grakn Labs Ltd
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -56,8 +56,7 @@ java_library(
         "@graknlabs_benchmark//lib:server-instrumentation",
 
         # External dependencies from Maven
-
-        "//dependencies/maven/artifacts/com/datastax/cassandra:cassandra-driver-core", # PREVIOUSLY UNDECLARED
+        "//dependencies/maven/artifacts/com/datastax/cassandra:cassandra-driver-core",
         "//dependencies/maven/artifacts/com/google/auto/value:auto-value",
         "//dependencies/maven/artifacts/com/google/code/findbugs:jsr305",
         "//dependencies/maven/artifacts/com/google/guava:guava",
@@ -68,19 +67,16 @@ java_library(
         "//dependencies/maven/artifacts/io/grpc:grpc-stub",
         "//dependencies/maven/artifacts/io/zipkin/brave:brave",
         "//dependencies/maven/artifacts/org/apache/cassandra:cassandra-all", # PREVIOUSLY UNDECLARED
-        "//dependencies/maven/artifacts/org/apache/cassandra:cassandra-thrift", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/org/apache/commons:commons-lang3", # PREVIOUSLY UNDECLARED
-        "//dependencies/maven/artifacts/org/apache/hadoop:hadoop-annotations", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/org/apache/hadoop:hadoop-common", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/org/apache/hadoop:hadoop-mapreduce-client-core", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/org/apache/spark:spark-core-2-11",
         "//dependencies/maven/artifacts/org/apache/spark:spark-launcher-2-11", # PREVIOUSLY UNDECLARED
-        "//dependencies/maven/artifacts/org/apache/thrift:libthrift", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/org/apache/tinkerpop:gremlin-core", # PREVIOUSLY UNDECLARED
         "//dependencies/maven/artifacts/org/apache/tinkerpop:hadoop-gremlin",
         "//dependencies/maven/artifacts/org/apache/tinkerpop:spark-gremlin",
         "//dependencies/maven/artifacts/org/apache/tinkerpop:tinkergraph-gremlin",
-        "//dependencies/maven/artifacts/org/janusgraph:janusgraph-cassandra",
+        "//dependencies/maven/artifacts/org/janusgraph:janusgraph-cql",
         "//dependencies/maven/artifacts/org/janusgraph:janusgraph-core",
         "//dependencies/maven/artifacts/org/janusgraph:janusgraph-hadoop",
         "//dependencies/maven/artifacts/org/scala-lang:scala-library", # PREVIOUSLY UNDECLARED

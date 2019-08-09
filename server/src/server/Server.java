@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,8 +17,6 @@
  */
 package grakn.core.server;
 
-import grakn.core.server.keyspace.KeyspaceManager;
-import grakn.core.server.util.ServerID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,27 +28,25 @@ import java.io.IOException;
 public class Server implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
-    private final ServerID serverID;
     private final io.grpc.Server serverRPC;
 
-    private final KeyspaceManager keyspaceStore;
-
-    public Server(ServerID serverID, io.grpc.Server serverRPC, KeyspaceManager keyspaceStore) {
+    public Server(io.grpc.Server serverRPC) {
         // Lock provider
-        this.keyspaceStore = keyspaceStore;
         this.serverRPC = serverRPC;
-        this.serverID = serverID;
     }
 
     public void start() throws IOException {
-        initialiseSystemSchema();
         serverRPC.start();
+    }
+
+    // NOTE: this method is used by Grakn KGMS and should be kept public
+    public void awaitTermination() throws InterruptedException {
+        serverRPC.awaitTermination();
     }
 
     @Override
     public void close() {
         try {
-            keyspaceStore.closeStore();
             serverRPC.shutdown();
             serverRPC.awaitTermination();
         } catch (InterruptedException e) {
@@ -58,10 +54,4 @@ public class Server implements AutoCloseable {
             Thread.currentThread().interrupt();
         }
     }
-
-    private void initialiseSystemSchema() {
-        LOG.info("{} is checking the system schema", this.serverID);
-        keyspaceStore.loadSystemSchema();
-    }
 }
-
