@@ -105,6 +105,9 @@ public interface ResolvableQuery extends ReasonerQuery {
     @CheckReturnValue
     ResolvableQuery rewrite();
 
+
+    ResolvableQuery simplify();
+
     /**
      * resolves the query
      * @return stream of answers

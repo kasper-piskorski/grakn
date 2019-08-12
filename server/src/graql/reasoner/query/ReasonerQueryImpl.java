@@ -39,7 +39,9 @@ import grakn.core.graql.reasoner.atom.AtomicBase;
 import grakn.core.graql.reasoner.atom.AtomicFactory;
 import grakn.core.graql.reasoner.atom.binary.IsaAtom;
 import grakn.core.graql.reasoner.atom.binary.IsaAtomBase;
+import grakn.core.graql.reasoner.atom.binary.OntologicalAtom;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
+import grakn.core.graql.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
 import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
 import grakn.core.graql.reasoner.cache.Index;
@@ -506,13 +508,29 @@ public class ReasonerQueryImpl implements ResolvableQuery {
      */
     @Override
     public ReasonerQueryImpl rewrite(){
-        if (!requiresDecomposition()) return this;
+        ReasonerQueryImpl simplified = simplify();
+        if (!simplified.requiresDecomposition()) return simplified;
         return new ReasonerQueryImpl(
-                this.selectAtoms()
+                simplified.selectAtoms()
                         .flatMap(at -> at.rewriteToAtoms().stream())
                         .collect(Collectors.toList()),
                 tx()
         );
+    }
+
+    @Override
+    public ReasonerQueryImpl simplify() {
+        Set<IsaAtom> implicitIsas = selectAtoms()
+                .filter(at -> !(at instanceof IsaAtom))
+                .filter(at -> !(at instanceof OntologicalAtom))
+                .map(Atom::toIsaAtom)
+                .collect(Collectors.toSet());
+        Set<IsaAtom> redundantIsas = getAtoms(IsaAtom.class)
+                .filter(TypeAtom::isSelectable)
+                .filter(implicitIsas::contains)
+                .collect(Collectors.toSet());
+        if (redundantIsas.isEmpty()) return this;
+        return new ReasonerQueryImpl(Sets.difference(getAtoms(), redundantIsas), tx());
     }
 
     private static final String PLACEHOLDER_ID = "placeholder_id";

@@ -378,9 +378,16 @@ public class CompositeQuery implements ResolvableQuery {
     public CompositeQuery rewrite(){
         return new CompositeQuery(
                 getConjunctiveQuery().rewrite(),
-                getComplementQueries().isEmpty()?
-                        getComplementQueries() :
-                        getComplementQueries().stream().map(ResolvableQuery::rewrite).collect(Collectors.toSet()),
+                getComplementQueries().stream().map(ResolvableQuery::rewrite).collect(Collectors.toSet()),
+                tx()
+        );
+    }
+
+    @Override
+    public ResolvableQuery simplify() {
+        return new CompositeQuery(
+                getConjunctiveQuery().simplify(),
+                getComplementQueries().stream().map(ResolvableQuery::simplify).collect(Collectors.toSet()),
                 tx()
         );
     }
