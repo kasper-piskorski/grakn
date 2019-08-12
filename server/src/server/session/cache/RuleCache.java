@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -136,7 +136,7 @@ public class RuleCache {
         long start = System.currentTimeMillis();
         checkedTypes.add(type);
         boolean instancePresent = type.instances().findFirst().isPresent()
-                || type.thenRules().anyMatch(this::isRuleMatchable);
+                || type.subs().flatMap(SchemaConcept::thenRules).anyMatch(this::isRuleMatchable);
         if (!instancePresent){
             absentTypes.add(type);
             type.whenRules().forEach(r -> unmatchableRules.add(r));

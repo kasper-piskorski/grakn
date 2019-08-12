@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,13 +18,13 @@
 
 package grakn.core.graql.reasoner.atom.predicate;
 
+import com.google.common.base.Preconditions;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.exception.GraqlQueryException;
-import grakn.core.graql.executor.property.ValueExecutor;
+import grakn.core.graql.executor.property.value.ValueOperation;
 import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.query.ReasonerQuery;
-import graql.lang.Graql;
 import graql.lang.property.ValueProperty;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
@@ -50,21 +50,16 @@ public class VariableValuePredicate extends VariablePredicate {
 
     private VariableValuePredicate(Variable varName, Variable predicateVar, ValueProperty.Operation op, Statement pattern, ReasonerQuery parentQuery) {
         super(varName, predicateVar, pattern, parentQuery);
-        //comparisons only valid for variable predicates (ones having a reference variable)
-        assert (op.innerStatement() != null);
         this.op = op;
     }
 
     public static VariableValuePredicate create(Variable varName, ValueProperty.Operation op, ReasonerQuery parent) {
         Statement innerStatement = op.innerStatement();
-        Variable predicateVar = innerStatement != null? innerStatement.var() : Graql.var().var().asReturnedVar();
+        //comparisons only valid for variable predicates (ones having a reference variable)
+        Preconditions.checkNotNull(innerStatement);
+        Variable predicateVar = innerStatement.var();
         Statement pattern = new Statement(varName).operation(op);
         return new VariableValuePredicate(varName, predicateVar, op, pattern, parent);
-    }
-
-    @Override
-    public Atomic copy(ReasonerQuery parent) {
-        return create(this.getVarName(), this.operation(), parent);
     }
 
     public static Atomic fromValuePredicate(ValuePredicate predicate){
@@ -72,6 +67,84 @@ public class VariableValuePredicate extends VariablePredicate {
     }
 
     public ValueProperty.Operation operation(){ return op;}
+
+    @Override
+    public Atomic copy(ReasonerQuery parent) {
+        return create(this.getVarName(), this.operation(), parent);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj == null || this.getClass() != obj.getClass()) return false;
+        VariableValuePredicate that = (VariableValuePredicate) obj;
+        return this.getVarName().equals(that.getVarName())
+                && this.getPredicate().equals(that.getPredicate())
+                && this.operation().equals(that.operation());
+    }
+
+    @Override
+    public int hashCode() {
+        int hashCode = 1;
+        hashCode = hashCode * 37 + this.getVarName().hashCode();
+        hashCode = hashCode * 37 + this.getPredicate().hashCode();
+        hashCode = hashCode * 37 + this.operation().hashCode();
+        return hashCode;
+    }
+
+    @Override
+    public boolean isAlphaEquivalent(Object obj){
+        if (obj == null || this.getClass() != obj.getClass()) return false;
+        if (obj == this) return true;
+        if (!super.isAlphaEquivalent(obj)) return false;
+        VariableValuePredicate that = (VariableValuePredicate) obj;
+        return this.operation().comparator().equals(that.operation().comparator())
+                && this.operation().value().equals(that.operation().value());
+    }
+
+    @Override
+    public int alphaEquivalenceHashCode() {
+        int hashCode = super.alphaEquivalenceHashCode();
+        hashCode = hashCode * 37 + this.operation().hashCode();
+        return hashCode;
+    }
+
+    @Override
+    public boolean isStructurallyEquivalent(Object obj){
+        if (obj == null || this.getClass() != obj.getClass()) return false;
+        if (obj == this) return true;
+        if (!super.isStructurallyEquivalent(obj)) return false;
+        VariableValuePredicate that = (VariableValuePredicate) obj;
+        return this.operation().comparator().equals(that.operation().comparator())
+                && this.operation().value().equals(that.operation().value());
+    }
+
+    @Override
+    public int structuralEquivalenceHashCode() {
+        int hashCode = super.structuralEquivalenceHashCode();
+        hashCode = hashCode * 37 + this.operation().hashCode();
+        return hashCode;
+    }
+
+    @Override
+    public boolean isCompatibleWith(Object obj) {
+        if (this.isAlphaEquivalent(obj)) return true;
+        if (obj == null || this.getClass() != obj.getClass()) return false;
+        if (obj == this) return true;
+        VariableValuePredicate that = (VariableValuePredicate) obj;
+        return ValueOperation.of(this.operation())
+                .isCompatible(ValueOperation.of(that.operation()));
+    }
+
+    @Override
+    public boolean subsumes(Atomic atomic){
+        if (this.isAlphaEquivalent(atomic)) return true;
+        if (atomic == null || this.getClass() != atomic.getClass()) return false;
+        if (atomic == this) return true;
+        VariableValuePredicate that = (VariableValuePredicate) atomic;
+        return ValueOperation.of(this.operation())
+                .subsumes(ValueOperation.of(that.operation()));
+    }
 
     @Override
     public String toString(){
@@ -92,7 +165,7 @@ public class VariableValuePredicate extends VariablePredicate {
         Object rhs = referenceConcept.asAttribute().value();
 
         ValueProperty.Operation subOperation = ValueProperty.Operation.Comparison.of(operation().comparator(), rhs);
-        ValueExecutor.Operation<?, ?> operationExecutorRHS = ValueExecutor.Operation.of(subOperation);
+        ValueOperation<?, ?> operationExecutorRHS = ValueOperation.of(subOperation);
         return operationExecutorRHS.test(lhs);
     }
 }

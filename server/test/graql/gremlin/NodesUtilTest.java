@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -51,14 +51,14 @@ public class NodesUtilTest {
         Node inIsaMiddleNode = inIsaNodes.stream()
                 .filter(node -> node instanceof EdgeNode)
                 .findAny()
-                .get();
+                .orElse(null);
 
         assertNotNull(inIsaMiddleNode);
 
         InstanceNode instanceVarNode = (InstanceNode) inIsaNodes.stream()
                 .filter(node -> node instanceof InstanceNode && node.getNodeId().toString().contains("instanceVar"))
                 .findAny()
-                .get();
+                .orElse(null);
 
         assertNotNull(instanceVarNode);
 
@@ -87,14 +87,14 @@ public class NodesUtilTest {
         Node outIsaMiddleNode = outIsaNodes.stream()
                 .filter(node -> node instanceof EdgeNode)
                 .findAny()
-                .get();
+                .orElse(null);
 
         assertNotNull(outIsaMiddleNode);
 
         InstanceNode instanceVarNode = (InstanceNode) outIsaNodes.stream()
                 .filter(node -> node instanceof InstanceNode && node.getNodeId().toString().contains("instanceVar"))
                 .findAny()
-                .get();
+                .orElse(null);
 
         assertNotNull(instanceVarNode);
 

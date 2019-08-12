@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -237,15 +237,9 @@ public abstract class SemanticCache<
             ConceptMap answer,
             @Nullable CacheEntry<ReasonerAtomicQuery, SE> entry,
             @Nullable MultiUnifier unifier) {
-
         long start = System.currentTimeMillis();
-        //query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::recordCalls");
-
-        //assert(query.isPositive());
-        //validateAnswer(answer, query, query.getVarNames());
-        //if (query.hasUniqueAnswer()) ackCompleteness(query);
-
-        //query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordInitTime", System.currentTimeMillis() - start);
+        validateAnswer(answer, query, query.getVarNames());
+        if (query.hasUniqueAnswer()) ackCompleteness(query);
 
         /*
          * find SE entry
@@ -284,10 +278,8 @@ public abstract class SemanticCache<
     @Override
     public Pair<Stream<ConceptMap>, MultiUnifier> getAnswerStreamWithUnifier(ReasonerAtomicQuery query) {
         long start = System.currentTimeMillis();
-        //LOG.debug("Cache GET: {}", query);
         query.tx().profiler().updateCallCount(getClass().getSimpleName() + "::getCalls");
 
-        assert(query.isPositive());
         CacheEntry<ReasonerAtomicQuery, SE> match = getEntry(query);
         boolean queryGround = query.isGround();
 

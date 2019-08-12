@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -380,7 +380,7 @@ public class GraqlDefineIT {
     public void whenSpecifyingDataTypeOnAnEntityType_Throw() {
         exception.expect(GraqlSemanticException.class);
         exception.expectMessage(
-                allOf(containsString("unexpected property"), containsString("datatype"), containsString("my-type"))
+                allOf(containsString("Unexpected property"), containsString("datatype"), containsString("my-type"))
         );
 
         tx.execute(Graql.define(type("my-type").sub("entity").datatype(Graql.Token.DataType.BOOLEAN)));

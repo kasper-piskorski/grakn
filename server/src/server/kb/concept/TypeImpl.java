@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,7 @@
 
 package grakn.core.server.kb.concept;
 
+import com.google.common.base.Preconditions;
 import grakn.core.concept.Concept;
 import grakn.core.concept.Label;
 import grakn.core.concept.thing.Attribute;
@@ -97,6 +98,8 @@ public class TypeImpl<T extends Type, V extends Thing> extends SchemaConceptImpl
         VertexElement instanceVertex = vertex().tx().addVertexElement(instanceBaseType);
 
         vertex().tx().ruleCache().ackTypeInstance(this);
+        vertex().tx().statisticsDelta().increment(label());
+
         if (!Schema.MetaSchema.isMetaLabel(label())) {
             vertex().tx().cache().addedInstance(id());
             if (isInferred){
@@ -109,9 +112,8 @@ public class TypeImpl<T extends Type, V extends Thing> extends SchemaConceptImpl
         }
 
         V instance = producer.apply(instanceVertex, getThis());
-        assert instance != null : "producer should never return null";
-
-        vertex().tx().statisticsDelta().increment(label());
+        Preconditions.checkNotNull(instance, "producer should never return null");
+        if(isInferred) vertex().tx().cache().inferredInstance(instance);
 
         return instance;
     }

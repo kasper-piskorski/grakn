@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,15 +40,10 @@ public class Tuple<A, B> {
 
     public boolean equals(Object obj) {
         if (obj == this) return true;
-
-        if (obj.getClass() == this.getClass()) {
-            Tuple<?, ?> other = (Tuple) obj;
-
-            return (Objects.equals(this.first, other.first) &&
-                    Objects.equals(this.second, other.second));
-        }
-
-        return false;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        Tuple<?, ?> other = (Tuple) obj;
+        return (Objects.equals(this.first, other.first) &&
+                Objects.equals(this.second, other.second));
     }
 
     public int hashCode() {

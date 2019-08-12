@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,7 @@
 
 package grakn.core.graql.executor;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -30,27 +31,19 @@ import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.concept.Concept;
-import grakn.core.concept.Label;
 import grakn.core.concept.answer.ConceptMap;
-import grakn.core.concept.thing.Relation;
 import grakn.core.concept.thing.Thing;
-import grakn.core.concept.type.Role;
-import grakn.core.concept.type.Rule;
-import grakn.core.concept.type.Type;
 import grakn.core.graql.exception.GraqlSemanticException;
 import grakn.core.graql.executor.property.PropertyExecutor.Writer;
 import grakn.core.graql.util.Partition;
 import grakn.core.server.kb.Schema;
-import grakn.core.server.kb.concept.ConceptImpl;
 import grakn.core.server.kb.concept.ConceptUtils;
 import grakn.core.server.kb.concept.ConceptVertex;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
-import java.util.Stack;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -297,7 +290,7 @@ public class WriteExecutor {
                 .forEach(t -> {
                     //as we are going to persist the concepts, reset the inferred flag
                     ConceptVertex.from(t).vertex().property(Schema.VertexProperty.IS_INFERRED, false);
-                    transaction.cache().inferredThingToPersist(t);
+                    transaction.cache().inferredInstanceToPersist(t);
                 });
     }
 
@@ -307,7 +300,7 @@ public class WriteExecutor {
 
     private Concept buildConcept(Variable var, ConceptBuilder builder) {
         Concept concept = builder.build();
-        assert concept != null : String.format("build() should never return null. var: %s", var);
+        Preconditions.checkNotNull(concept, "build() should never return null. var: %s", var);
         concepts.put(var, concept);
         return concept;
     }
@@ -411,7 +404,7 @@ public class WriteExecutor {
      */
     public Concept getConcept(Variable var) {
         var = equivalentVars.componentOf(var);
-        assert var != null;
+        Preconditions.checkNotNull(var);
 
         @Nullable Concept concept = concepts.get(var);
 

@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -141,7 +141,10 @@ public class Server {
             String errorMessage = "Process exited with code '" + startServerAsync.get().exitCode() + "': '" + startServerAsync.get().stderr() + "'";
             System.err.println(errorMessage);
             throw new GraknDaemonException(errorMessage);
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new GraknDaemonException(e.getMessage(), e);
+        } catch (ExecutionException e) {
             throw new GraknDaemonException(e.getMessage(), e);
         }
     }
