@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,7 @@ import com.google.common.collect.ImmutableSet;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.Label;
 import grakn.core.concept.type.AttributeType;
-import grakn.core.graql.executor.property.ValueExecutor;
+import grakn.core.graql.executor.property.value.ValueOperation;
 import grakn.core.graql.gremlin.EquivalentFragmentSet;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.property.VarProperty;
@@ -122,7 +122,7 @@ public class EquivalentFragmentSets {
     /**
      * An EquivalentFragmentSet that indicates a variable represents a resource with value matching a predicate.
      */
-    public static EquivalentFragmentSet value(VarProperty varProperty, Variable resource, ValueExecutor.Operation<?, ?> predicate) {
+    public static EquivalentFragmentSet value(VarProperty varProperty, Variable resource, ValueOperation<?, ?> predicate) {
         return new ValueFragmentSet(varProperty, resource, predicate);
     }
 

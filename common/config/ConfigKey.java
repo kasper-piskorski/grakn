@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -56,11 +56,10 @@ public class ConfigKey<T> {
     public static final ConfigKey<Integer> GRPC_PORT = key("grpc.port", INT);
 
     public static final ConfigKey<String> STORAGE_HOSTNAME = key("storage.hostname", STRING);
+    public static final ConfigKey<String> STORAGE_BACKEND = key("storage.backend", STRING);
     public static final ConfigKey<Integer> STORAGE_PORT = key("storage.port", INT);
     public static final ConfigKey<Integer> HADOOP_STORAGE_PORT = key("janusgraphmr.ioformat.conf.storage.port", INT);
-    public final static ConfigKey<Integer> CQL_STORAGE_PORT = ConfigKey.key("cql.storage.port", INT);
     public static final ConfigKey<Integer> STORAGE_CQL_NATIVE_PORT = key("cassandra.input.native.port", INT);
-    public static final ConfigKey<String> STORAGE_BATCH_LOADING = key("storage.batch-loading", STRING);
     public static final ConfigKey<String> STORAGE_KEYSPACE = key("storage.cassandra.keyspace", STRING);
     public static final ConfigKey<Integer> STORAGE_REPLICATION_FACTOR = key("storage.cassandra.replication-factor", INT);
 

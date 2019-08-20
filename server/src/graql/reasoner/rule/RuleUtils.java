@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,6 +24,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import grakn.core.concept.Concept;
+import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.Type;
 import grakn.core.graql.reasoner.atom.Atom;
@@ -116,19 +117,26 @@ public class RuleUtils {
      * @return stream of rules ordered in terms of priority (high priority first)
      */
     public static Stream<InferenceRule> stratifyRules(Set<InferenceRule> rules){
+        //NB: .sorted is a stateful intermediate op - it requires all elements to be processed.
+        //That's why we collect and stream again to ensure that returned stream is fully lazy
         if(rules.stream().allMatch(r -> r.getBody().isPositive())){
-            return rules.stream()
-                    .sorted(Comparator.comparing(r -> -r.resolutionPriority()));
+            List<InferenceRule> sortedRules = rules.stream()
+                    .sorted(Comparator.comparing(r -> -r.resolutionPriority()))
+                    .collect(toList());
+            return sortedRules.stream();
         }
         Multimap<Type, InferenceRule> typeMap = HashMultimap.create();
         rules.forEach(r -> r.getRule().thenTypes().flatMap(Type::sups).forEach(t -> typeMap.put(t, r)));
         HashMultimap<Type, Type> typeGraph = persistedTypeSubGraph(rules);
         List<Set<Type>> scc = new TarjanSCC<>(typeGraph).getSCC();
         return Lists.reverse(scc).stream()
-                .flatMap(strata -> strata.stream()
-                        .flatMap(t -> typeMap.get(t).stream())
-                        .sorted(Comparator.comparing(r -> -r.resolutionPriority()))
-                );
+                .flatMap(strata -> {
+                            List<InferenceRule> sortedRules = strata.stream()
+                                    .flatMap(t -> typeMap.get(t).stream())
+                                    .sorted(Comparator.comparing(r -> -r.resolutionPriority()))
+                                    .collect(toList());
+                            return sortedRules.stream();
+                        });
     }
 
     /**
@@ -145,6 +153,7 @@ public class RuleUtils {
         //we compute the inverse to get all when types reachable from each then type
         typeSCC.successorMap().entries().forEach(e -> typeTCinverse.put(e.getValue(), e.getKey()));
 
+        //for each cycle in the type dependency graph, check for cycles in the instances
         return typeCycles.stream().anyMatch(typeSet -> {
             Set<ReasonerAtomicQuery> queries = typeSet.stream()
                     .flatMap(type -> typeTCinverse.get(type).stream())
@@ -157,19 +166,20 @@ public class RuleUtils {
             if (!queries.stream().allMatch(q -> tx.queryCache().isDBComplete(q))) return true;
 
             HashMultimap<Concept, Concept> conceptMap = HashMultimap.create();
-            return queries.stream().anyMatch(q -> {
+            for (ReasonerAtomicQuery q : queries) {
                 RelationAtom relationAtom = q.getAtom().toRelationAtom();
                 Set<Pair<Variable, Variable>> varPairs = relationAtom.varDirectionality();
                 IndexedAnswerSet answers = tx.queryCache().getEntry(q).cachedElement();
-                return answers.stream().anyMatch(ans ->
-                        varPairs.stream().anyMatch(p -> {
-                            Concept from = ans.get(p.getKey());
-                            Concept to = ans.get(p.getValue());
-                            if (conceptMap.get(to).contains(from)) return true;
-                            conceptMap.put(from, to);
-                            return false;
-                        }));
-            });
+                for (ConceptMap ans : answers) {
+                    for (Pair<Variable, Variable> p : varPairs) {
+                        Concept from = ans.get(p.getKey());
+                        Concept to = ans.get(p.getValue());
+                        if (conceptMap.get(to).contains(from)) return true;
+                        conceptMap.put(from, to);
+                    }
+                }
+            }
+            return !new TarjanSCC<>(conceptMap).getCycles().isEmpty();
         });
     }
 

@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -789,7 +789,7 @@ public class GraknClientIT {
             GraqlGet.Aggregate stdAgeQuery =
                     Graql.match(var("x").isa("person").has("age", var("y"))).get().std("y");
             int n = 2;
-            double mean = (20 + 22) / n;
+            double mean = (double) (20 + 22) / n;
             double var = (Math.pow(20 - mean, 2) + Math.pow(22 - mean, 2)) / (n - 1);
             double std = Math.sqrt(var);
             assertEquals(std, tx.execute(stdAgeQuery).get(0).number().doubleValue(), 0.0001d);

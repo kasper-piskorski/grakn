@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import static grakn.core.server.kb.Schema.ImplicitType.HAS;
@@ -176,7 +175,7 @@ public class AttributeAttachmentIT {
         }
     }
 
-    @Test @Ignore
+    @Test
     public void whenReasoningWithAttributesInRelationForm_attributesAreMaterialisedCorrectly() {
         int noOfAttributes;
         int noOfGeneralAnswers;
