@@ -99,7 +99,8 @@ final public class JanusGraphFactory {
     private static StandardJanusGraph configureGraph(String keyspace, Config config) {
         org.janusgraph.core.JanusGraphFactory.Builder builder = org.janusgraph.core.JanusGraphFactory.build()
                 .set(STORAGE_BACKEND, THRIFT_BACKEND)
-                .set(STORAGE_KEYSPACE, keyspace);
+                .set(STORAGE_KEYSPACE, keyspace)
+                .set("graph.replace-instance-if-exists", true);
 
         //Load Passed in properties
         config.properties().forEach((key, value) -> {

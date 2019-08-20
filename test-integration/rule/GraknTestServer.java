@@ -73,9 +73,9 @@ public class GraknTestServer extends ExternalResource {
     // Cassandra
     protected final Path originalCassandraConfigPath;
     protected File updatedCassandraConfigPath;
-    protected int storagePort;
-    protected int nativeTransportPort;
-    protected int thriftPort;
+    protected int storagePort = 9042;
+    protected int nativeTransportPort = 9160;
+    protected int thriftPort = 9160;
 
 
     public GraknTestServer() {
@@ -92,6 +92,7 @@ public class GraknTestServer extends ExternalResource {
     protected void before() {
         try {
             // Start Cassandra
+            /*
             System.out.println("Starting Grakn Storage...");
             generateCassandraRandomPorts();
             updatedCassandraConfigPath = buildCassandraConfigWithRandomPorts();
@@ -103,7 +104,9 @@ public class GraknTestServer extends ExternalResource {
             // Start Grakn Core Server
             grpcPort = findUnusedLocalPort();
             dataDirTmp = Files.createTempDirectory("db-for-test");
-            serverConfig = createTestConfig(dataDirTmp.toString());
+
+             */
+            serverConfig = createTestConfig("banana");
             System.out.println("Starting Grakn Core Server...");
             graknServer = createServer();
             graknServer.start();
@@ -117,8 +120,8 @@ public class GraknTestServer extends ExternalResource {
     protected void after() {
         try {
             graknServer.close();
-            FileUtils.deleteDirectory(dataDirTmp.toFile());
-            updatedCassandraConfigPath.delete();
+            //FileUtils.deleteDirectory(dataDirTmp.toFile());
+            //updatedCassandraConfigPath.delete();
         } catch (Exception e) {
             throw new RuntimeException("Could not shut down ", e);
         }
