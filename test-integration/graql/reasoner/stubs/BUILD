@@ -37,7 +37,6 @@ filegroup(
         "resourceOwnership.gql",
         "resourcesAsRolePlayers.gql",
         "taxfix-queries.gql",
-        "taxfix-query4.gql",
         "testSet10.gql",
         "testSet11.gql",
         "testSet12.gql",
