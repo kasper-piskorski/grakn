@@ -1,3 +1,21 @@
+/*
+ * GRAKN.AI - THE KNOWLEDGE GRAPH
+ * Copyright (C) 2019 Grakn Labs Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package grakn.core.graql.reasoner.state;
 
 import com.google.common.collect.HashMultimap;
@@ -11,17 +29,11 @@ import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.utils.IterativeTarjanTC;
+import grakn.core.graql.reasoner.utils.LazyTarjanTC;
 import grakn.core.graql.reasoner.utils.Pair;
-import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static scala.collection.mutable.Leaf.iterator;
 
 public class TransitiveClosureState extends ResolutionState {
 
@@ -36,10 +48,7 @@ public class TransitiveClosureState extends ResolutionState {
         this.answerStateIterator = generateAnswerIterator();
     }
 
-    public static long tarjanTime = 0;
-
     private Iterator<AnswerState> generateAnswerIterator(){
-        long start = System.currentTimeMillis();
         HashMultimap<Concept, Concept> conceptGraph = HashMultimap.create();
         TransactionOLTP tx = query.tx();
 
@@ -74,6 +83,19 @@ public class TransitiveClosureState extends ResolutionState {
                 )
                 .map(ans -> new AnswerState(ans, unifier, getParentState()))
                 .iterator();
+
+
+ /*
+        return new LazyTarjanTC<>(conceptGraph.keySet(), (node) -> conceptGraph.get(node).stream())
+                .stream()
+                .map(e -> new ConceptMap(
+                        ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
+                        new LookupExplanation(query.getPattern()))
+                )
+                .map(ans -> new AnswerState(ans, unifier, getParentState()))
+                .iterator();
+
+  */
     }
 
     @Override

@@ -44,7 +44,7 @@ public  class TarjanSCC<T> {
     private final HashMap<T, Integer> lowLink = new HashMap<>();
 
     private final List<Set<T>> scc = new ArrayList<>();
-    private int pre = 0;
+    private int currentIndex = 0;
 
     private final HashMultimap<T, T> graph;
 
@@ -78,18 +78,23 @@ public  class TarjanSCC<T> {
 
     private void dfs(T node) {
         visited.add(node);
-        lowLink.put(node, pre++);
-        int min = lowLink.get(node);
+        lowLink.put(node, currentIndex++);
+
+        int rootIndex = lowLink.get(node);
         stack.push(node);
         successors.putAll(node, graph.get(node));
+
         //look at neighbours of v
-        for (T n : graph.get(node)) {
-            if (!visited.contains(n)) dfs(n);
-            if (lowLink.get(n) < min) min = lowLink.get(n);
-            successors.putAll(node, successors.get(n));
+        for (T neighbour : graph.get(node)) {
+            if (!visited.contains(neighbour)) dfs(neighbour);
+
+            Integer neighbourLowLink = lowLink.get(neighbour);
+            if (neighbourLowLink < rootIndex) rootIndex = neighbourLowLink;
+
+            successors.putAll(node, successors.get(neighbour));
         }
-        if (min < lowLink.get(node)) {
-            lowLink.put(node, min);
+        if (rootIndex < lowLink.get(node)) {
+            lowLink.put(node, rootIndex);
             return;
         }
         T w;

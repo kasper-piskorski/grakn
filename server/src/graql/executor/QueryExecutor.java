@@ -402,8 +402,7 @@ public class QueryExecutor {
         //NB: we need distinct as projection can produce duplicates
         Set<Variable> getVars = query.vars();
         Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(getVars)).distinct();
-
-        //answers = filter(query, answers);
+        answers = filter(query, answers);
 
         return answers;
     }
