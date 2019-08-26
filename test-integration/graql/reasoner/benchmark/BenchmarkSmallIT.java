@@ -275,7 +275,7 @@ public class BenchmarkSmallIT {
         ConceptUtils.disjointTypeTime= 0;
 
         tx.profiler().print();
-        System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);
+        //System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);
     }
 
     /**
@@ -368,7 +368,7 @@ public class BenchmarkSmallIT {
     @Test
     public void testTransitiveMatrix(){
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
-        int N = 40;
+        int N = 50;
         int limit = 1000;
         int limit2 = 100000;
 
@@ -427,6 +427,7 @@ public class BenchmarkSmallIT {
          */
         }
 
+        /*
         try(TransactionOLTP tx = session.transaction().write()) {
             executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
             printTimes(tx);
@@ -436,6 +437,8 @@ public class BenchmarkSmallIT {
             executeQuery(query.match().get().limit(limit2), tx, "limit " + limit2);
             printTimes(tx);
         }
+
+         */
 
 
 

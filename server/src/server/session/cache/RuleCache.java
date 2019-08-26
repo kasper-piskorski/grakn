@@ -132,11 +132,15 @@ public class RuleCache {
     }
 
     private boolean typeHasInstances(Type type){
-        if (checkedTypes.contains(type)) return !absentTypes.contains(type);
+        tx.profiler().updateCallCount(getClass().getSimpleName() + "::typeHasInstances");
         long start = System.currentTimeMillis();
+        if (checkedTypes.contains(type)) return !absentTypes.contains(type);
         checkedTypes.add(type);
-        boolean instancePresent = type.instances().findFirst().isPresent()
-                || type.subs().flatMap(SchemaConcept::thenRules).anyMatch(this::isRuleMatchable);
+        long start2 = System.currentTimeMillis();
+        boolean instancePresent = type.instances().findFirst().isPresent();
+        tx.profiler().updateTime(getClass().getSimpleName() + "::typeHasInstances::instanceCheck", System.currentTimeMillis() - start2);
+
+        instancePresent = instancePresent || type.subs().flatMap(SchemaConcept::thenRules).anyMatch(this::isRuleMatchable);
         if (!instancePresent){
             absentTypes.add(type);
             type.whenRules().forEach(r -> unmatchableRules.add(r));
