@@ -238,7 +238,7 @@ public abstract class SemanticCache<
             @Nullable CacheEntry<ReasonerAtomicQuery, SE> entry,
             @Nullable MultiUnifier unifier) {
         long start = System.currentTimeMillis();
-        validateAnswer(answer, query, query.getVarNames());
+        //validateAnswer(answer, query, query.getVarNames());
         if (query.hasUniqueAnswer()) ackCompleteness(query);
 
         /*
@@ -247,16 +247,23 @@ public abstract class SemanticCache<
          * - if not, add entry and establish whether any parents present
          */
         CacheEntry<ReasonerAtomicQuery, SE> match = entry != null? entry : this.getEntry(query);
+        query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime::fetch", System.currentTimeMillis() - start);
         if (match != null){
+            long start2 = System.currentTimeMillis();
             ReasonerAtomicQuery equivalentQuery = match.query();
             SE answerSet = match.cachedElement();
             MultiUnifier multiUnifier = unifier == null? query.getMultiUnifier(equivalentQuery, unifierType()) : unifier;
-            Set<Variable> cacheVars = equivalentQuery.getVarNames();
+            //Set<Variable> cacheVars = equivalentQuery.getVarNames();
+
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime::preAddTime", System.currentTimeMillis() - start2);
+
+            long start3 = System.currentTimeMillis();
             //NB: this indexes answer according to all indices in the set
             multiUnifier
                     .apply(answer)
-                    .peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
+                    //.peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
                     .forEach(answerSet::add);
+            query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime::addTime", System.currentTimeMillis() - start3);
             query.tx().profiler().updateTime(getClass().getSimpleName() + "::recordTime", System.currentTimeMillis() - start);
             return match;
         }

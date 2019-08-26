@@ -150,11 +150,17 @@ public class UnifierImpl implements Unifier {
             Collection<Variable> uvars = unifier.get(var);
             if (uvars.isEmpty() && !unifier.values().contains(var)) {
                 Concept put = unified.put(var, con);
-                if (put != null && !put.equals(con)) return new ConceptMap();
+                if (put != null && !put.equals(con)){
+                    unifyTime += System.currentTimeMillis() - start;
+                    return new ConceptMap();
+                }
             } else {
                 for (Variable uv : uvars) {
                     Concept put = unified.put(uv, con);
-                    if (put != null && !put.equals(con)) return new ConceptMap();
+                    if (put != null && !put.equals(con)){
+                        unifyTime += System.currentTimeMillis() - start;
+                        return new ConceptMap();
+                    }
                 }
             }
         }

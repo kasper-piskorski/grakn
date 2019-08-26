@@ -18,10 +18,12 @@
 
 package grakn.core.graql.reasoner.rule;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.concept.thing.Relation;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.graql.reasoner.atom.Atom;
@@ -38,9 +40,12 @@ import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.ResolutionState;
 import grakn.core.graql.reasoner.state.RuleState;
 import grakn.core.graql.reasoner.state.TransitiveClosureState;
+import grakn.core.graql.reasoner.state.TransitiveReachabilityState;
 import grakn.core.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
+import grakn.core.graql.reasoner.utils.Pair;
+import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.server.kb.concept.ConceptUtils;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
@@ -48,7 +53,9 @@ import graql.lang.pattern.Conjunction;
 import graql.lang.pattern.Pattern;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -394,15 +401,31 @@ public class InferenceRule {
                 parentAtom.getParentQuery().getSubstitution()
         );
 
-        //TODO: more robust condition
-        //use varDirectonality to find whether mappings correspond to transitivity
-        boolean isTransitive = getBody().getAtoms(RelationAtom.class)
-                .allMatch(at -> at.isAlphaEquivalent(getHead().getAtom()));
-
-        if (isTransitive){
-            return new TransitiveClosureState(getHead(),partialSubPrime, ruleUnifier, parent);
+        if (isTransitive()){
+            return partialSubPrime.isEmpty()?
+                    new TransitiveClosureState(getHead(), partialSubPrime, ruleUnifier, parent) :
+                    new TransitiveReachabilityState(getHead(), partialSubPrime, ruleUnifier, parent);
         }
         return new RuleState(this.propagateConstraints(parentAtom, ruleUnifierInverse), partialSubPrime, ruleUnifier, parent, visitedSubGoals);
+    }
+
+    private boolean isTransitive(){
+        Atom atom = getHead().getAtom();
+        if (!atom.isRelation()) return false;
+        RelationAtom headAtom = (RelationAtom) atom;
+        Set<Pair<Variable, Variable>> pairs = headAtom.varDirectionality();
+        if (pairs.size() != 1) return false;
+        Pair<Variable, Variable> headDirectionality = Iterables.getOnlyElement(pairs);
+        Variable from = headDirectionality.getKey();
+        Variable to = headDirectionality.getValue();
+
+        HashMultimap<Variable, Variable> bodyDirectionality = HashMultimap.create();
+        getBody().getAtoms(RelationAtom.class)
+                .filter(at -> at.getSchemaConcept() != null)
+                .filter(at -> at.getSchemaConcept().equals(headAtom.getSchemaConcept()))
+                .forEach(at -> at.varDirectionality().forEach(pair -> bodyDirectionality.put(pair.getKey(), pair.getValue())));
+
+        return new TarjanSCC<>(bodyDirectionality).successorMap().get(from).contains(to);
     }
 
 }

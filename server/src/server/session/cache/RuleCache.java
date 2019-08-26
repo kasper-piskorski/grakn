@@ -23,13 +23,13 @@ import com.google.common.collect.Sets;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.concept.type.Type;
+import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.server.kb.Schema;
 import grakn.core.server.session.TransactionOLTP;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
@@ -41,7 +41,7 @@ import static java.util.stream.Collectors.toSet;
 public class RuleCache {
 
     private final HashMultimap<Type, Rule> ruleMap = HashMultimap.create();
-    private final Map<Rule, Object> ruleConversionMap = new HashMap<>();
+    private final Map<Rule, InferenceRule> ruleConversionMap = new HashMap<>();
     private final TransactionOLTP tx;
 
     //TODO: these should be eventually stored together with statistics
@@ -165,15 +165,13 @@ public class RuleCache {
 
     /**
      * @param rule      for which the parsed rule should be retrieved
-     * @param converter rule converter
-     * @param <T>       type of object converter converts to
      * @return parsed rule object
      */
-    public <T> T getRule(Rule rule, Supplier<T> converter) {
-        T match = (T) ruleConversionMap.get(rule);
+    public InferenceRule getRule(Rule rule) {
+        InferenceRule match = ruleConversionMap.get(rule);
         if (match != null) return match;
 
-        T newMatch = converter.get();
+        InferenceRule newMatch = new InferenceRule(rule, tx);
         ruleConversionMap.put(rule, newMatch);
         return newMatch;
     }

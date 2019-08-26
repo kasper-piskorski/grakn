@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import javax.annotation.Nullable;
 
 /**
  * Tarjan's Strongly Connected Components algorithm
@@ -55,28 +56,30 @@ public  class LazyTarjanTC<T> implements Iterator<Pair<T,T>>{
     private List<Pair<T, T>> newSuccessors = new ArrayList<>();
     private final Stack<T> nodes;
     private final Set<T> newNodes;
+    private final Set<T> startNodes;
+    private final T endNode;
     private Iterator<Pair<T, T>> successorIterator = Collections.emptyIterator();
 
-    public LazyTarjanTC(Set<T> startingNodes, Function<T, Stream<T>> graph) {
+    public LazyTarjanTC(Set<T> startNodes, @Nullable T endNode, Function<T, Stream<T>> graph) {
         this.graph = graph;
         this.nodes = new Stack<>();
-        this.newNodes = new HashSet<>(startingNodes);
-        startingNodes.forEach(nodes::push);
+        this.startNodes = new HashSet<>(startNodes);
+        this.newNodes = new HashSet<>(startNodes);
+        this.endNode = endNode;
+        startNodes.forEach(nodes::push);
     }
 
     @Override
     public boolean hasNext() {
-        if (!successorIterator.hasNext()){
-            if (nodes.isEmpty()) return false;
+        while(!nodes.isEmpty()) {
+            if (successorIterator.hasNext()) return true;
             T node = nodes.pop();
 
             if (!visited.contains(node)) dfs(node);
             successorIterator = newSuccessors.iterator();
             newSuccessors = new ArrayList<>();
-
-            return hasNext();
         }
-        return true;
+        return false;
     }
 
     public Stream<Pair<T,T>> stream() {
@@ -91,9 +94,15 @@ public  class LazyTarjanTC<T> implements Iterator<Pair<T,T>>{
 
     private void updateSuccessors(T node, Set<T> nodes){
         //successors.putAll(node, graph.get(node));
-        nodes.stream()
+        boolean update = startNodes.contains(node);
+        Set<T> nodesToAck = nodes.stream()
                 .filter(n -> successors.put(node, n))
-                .forEach(n -> newSuccessors.add(new Pair<>(node, n)));
+                .collect(Collectors.toSet());
+        if (update) {
+            nodesToAck.stream()
+                    .filter(n -> endNode == null || n.equals(endNode))
+                    .forEach(n -> newSuccessors.add(new Pair<>(node, n)));
+        }
     }
 
     private Set<T> getNeighbours(T node){

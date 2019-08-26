@@ -38,9 +38,8 @@ import grakn.core.graql.gremlin.TraversalPlanner;
 import grakn.core.graql.reasoner.DisjunctionIterator;
 import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
+import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.server.exception.GraknServerException;
-import grakn.core.server.kb.concept.RelationImpl;
-import grakn.core.server.kb.concept.RelationReified;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.pattern.Conjunction;
@@ -59,13 +58,6 @@ import graql.lang.query.MatchClause;
 import graql.lang.query.builder.Filterable;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
-import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.structure.Element;
-import org.apache.tinkerpop.gremlin.structure.Vertex;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -80,6 +72,12 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Element;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.groupingBy;
@@ -109,37 +107,15 @@ public class QueryExecutor {
             validateClause(matchClause);
 
             if (!infer) {
-                // time to create the traversal plan
-                long start2 = System.currentTimeMillis();
-                int createTraversalSpanId = ServerTracing.startScopedChildSpanWithParentContext("QueryExecutor.match create traversal", createStreamSpanId);
-
-                long start3 = System.currentTimeMillis();
-                GraqlTraversal graqlTraversal = TraversalPlanner.createTraversal(matchClause.getPatterns(), transaction);
-                transaction.profiler().updateTime(getClass().getSimpleName() + "::noInferGraqlTraversal", System.currentTimeMillis() - start3);
-
-                ServerTracing.closeScopedChildSpan(createTraversalSpanId);
-
-                // time to convert plan into a answer stream
-                int traversalToStreamSpanId = ServerTracing.startScopedChildSpanWithParentContext("QueryExecutor.match traversal to stream", createStreamSpanId);
-
-                long start = System.currentTimeMillis();
-                answerStream = traversal(matchClause.getPatterns().variables(), graqlTraversal);
-                transaction.profiler().updateTime(getClass().getSimpleName() + "::noInferAnswerStream", System.currentTimeMillis() - start);
-
-                ServerTracing.closeScopedChildSpan(traversalToStreamSpanId);
-                transaction.profiler().updateTime(getClass().getSimpleName() + "::noInferHandling", System.currentTimeMillis() - start2);
+                answerStream = matchClause.getPatterns().getDisjunctiveNormalForm().getPatterns().stream()
+                        .map(p -> ReasonerQueries.create(p, transaction))
+                        .map(ReasonerQueryImpl::getPattern)
+                        .flatMap(p -> traversal(p, TraversalPlanner.createTraversal(p, transaction)));
             } else {
-
-                int disjunctionSpanId = ServerTracing.startScopedChildSpanWithParentContext("QueryExecutor.match disjunction iterator", createStreamSpanId);
-
-                //answerStream = new DisjunctionIterator(matchClause, transaction).hasStream();
-                long start = System.currentTimeMillis();
                 answerStream = matchClause.getPatterns().getNegationDNF().getPatterns().stream()
                         .map(conj -> ReasonerQueries.resolvable(conj, transaction).rewrite())
                         .flatMap(query -> new ResolutionIterator(query, new HashSet<>()).hasStream());
-                transaction.profiler().updateTime(getClass().getSimpleName() + "::getAnswers", System.currentTimeMillis() - start);
 
-                ServerTracing.closeScopedChildSpan(disjunctionSpanId);
             }
         } catch (GraqlCheckedException e) {
             LOG.debug(e.getMessage());
@@ -215,13 +191,10 @@ public class QueryExecutor {
     }
 
     /**
-     * @param commonVars     set of variables of interest
-     * @param graqlTraversal graql traversal corresponding to the provided pattern
      * @return resulting answer stream
      */
-    public Stream<ConceptMap> traversal(Set<Variable> commonVars, GraqlTraversal graqlTraversal) {
-        Set<Variable> vars = Sets.filter(commonVars, Variable::isReturned);
-
+    public Stream<ConceptMap> traversal(Conjunction<Pattern> pattern, GraqlTraversal graqlTraversal) {
+        Set<Variable> vars = Sets.filter(pattern.variables(), Variable::isReturned);
         GraphTraversal<Vertex, Map<String, Element>> traversal = graqlTraversal.getGraphTraversal(transaction, vars);
 
         return traversal.toStream()
@@ -237,6 +210,7 @@ public class QueryExecutor {
      * @return a map of concepts where the key is the variable name
      */
     private Map<Variable, Concept> createAnswer(Set<Variable> vars, Map<String, Element> elements) {
+        long start = System.currentTimeMillis();
         Map<Variable, Concept> map = new HashMap<>();
         for (Variable var : vars) {
             Element element = elements.get(var.symbol());
@@ -253,6 +227,7 @@ public class QueryExecutor {
                 map.put(var, concept);
             }
         }
+        transaction.profiler().updateTime(QueryExecutor.class.getSimpleName() + "::createAnswer", System.currentTimeMillis() - start);
         return map;
     }
 
@@ -399,9 +374,14 @@ public class QueryExecutor {
     }
 
     public Stream<ConceptMap> get(GraqlGet query) {
-        //NB: we need distinct as projection can produce duplicates
         Set<Variable> getVars = query.vars();
-        Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(getVars)).distinct();
+        MatchClause match = query.match();
+        Set<Variable> matchVariables = match.getPatterns().variables();
+
+        //NB: we need distinct as projection can produce duplicates
+        Stream<ConceptMap> answers = !matchVariables.equals(getVars)?
+                match(match).map(ans -> ans.project(getVars)).distinct() :
+                match(match).distinct();
         answers = filter(query, answers);
 
         return answers;

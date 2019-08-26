@@ -23,8 +23,10 @@ import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.common.config.Config;
 import grakn.core.common.config.ConfigKey;
 import grakn.core.server.keyspace.KeyspaceManager;
+import grakn.core.server.rpc.KeyspaceRequestsHandler;
 import grakn.core.server.rpc.KeyspaceService;
 import grakn.core.server.rpc.OpenRequest;
+import grakn.core.server.rpc.ServerKeyspaceRequestsHandler;
 import grakn.core.server.rpc.ServerOpenRequest;
 import grakn.core.server.rpc.SessionService;
 import grakn.core.server.session.HadoopGraphFactory;
@@ -55,7 +57,7 @@ public class ServerFactory {
         // CQL cluster used by KeyspaceManager to fetch all existing keyspaces
         Cluster cluster = Cluster.builder()
                 .addContactPoint(config.getProperty(ConfigKey.STORAGE_HOSTNAME))
-                .withPort(config.getProperty(ConfigKey.STORAGE_PORT))
+                .withPort(config.getProperty(ConfigKey.STORAGE_CQL_NATIVE_PORT))
                 .build();
 
         KeyspaceManager keyspaceManager = new KeyspaceManager(cluster);
@@ -95,11 +97,14 @@ public class ServerFactory {
 
         SessionService sessionService = new SessionService(requestOpener);
 
+        KeyspaceRequestsHandler requestsHandler = new ServerKeyspaceRequestsHandler(
+                keyspaceManager, sessionFactory, janusGraphFactory);
+
         Runtime.getRuntime().addShutdownHook(new Thread(sessionService::shutdown, "session-service-shutdown"));
 
         return ServerBuilder.forPort(grpcPort)
                 .addService(sessionService)
-                .addService(new KeyspaceService(keyspaceManager, sessionFactory, janusGraphFactory))
+                .addService(new KeyspaceService(requestsHandler))
                 .build();
     }
 

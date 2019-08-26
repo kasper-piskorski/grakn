@@ -101,13 +101,18 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
             long start2 = System.currentTimeMillis();
             answer = ConceptUtils.mergeAnswers(baseAnswer, query.getSubstitution())
                     .project(query.getVarNames());
-            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::answerManip", System.currentTimeMillis() - start2);
+            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer::nonRuleAnswer", System.currentTimeMillis() - start2);
         } else {
+            long start2 = System.currentTimeMillis();
             answer = rule.requiresMaterialisation(query.getAtom()) ?
                     materialisedAnswer(baseAnswer, rule, unifier) :
                     ruleAnswer(baseAnswer, rule, unifier);
+            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer::ruleAnswer", System.currentTimeMillis() - start2);
         }
+        long start3 = System.currentTimeMillis();
         ConceptMap recordedAnswer = recordAnswer(query, answer);
+        getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer::recordAnswer", System.currentTimeMillis() - start3);
+
         getQuery().tx().profiler().updateCallCount(getClass().getSimpleName() + "::consumeAnswer");
         getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer", System.currentTimeMillis() - start);
         return recordedAnswer;

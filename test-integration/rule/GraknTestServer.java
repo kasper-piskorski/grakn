@@ -26,8 +26,10 @@ import grakn.core.server.Server;
 import grakn.core.server.ServerFactory;
 import grakn.core.server.keyspace.KeyspaceImpl;
 import grakn.core.server.keyspace.KeyspaceManager;
+import grakn.core.server.rpc.KeyspaceRequestsHandler;
 import grakn.core.server.rpc.KeyspaceService;
 import grakn.core.server.rpc.OpenRequest;
+import grakn.core.server.rpc.ServerKeyspaceRequestsHandler;
 import grakn.core.server.rpc.ServerOpenRequest;
 import grakn.core.server.rpc.SessionService;
 import grakn.core.server.session.HadoopGraphFactory;
@@ -75,6 +77,7 @@ public class GraknTestServer extends ExternalResource {
     protected File updatedCassandraConfigPath;
     protected int storagePort;
     protected int nativeTransportPort;
+    protected int thriftPort;
 
 
     public GraknTestServer() {
@@ -96,7 +99,6 @@ public class GraknTestServer extends ExternalResource {
             updatedCassandraConfigPath = buildCassandraConfigWithRandomPorts();
             System.setProperty("cassandra.config", "file:" + updatedCassandraConfigPath.getAbsolutePath());
             System.setProperty("cassandra-foreground", "true");
-            System.out.println("cassandraConfig.getAbsolutePath() = " + updatedCassandraConfigPath.getAbsolutePath());
             GraknStorage.main(new String[]{});
             System.out.println("Grakn Storage started");
 
@@ -153,6 +155,7 @@ public class GraknTestServer extends ExternalResource {
     protected void generateCassandraRandomPorts() throws IOException {
         storagePort = findUnusedLocalPort();
         nativeTransportPort = findUnusedLocalPort();
+        thriftPort = findUnusedLocalPort();
     }
 
     protected File buildCassandraConfigWithRandomPorts() throws IOException {
@@ -161,6 +164,7 @@ public class GraknTestServer extends ExternalResource {
 
         configString = configString + "\nstorage_port: " + storagePort;
         configString = configString + "\nnative_transport_port: " + nativeTransportPort;
+        configString = configString + "\nrpc_port: " + thriftPort;
         InputStream configStream = new ByteArrayInputStream(configString.getBytes(StandardCharsets.UTF_8));
 
         String directory = "target/embeddedCassandra";
@@ -187,10 +191,10 @@ public class GraknTestServer extends ExternalResource {
         //Override gRPC port with a random free port
         config.setConfigProperty(ConfigKey.GRPC_PORT, grpcPort);
         //Override Storage Port used by Janus to communicate with Cassandra Backend
-        config.setConfigProperty(ConfigKey.STORAGE_PORT, nativeTransportPort);
+        config.setConfigProperty(ConfigKey.STORAGE_PORT, thriftPort);
 
         //Override ports used by HadoopGraph
-        config.setConfigProperty(ConfigKey.HADOOP_STORAGE_PORT, nativeTransportPort);
+        config.setConfigProperty(ConfigKey.HADOOP_STORAGE_PORT, thriftPort);
         config.setConfigProperty(ConfigKey.STORAGE_CQL_NATIVE_PORT, nativeTransportPort);
 
         return config;
@@ -201,16 +205,21 @@ public class GraknTestServer extends ExternalResource {
         LockManager lockManager = new LockManager();
         JanusGraphFactory janusGraphFactory = new JanusGraphFactory(serverConfig);
         HadoopGraphFactory hadoopGraphFactory = new HadoopGraphFactory(serverConfig);
-
-        keyspaceManager = new KeyspaceManager(Cluster.builder().addContactPoint(
-                serverConfig.getProperty(ConfigKey.STORAGE_HOSTNAME)).withPort(nativeTransportPort).build());
+        Cluster cluster = Cluster.builder()
+                .addContactPoint(serverConfig.getProperty(ConfigKey.STORAGE_HOSTNAME))
+                .withPort(serverConfig.getProperty(ConfigKey.STORAGE_CQL_NATIVE_PORT))
+                .build();
+        keyspaceManager = new KeyspaceManager(cluster);
         sessionFactory = new SessionFactory(lockManager, janusGraphFactory, hadoopGraphFactory, serverConfig);
 
         OpenRequest requestOpener = new ServerOpenRequest(sessionFactory);
 
+        KeyspaceRequestsHandler requestsHandler = new ServerKeyspaceRequestsHandler(
+                keyspaceManager, sessionFactory, janusGraphFactory);
+
         io.grpc.Server serverRPC = ServerBuilder.forPort(grpcPort)
                 .addService(new SessionService(requestOpener))
-                .addService(new KeyspaceService(keyspaceManager, sessionFactory, janusGraphFactory))
+                .addService(new KeyspaceService(requestsHandler))
                 .build();
 
         return ServerFactory.createServer(serverRPC);

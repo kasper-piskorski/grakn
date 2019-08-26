@@ -51,6 +51,7 @@ import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -395,15 +396,7 @@ public class BenchmarkSmallIT {
         GraqlGet query2 = Graql.parse(queryString2).asGet();
 
         try(TransactionOLTP tx = session.transaction().write()) {
-            //with substitution
-            Concept id = tx.execute(Graql.parse("match $x has index 'a'; get;").asGet()).iterator().next().get("x");
-            String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + id.id().getValue() + "; get;";
-            GraqlGet query3 = Graql.parse(queryString3).asGet();
-
-            List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
-            printTimes(tx);
-            int answers = 396900;
-            //List<ConceptMap> resAnswers = executeQuery(query.match().get().limit(answers), tx, "limit " + answers);
+            //List<ConceptMap> fullAnswers = executeQuery(query, tx, "full");
 
             long start2 = System.currentTimeMillis();
             List<ConceptMap> dbAnswers = tx.execute(query, false);
@@ -417,10 +410,20 @@ public class BenchmarkSmallIT {
             successorMap.entries()
                     .forEach(e -> tarjanAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), e.getKey(), new Variable("y"), e.getValue()))));
             System.out.println("tarjan answers: " + tarjanAnswers.size() + " time: " + (System.currentTimeMillis() - start2));
-            GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
-            System.out.println();
+            //GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
+
+            //with substitution
+            Concept startConcept = tx.execute(Graql.parse("match $x has index 'a'; get;").asGet()).iterator().next().get("x");
+            String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + startConcept.id().getValue() + "; get;";
+            GraqlGet query3 = Graql.parse(queryString3).asGet();
+
+            List<ConceptMap> specificAnswers = executeQuery(query3, tx, "With specific id");
+
+            List<ConceptMap> tarjanSpecificAnswers = new ArrayList<>();
+            successorMap.get(startConcept)
+                    .forEach(target -> tarjanSpecificAnswers.add(new ConceptMap(ImmutableMap.of(new Variable("x"), startConcept, new Variable("y"), target))));
+            GraqlTestUtil.assertCollectionsEqual(specificAnswers, tarjanSpecificAnswers);
             /*
-            executeQuery(query2, tx, "With specific resource");
             executeQuery(query3, tx, "Single argument bound");
             executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
 
@@ -558,6 +561,7 @@ public class BenchmarkSmallIT {
         List<ConceptMap> results = transaction.execute(query);
         final long answerTime = System.currentTimeMillis() - startTime;
         System.out.println(msg + " results = " + results.size() + " answerTime: " + answerTime);
+        printTimes(transaction);
         return results;
     }
 
