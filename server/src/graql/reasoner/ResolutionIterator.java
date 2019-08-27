@@ -81,7 +81,9 @@ public class ResolutionIterator extends ReasonerQueryIterator {
 
     @Override
     public ConceptMap next(){
+        System.out.println("<<<<in ResolutionIterator::next answer: " + nextAnswer);
         if (nextAnswer == null) throw new NoSuchElementException();
+        //System.out.println("answer " + answers.size() + " " + nextAnswer);
         answers.add(nextAnswer);
         return nextAnswer;
     }
@@ -107,18 +109,22 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         //iter finished
         if (reiterate()) {
             long dAns = answers.size() - oldAns;
-            if (dAns != 0 || iter == 0) {
-                LOG.debug("iter: {} answers: {} dAns = {}", iter, answers.size(), dAns);
+            while (dAns != 0 || iter == 0) {
+                LOG.info("iter: {} answers: {} dAns = {}", iter, answers.size(), dAns);
                 iter++;
                 states.push(query.resolutionState(new ConceptMap(), new UnifierImpl(), null, new HashSet<>()));
                 oldAns = answers.size();
-                return hasNext();
+                //return hasNext();
+
+                nextAnswer = findNextAnswer();
+                if (nextAnswer != null)  return true;
             }
         }
 
         subGoals.forEach(query.tx().queryCache()::ackCompleteness);
         query.tx().queryCache().propagateAnswers();
 
+        System.out.println("hasNext false");
         return false;
     }
 }

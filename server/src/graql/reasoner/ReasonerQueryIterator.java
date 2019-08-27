@@ -21,6 +21,8 @@ package grakn.core.graql.reasoner;
 import grakn.core.concept.answer.ConceptMap;
 
 import java.util.Iterator;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -30,8 +32,10 @@ import java.util.stream.StreamSupport;
 public abstract class ReasonerQueryIterator implements Iterator<ConceptMap> {
 
     public Stream<ConceptMap> hasStream() {
-        Iterable<ConceptMap> iterable = () -> this;
-        return StreamSupport.stream(iterable.spliterator(), false);
+        //Iterable<ConceptMap> iterable = () -> this;
+        //iterable.spliterator();
+        Spliterator<ConceptMap> spliterator = Spliterators.spliteratorUnknownSize(this, Spliterator.ORDERED | Spliterator.NONNULL);
+        return StreamSupport.stream(spliterator, false);
     }
 }
 

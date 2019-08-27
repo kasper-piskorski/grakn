@@ -31,11 +31,13 @@ import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Variable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static grakn.core.server.kb.Schema.ImplicitType.HAS;
@@ -66,6 +68,7 @@ public class ReasoningIT {
     //The ignored tests reveal some bugs in the reasoning algorithm, as they don't return the expected results,
     //as specified in the respective comments below.
 
+    @Ignore
     @Test
     public void whenMaterialising_duplicatesAreNotCreated(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -82,6 +85,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void attributeOwnerResultsAreConsistentBetweenDifferentAccessPoints(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -116,6 +120,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void resourceHierarchiesAreRespected() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -148,6 +153,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void resourceOwnershipNotPropagatedWithinRelation() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -180,6 +186,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: Both queries should return a non-empty result, with $x/$y mapped to a unique entity.
     public void unificationOfReflexiveRelations() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -204,6 +211,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: Both queries should return a non-empty result, with $x/$y mapped to a unique entity.
     public void unificationOfReflexiveSymmetricRelations() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -228,19 +236,29 @@ public class ReasoningIT {
     @Test //Expected result: The query should return 10 unique matches (no duplicates).
     public void distinctLimitedAnswersOfInfinitelyGeneratingRule() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
-            loadFromFileAndCommit(resourcePath, "testSet7.gql", session);
-            try (TransactionOLTP tx = session.transaction().read()) {
-                
-                
-                String queryString = "match $x isa relation1; get; limit 10;";
-                List<ConceptMap> answers = tx.execute(Graql.parse(queryString).asGet());
-                assertEquals(10, answers.size());
-                assertEquals(tx.execute(Graql.parse(queryString).asGet(), false).size(), answers.size());
-            }
+            //for(int i = 0;i < 20 ; i++) {
+                loadFromFileAndCommit(resourcePath, "testSet7.gql", session);
+                try (TransactionOLTP tx = session.transaction().read()) {
+
+                    System.out.println("infer execute launching...");
+                    String queryString = "match $x isa relation1; get; limit 10;";
+                    //List<ConceptMap> answers = tx.execute(Graql.parse(queryString).asGet());
+                    List<ConceptMap> answers = new ArrayList<>();
+                    tx.stream(Graql.parse(queryString).asGet()).limit(5).forEach(ans -> {
+                        System.out.println("answer " + answers.size() + " " + ans);
+                        answers.add(ans);
+                    });
+                    assertEquals(10, answers.size());
+                    System.out.println("no infer execute launching...");
+                    assertEquals(tx.execute(Graql.parse(queryString).asGet(), false).size(), answers.size());
+                }
+            //}
+
         }
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: The query should not return any matches (or possibly return a single match with $x=$y)
     public void roleUnificationWithRepeatingRoleTypes() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -259,6 +277,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     /**
      * recursive relation having same type for different role players
      * tests for handling recursivity and equivalence of queries and relations
@@ -277,6 +296,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: The query should return a unique match
     public void transRelationWithRelationGuardsAtBothEnds() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -290,6 +310,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: The query should return two unique matches
     public void circularRuleDependencies() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -304,6 +325,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void resourcesAsRolePlayers() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -344,6 +366,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void resourcesAsRolePlayers_vpPropagationTest() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -383,6 +406,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: Returns db and inferred relations + their inverses and relations with self for all entities
     public void reasoningWithRepeatingRoles(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -397,6 +421,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: The same set of results is always returned
     public void reasoningWithLimitHigherThanNumberOfResults_ReturnsConsistentResults(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -415,6 +440,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: Relations between all entity instances including relation between each instance and itself
     public void reasoningWithEntityTypes() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -433,6 +459,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: Timeline is correctly recognised via applying resource comparisons in the rule body
     public void reasoningWithResourceValueComparison() {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -446,6 +473,7 @@ public class ReasoningIT {
         }
     }
 
+    @Ignore
     //tests if partial substitutions are propagated correctly - atom disjointness may lead to variable loss (bug #15476)
     @Test //Expected result: 2 relations obtained by correctly finding reified relations
     public void reasoningWithReifiedRelations() {
@@ -477,6 +505,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //Expected result: number of answers equal to specified limit (no duplicates produced)
     public void whenReasoningWithRelationConjunctions_duplicatesNotProducesAndTypesInferredCorrectly(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -502,6 +531,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void relationTypesAreCorrectlyInferredInConjunction_TypesAreAbsent(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -522,6 +552,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void relationTypesAreCorrectlyInferredInConjunction_TypesAreAbsent_DisconnectedQuery(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -553,6 +584,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     /**
        Should find the possible relation configurations:
          (x, z) - (z, z1) - (z1, z)
@@ -595,6 +627,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void whenAppendingRolePlayers_queryIsRewrittenCorrectly(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -633,6 +666,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //when rule are defined to append new RPs no new relation instances should be created
     public void whenAppendingRolePlayers_noNewRelationsAreCreated(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -657,6 +691,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //when rule are defined to append new RPs no new relation instances should be created
     public void whenAppendingRolePlayers_whenHeadRelationHasSymmetricRoles_answersContainAllPermutations(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -675,6 +710,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test //tests whether shared resources are recognised correctly
     public void inferrableRelationWithRolePlayersSharingResource(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -720,6 +756,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     public void ternaryRelationsRequiringDifferentMultiunifiers(){
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
@@ -767,6 +804,7 @@ public class ReasoningIT {
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
     }
 
+    @Ignore
     @Test
     //tests scenario where rules define mutually recursive relation and resource and we query for an attributed type corresponding to the relation
     public void mutuallyRecursiveRelationAndResource_queryForAttributedType(){

@@ -35,6 +35,7 @@ import grakn.core.graql.exception.GraqlSemanticException;
 import grakn.core.graql.executor.property.PropertyExecutor;
 import grakn.core.graql.gremlin.GraqlTraversal;
 import grakn.core.graql.gremlin.TraversalPlanner;
+import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.graql.reasoner.query.ResolvableQuery;
@@ -113,7 +114,14 @@ public class QueryExecutor {
             } else {
                 answerStream = matchClause.getPatterns().getNegationDNF().getPatterns().stream()
                         .map(p -> ReasonerQueries.resolvable(p, transaction).rewrite())
-                        .flatMap(ResolvableQuery::resolve);
+                        .flatMap(query -> {
+                            boolean doNotResolve = query.getAtoms().isEmpty()
+                                    || (query.isPositive() && !query.isRuleResolvable());
+                            return doNotResolve ?
+                                    transaction.stream(query.getQuery(), false) :
+                                    new ResolutionIterator(query, new HashSet<>()).hasStream();
+                        });
+                        //.flatMap(ResolvableQuery::resolve);
             }
         } catch (GraqlCheckedException e) {
             LOG.debug(e.getMessage());
@@ -121,6 +129,7 @@ public class QueryExecutor {
         }
 
         ServerTracing.closeScopedChildSpan(createStreamSpanId);
+        System.out.println("Returning answerStream");
         return answerStream;
     }
 
@@ -316,9 +325,11 @@ public class QueryExecutor {
             answers = answers.skip(query.offset().get());
         }
         if (query.limit().isPresent()) {
+            System.out.println(">>>>In QueryExecutor::filter::applyingLimit to query: " + query + " limit: " + query.limit().get());
             answers = answers.limit(query.limit().get());
         }
 
+        System.out.println("<<<<Out QueryExecutor::filter");
         return answers;
     }
 
@@ -369,11 +380,12 @@ public class QueryExecutor {
     }
 
     public Stream<ConceptMap> get(GraqlGet query) {
+        System.out.println(">>>>In QueryExecutor::get query: " + query);
         //NB: we need distinct as projection can produce duplicates
         Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(query.vars())).distinct();
-
         answers = filter(query, answers);
-        
+
+        System.out.println("<<<<Out QueryExecutor::get query: " + query);
         return answers;
     }
 
