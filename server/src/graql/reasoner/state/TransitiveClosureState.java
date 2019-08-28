@@ -59,22 +59,7 @@ public class TransitiveClosureState extends ResolutionState {
             Concept to = ans.get(varPair.getValue());
             conceptGraph.put(from, to);
         });
-
-        /*
-        HashMultimap<Concept, Concept> transitiveClosure = new TarjanSCC<>(conceptGraph).successorMap();
-
-        List<AnswerState> states = transitiveClosure.entries().stream()
-                .map(e -> new ConceptMap(
-                        ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
-                        new LookupExplanation(query.getPattern()))
-                )
-                .map(ans -> new AnswerState(ans, unifier, getParentState()))
-                .collect(Collectors.toList());
-        System.out.println("STATES: " + states.size());
-        tarjanTime += System.currentTimeMillis() - start;
-        return states.iterator();
-         */
-
+        
         return new IterativeTarjanTC<>(conceptGraph).stream()
                 .map(e -> new ConceptMap(
                         ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
@@ -83,25 +68,10 @@ public class TransitiveClosureState extends ResolutionState {
                 .map(ans -> new AnswerState(ans, unifier, getParentState()))
                 .iterator();
 
-
- /*
-        return new LazyTarjanTC<>(conceptGraph.keySet(), (node) -> conceptGraph.get(node).stream())
-                .stream()
-                .map(e -> new ConceptMap(
-                        ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
-                        new LookupExplanation(query.getPattern()))
-                )
-                .map(ans -> new AnswerState(ans, unifier, getParentState()))
-                .iterator();
-
-  */
     }
 
     @Override
     public ResolutionState generateChildState() {
-        long start = System.currentTimeMillis();
-        AnswerState answerState = answerStateIterator.hasNext() ? answerStateIterator.next() : null;
-        query.tx().profiler().updateTime(getClass().getSimpleName() + "::generateSubGoal", System.currentTimeMillis() - start);
-        return answerState;
+        return answerStateIterator.hasNext() ? answerStateIterator.next() : null;
     }
 }
