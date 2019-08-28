@@ -59,9 +59,8 @@ public class TransitiveClosureState extends ResolutionState {
             Concept to = ans.get(varPair.getValue());
             conceptGraph.put(from, to);
         });
-        
-        return new IterativeTarjanTC<>(conceptGraph).stream()
-                .map(e -> new ConceptMap(
+
+        return new IterativeTarjanTC<>(conceptGraph).stream().map(e -> new ConceptMap(
                         ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
                         new LookupExplanation(query.getPattern()))
                 )

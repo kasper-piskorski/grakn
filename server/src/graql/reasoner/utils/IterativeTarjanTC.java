@@ -19,9 +19,6 @@
 package grakn.core.graql.reasoner.utils;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterables;
-import grakn.core.concept.answer.ConceptMap;
-import grakn.core.graql.reasoner.ReasonerQueryIterator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,7 +27,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.Stack;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -64,13 +60,14 @@ public  class IterativeTarjanTC<T> implements Iterator<Pair<T,T>>{
 
     @Override
     public boolean hasNext() {
+        if (successorIterator.hasNext()) return true;
         while(nodeIterator.hasNext()) {
-            if (successorIterator.hasNext()) return true;
             T node = nodeIterator.next();
-
             if (!visited.contains(node)) dfs(node);
             successorIterator = newSuccessors.iterator();
             newSuccessors = new ArrayList<>();
+
+            if (successorIterator.hasNext()) return true;
         }
         return false;
     }

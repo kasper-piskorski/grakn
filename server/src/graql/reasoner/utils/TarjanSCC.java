@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  *
  * @param <T> type of the graph node
  */
-public  class TarjanSCC<T> {
+public class TarjanSCC<T> {
 
     private final Set<T> visited = new HashSet<>();
     private final Stack<T> stack = new Stack<>();

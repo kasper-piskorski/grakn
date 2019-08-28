@@ -375,13 +375,9 @@ public class QueryExecutor {
 
     public Stream<ConceptMap> get(GraqlGet query) {
         Set<Variable> getVars = query.vars();
-        MatchClause match = query.match();
-        Set<Variable> matchVariables = match.getPatterns().variables();
 
         //NB: we need distinct as projection can produce duplicates
-        Stream<ConceptMap> answers = !matchVariables.equals(getVars)?
-                match(match).map(ans -> ans.project(getVars)).distinct() :
-                match(match).distinct();
+        Stream<ConceptMap> answers = match(query.match()).map(ans -> ans.project(getVars)).distinct();
         answers = filter(query, answers);
 
         return answers;

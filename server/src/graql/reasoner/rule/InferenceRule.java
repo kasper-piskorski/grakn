@@ -397,15 +397,15 @@ public class InferenceRule {
         Unifier ruleUnifierInverse = ruleUnifier.inverse();
 
         //delta' = theta . thetaP . delta
-        ConceptMap partialSubPrime = ruleUnifierInverse.apply(
-                parentAtom.getParentQuery().getSubstitution()
-        );
+        ConceptMap parentSub = parentAtom.getParentQuery().getSubstitution();
+        ConceptMap partialSubPrime = ruleUnifierInverse.apply(parentSub);
 
 
         if (isTransitive()){
-            return partialSubPrime.isEmpty()?
-                    new TransitiveClosureState(getHead(), partialSubPrime, ruleUnifier, parent) :
-                    new TransitiveReachabilityState(getHead(), partialSubPrime, ruleUnifier, parent);
+            ReasonerAtomicQuery query = ReasonerQueries.atomic(parentAtom);
+            return parentSub.isEmpty()?
+                    new TransitiveClosureState(query, parentSub, ruleUnifier, parent) :
+                    new TransitiveReachabilityState(query, parentSub, ruleUnifier, parent);
         }
         return new RuleState(this.propagateConstraints(parentAtom, ruleUnifierInverse), partialSubPrime, ruleUnifier, parent, visitedSubGoals);
     }

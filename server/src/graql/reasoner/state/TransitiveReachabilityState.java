@@ -24,11 +24,14 @@ import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
+import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.unifier.Unifier;
+import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.graql.reasoner.utils.TarjanReachability;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -49,36 +52,39 @@ public class TransitiveReachabilityState extends ResolutionState {
         this.answerStateIterator = generateAnswerIterator();
     }
 
-    private Function<Concept, Stream<Concept>> neighbourFunction(Variable from, Variable to, ReasonerAtomicQuery query, TransactionOLTP tx){
+    private Function<Concept, Stream<Concept>> neighbourFunction(ReasonerAtomicQuery baseQuery, Variable from, Variable to, TransactionOLTP tx){
         return (node) ->
-                tx.queryCache().getAnswerStream(query.withSubstitution(new ConceptMap(ImmutableMap.of(from, node))))
+                tx.queryCache().getAnswerStream(baseQuery.withSubstitution(new ConceptMap(ImmutableMap.of(from, node))))
                         .map(ans -> ans.get(to));
     }
 
-    private Stream<ConceptMap> answerStream(Concept startNode, Concept endNode, Variable from, Variable to, TransactionOLTP tx){
-        return new TarjanReachability<>(startNode, endNode, neighbourFunction(from, to, query, tx)).stream()
+    private Stream<ConceptMap> answerStream(ReasonerAtomicQuery baseQuery, Concept startNode, Concept endNode, Variable from, Variable to, TransactionOLTP tx){
+        return new TarjanReachability<>(startNode, endNode, neighbourFunction(baseQuery, from, to, tx)).stream()
                 .map(e -> new ConceptMap(
                         ImmutableMap.of(from, e.getKey(), to, e.getValue()),
-                        new LookupExplanation(query.getPattern()))
+                        new LookupExplanation(baseQuery.getPattern()))
                 );
     }
 
     private Iterator<AnswerState> generateAnswerIterator(){
         TransactionOLTP tx = query.tx();
         ConceptMap sub = getSubstitution();
-        Pair<Variable, Variable> directionality = Iterables.getOnlyElement(this.query.getAtom().toRelationAtom().varDirectionality());
+        ReasonerAtomicQuery baseQuery = ReasonerQueries.atomic(Collections.singleton(query.getAtom()), tx);
+        Pair<Variable, Variable> directionality = Iterables.getOnlyElement(baseQuery.getAtom().toRelationAtom().varDirectionality());
         Variable from = directionality.getKey();
         Variable to = directionality.getValue();
 
         Concept startNode = sub.containsVar(from)? sub.get(from) : null;
         Concept endNode = sub.containsVar(to)? sub.get(to) : null;
 
-        Stream<ConceptMap> answerStream = startNode != null?
-                answerStream(startNode, endNode, from, to, tx) :
-                answerStream(endNode, startNode, to, from, tx);
 
+        Stream<ConceptMap> answerStream = startNode != null?
+                answerStream(baseQuery, startNode, endNode, from, to, tx) :
+                answerStream(baseQuery, endNode, startNode, to, from, tx);
+
+        UnifierImpl trivialUnifier = UnifierImpl.trivial();
         return answerStream
-                .map(ans -> new AnswerState(ans, unifier, getParentState()))
+                .map(ans -> new AnswerState(ans, trivialUnifier, getParentState()))
                 .iterator();
     }
 
