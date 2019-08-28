@@ -235,7 +235,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         //if this is ground and exists in the db then do not resolve further
         long start2 = System.currentTimeMillis();
         boolean visited = visitedSubGoals.contains(this);
-        if (!visited) visitedSubGoals.add(this);
+        if (!visited){
+            visitedSubGoals.add(this);
+            //System.out.println("visiting subGoal: " + this);
+        }
         tx().profiler().updateTime(getClass().getSimpleName() + "::visitedSubGoals.contains", System.currentTimeMillis() - start2);
         boolean doNotResolveFurther = visited
                 || tx().queryCache().isComplete(this)
@@ -247,6 +250,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
 
         tx().profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);
 
+        //System.out.println("subGoal: " + this);
         tx().profiler().updateCallCount(getClass().getSimpleName() + "::visitedSubGoals");
         return Iterators.concat(dbIterator, dbCompletionIterator, subGoalIterator);
     }

@@ -401,6 +401,7 @@ public class InferenceRule {
                 parentAtom.getParentQuery().getSubstitution()
         );
 
+
         if (isTransitive()){
             return partialSubPrime.isEmpty()?
                     new TransitiveClosureState(getHead(), partialSubPrime, ruleUnifier, parent) :

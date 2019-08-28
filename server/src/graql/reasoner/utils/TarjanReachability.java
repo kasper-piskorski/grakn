@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
  *
  * @param <T> type of the graph node
  */
-public  class LazyTarjanTC<T> implements Iterator<Pair<T,T>>{
+public  class TarjanReachability<T> implements Iterator<Pair<T,T>>{
 
     private final Set<T> visited = new HashSet<>();
     private final Stack<T> stack = new Stack<>();
@@ -52,21 +52,20 @@ public  class LazyTarjanTC<T> implements Iterator<Pair<T,T>>{
 
     private final Function<T, Stream<T>> graph;
 
-    //node iterator
-    private List<Pair<T, T>> newSuccessors = new ArrayList<>();
     private final Stack<T> nodes;
     private final Set<T> newNodes;
-    private final Set<T> startNodes;
+    private final T startNode;
     private final T endNode;
+    private List<Pair<T, T>> newSuccessors = new ArrayList<>();
     private Iterator<Pair<T, T>> successorIterator = Collections.emptyIterator();
 
-    public LazyTarjanTC(Set<T> startNodes, @Nullable T endNode, Function<T, Stream<T>> graph) {
-        this.graph = graph;
+    public TarjanReachability(T startNode, @Nullable T endNode, Function<T, Stream<T>> fetchNeighbours) {
+        this.graph = fetchNeighbours;
         this.nodes = new Stack<>();
-        this.startNodes = new HashSet<>(startNodes);
-        this.newNodes = new HashSet<>(startNodes);
+        this.newNodes = Collections.singleton(startNode);
+        this.startNode = startNode;
         this.endNode = endNode;
-        startNodes.forEach(nodes::push);
+        nodes.push(startNode);
     }
 
     @Override
@@ -93,12 +92,10 @@ public  class LazyTarjanTC<T> implements Iterator<Pair<T,T>>{
     }
 
     private void updateSuccessors(T node, Set<T> nodes){
-        //successors.putAll(node, graph.get(node));
-        boolean update = startNodes.contains(node);
         Set<T> nodesToAck = nodes.stream()
                 .filter(n -> successors.put(node, n))
                 .collect(Collectors.toSet());
-        if (update) {
+        if (startNode.equals(node)) {
             nodesToAck.stream()
                     .filter(n -> endNode == null || n.equals(endNode))
                     .forEach(n -> newSuccessors.add(new Pair<>(node, n)));

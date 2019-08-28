@@ -25,14 +25,17 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.unifier.Unifier;
-import grakn.core.graql.reasoner.utils.LazyTarjanTC;
 import grakn.core.graql.reasoner.utils.Pair;
+import grakn.core.graql.reasoner.utils.TarjanReachability;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
+/**
+ *
+ */
 public class TransitiveReachabilityState extends ResolutionState {
 
     private final ReasonerAtomicQuery query;
@@ -46,27 +49,37 @@ public class TransitiveReachabilityState extends ResolutionState {
         this.answerStateIterator = generateAnswerIterator();
     }
 
+    private Function<Concept, Stream<Concept>> neighbourFunction(Variable from, Variable to, ReasonerAtomicQuery query, TransactionOLTP tx){
+        return (node) ->
+                tx.queryCache().getAnswerStream(query.withSubstitution(new ConceptMap(ImmutableMap.of(from, node))))
+                        .map(ans -> ans.get(to));
+    }
+
+    private Stream<ConceptMap> answerStream(Concept startNode, Concept endNode, Variable from, Variable to, TransactionOLTP tx){
+        return new TarjanReachability<>(startNode, endNode, neighbourFunction(from, to, query, tx)).stream()
+                .map(e -> new ConceptMap(
+                        ImmutableMap.of(from, e.getKey(), to, e.getValue()),
+                        new LookupExplanation(query.getPattern()))
+                );
+    }
+
     private Iterator<AnswerState> generateAnswerIterator(){
         TransactionOLTP tx = query.tx();
-        Set<Concept> startingPoints = new HashSet<>(getSubstitution().concepts());
+        ConceptMap sub = getSubstitution();
         Pair<Variable, Variable> directionality = Iterables.getOnlyElement(this.query.getAtom().toRelationAtom().varDirectionality());
         Variable from = directionality.getKey();
         Variable to = directionality.getValue();
 
+        Concept startNode = sub.containsVar(from)? sub.get(from) : null;
+        Concept endNode = sub.containsVar(to)? sub.get(to) : null;
 
-        return new LazyTarjanTC<>(startingPoints, null, (node) -> {
-            ConceptMap sub = new ConceptMap(ImmutableMap.of(from, node));
-            return tx.queryCache().getAnswerStream(query.withSubstitution(sub))
-                    .map(ans -> ans.get(to));
-        })
-                .stream()
-                .map(e -> new ConceptMap(
-                        ImmutableMap.of(from, e.getKey(), to, e.getValue()),
-                        new LookupExplanation(query.getPattern()))
-                )
+        Stream<ConceptMap> answerStream = startNode != null?
+                answerStream(startNode, endNode, from, to, tx) :
+                answerStream(endNode, startNode, to, from, tx);
+
+        return answerStream
                 .map(ans -> new AnswerState(ans, unifier, getParentState()))
                 .iterator();
-
     }
 
     @Override

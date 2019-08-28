@@ -29,7 +29,6 @@ import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.utils.IterativeTarjanTC;
-import grakn.core.graql.reasoner.utils.LazyTarjanTC;
 import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;

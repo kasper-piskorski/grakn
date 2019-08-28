@@ -64,17 +64,15 @@ public  class IterativeTarjanTC<T> implements Iterator<Pair<T,T>>{
 
     @Override
     public boolean hasNext() {
-        if (!successorIterator.hasNext()){
-            if (!nodeIterator.hasNext()) return false;
+        while(nodeIterator.hasNext()) {
+            if (successorIterator.hasNext()) return true;
             T node = nodeIterator.next();
 
             if (!visited.contains(node)) dfs(node);
             successorIterator = newSuccessors.iterator();
             newSuccessors = new ArrayList<>();
-
-            return hasNext();
         }
-        return true;
+        return false;
     }
 
     public Stream<Pair<T,T>> stream() {
@@ -88,14 +86,9 @@ public  class IterativeTarjanTC<T> implements Iterator<Pair<T,T>>{
     }
 
     private void updateSuccessors(T node, Set<T> nodes){
-        //successors.putAll(node, graph.get(node));
         nodes.stream()
                 .filter(n -> successors.put(node, n))
                 .forEach(n -> newSuccessors.add(new Pair<>(node, n)));
-    }
-
-    private Set<T> getNeighbours(T node){
-        return graph.get(node);
     }
 
     private void dfs(T node) {
@@ -104,7 +97,7 @@ public  class IterativeTarjanTC<T> implements Iterator<Pair<T,T>>{
         int min = lowLink.get(node);
         stack.push(node);
 
-        Set<T> neighbours = getNeighbours(node);
+        Set<T> neighbours = graph.get(node);
         updateSuccessors(node, neighbours);
         //look at neighbours of v
         for (T n : neighbours) {
