@@ -79,8 +79,8 @@ public abstract class SemanticCache<
 
     @Override
     public boolean isComplete(ReasonerAtomicQuery query){
-        return super.isComplete(query)
-                || getParents(query).stream().anyMatch(q -> super.isComplete(keyToQuery(q)));
+        return super.isComplete(query);
+                //|| getParents(query).stream().anyMatch(q -> super.isComplete(keyToQuery(q)));
     }
 
     @Override
@@ -142,14 +142,17 @@ public abstract class SemanticCache<
     /**
      * propagate answers within the cache (children fetch answers from parents)
      */
+    //TODO this is fucked up
     public void propagateAnswers(){
         queries().stream()
-                .filter(this::isComplete)
+                .filter(q -> !super.isComplete(q))
                 .forEach(child-> {
-                    CacheEntry<ReasonerAtomicQuery, SE> childEntry = getEntry(child);
-                    if (childEntry != null) {
-                        propagateAnswersToQuery(child, childEntry, true);
-                        ackCompleteness(child);
+                    Set<QE> parents = getParents(child);
+                    if (parents.stream().map(this::keyToQuery).anyMatch(super::isComplete)){
+                        CacheEntry<ReasonerAtomicQuery, SE> childEntry = getEntry(child);
+                        if (childEntry != null) {
+                            propagateAnswersToQuery(child, childEntry, true);
+                        }
                     }
                 });
     }
@@ -209,6 +212,7 @@ public abstract class SemanticCache<
      * @param target query we want propagate the answers to
      * @param childMatch entry to which we want to propagate answers
      * @param fetchInferred true if inferred answers should be propagated
+     * @return true if any new answers were introduced thanks to the propagation
      */
     private boolean propagateAnswersToQuery(ReasonerAtomicQuery target, CacheEntry<ReasonerAtomicQuery, SE> childMatch, boolean fetchInferred){
         ReasonerAtomicQuery child = childMatch.query();

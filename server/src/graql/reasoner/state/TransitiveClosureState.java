@@ -24,9 +24,9 @@ import com.google.common.collect.Iterables;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
-import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
+import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.utils.IterativeTarjanTC;
 import grakn.core.graql.reasoner.utils.Pair;
@@ -39,10 +39,12 @@ public class TransitiveClosureState extends ResolutionState {
     private final ReasonerAtomicQuery query;
     private final Unifier unifier;
     private final Iterator<AnswerState> answerStateIterator;
+    private final InferenceRule rule;
 
-    public TransitiveClosureState(ReasonerAtomicQuery q, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
+    public TransitiveClosureState(InferenceRule rule, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
         super(sub, parent);
-        this.query = q;
+        this.query = rule.getHead();
+        this.rule = rule;
         this.unifier = u;
         this.answerStateIterator = generateAnswerIterator();
     }
@@ -53,8 +55,8 @@ public class TransitiveClosureState extends ResolutionState {
 
         RelationAtom relationAtom = query.getAtom().toRelationAtom();
         Pair<Variable, Variable> varPair = Iterables.getOnlyElement(relationAtom.varDirectionality());
-        IndexedAnswerSet answers = tx.queryCache().getEntry(query).cachedElement();
-        answers.forEach(ans -> {
+        tx.queryCache().getAnswerStream(query)
+                .forEach(ans -> {
             Concept from = ans.get(varPair.getKey());
             Concept to = ans.get(varPair.getValue());
             conceptGraph.put(from, to);
@@ -64,7 +66,7 @@ public class TransitiveClosureState extends ResolutionState {
                         ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
                         new LookupExplanation(query.getPattern()))
                 )
-                .map(ans -> new AnswerState(ans, unifier, getParentState()))
+                .map(ans -> new AnswerState(ans, unifier, getParentState(), rule))
                 .iterator();
 
     }

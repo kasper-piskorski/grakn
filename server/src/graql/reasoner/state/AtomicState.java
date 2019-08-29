@@ -98,22 +98,15 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         InferenceRule rule = state.getRule();
         Unifier unifier = state.getUnifier();
         if (rule == null) {
-            long start2 = System.currentTimeMillis();
             answer = ConceptUtils.mergeAnswers(baseAnswer, query.getSubstitution())
                     .project(query.getVarNames());
-            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer::nonRuleAnswer", System.currentTimeMillis() - start2);
         } else {
-            long start2 = System.currentTimeMillis();
             answer = rule.requiresMaterialisation(query.getAtom()) ?
                     materialisedAnswer(baseAnswer, rule, unifier) :
                     ruleAnswer(baseAnswer, rule, unifier);
-            getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer::ruleAnswer", System.currentTimeMillis() - start2);
         }
-        long start3 = System.currentTimeMillis();
         ConceptMap recordedAnswer = recordAnswer(query, answer);
-        getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer::recordAnswer", System.currentTimeMillis() - start3);
 
-        getQuery().tx().profiler().updateCallCount(getClass().getSimpleName() + "::consumeAnswer");
         getQuery().tx().profiler().updateTime(getClass().getSimpleName() + "::consumeAnswer", System.currentTimeMillis() - start);
         return recordedAnswer;
 
@@ -148,9 +141,6 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         ConceptMap answer = unifier.apply(ConceptUtils.mergeAnswers(
                 baseAnswer, rule.getHead().getRoleSubstitution())
         );
-
-        //if (consumed.get(rule.getRule().id()).contains(answer)) return new ConceptMap();
-        //consumed.put(rule.getRule().id(), answer);
 
         if (answer.isEmpty()) return answer;
 

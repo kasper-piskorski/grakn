@@ -399,15 +399,15 @@ public class InferenceRule {
         //delta' = theta . thetaP . delta
         ConceptMap parentSub = parentAtom.getParentQuery().getSubstitution();
         ConceptMap partialSubPrime = ruleUnifierInverse.apply(parentSub);
-
+        InferenceRule rule = this.propagateConstraints(parentAtom, ruleUnifierInverse);
 
         if (isTransitive()){
             ReasonerAtomicQuery query = ReasonerQueries.atomic(parentAtom);
-            return parentSub.isEmpty()?
-                    new TransitiveClosureState(query, parentSub, ruleUnifier, parent) :
-                    new TransitiveReachabilityState(query, parentSub, ruleUnifier, parent);
+            return partialSubPrime.isEmpty()?
+                    new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, parent) :
+                    new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, parent);
         }
-        return new RuleState(this.propagateConstraints(parentAtom, ruleUnifierInverse), partialSubPrime, ruleUnifier, parent, visitedSubGoals);
+        return new RuleState(rule, partialSubPrime, ruleUnifier, parent, visitedSubGoals);
     }
 
     private boolean isTransitive(){

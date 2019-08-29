@@ -39,7 +39,7 @@ public class AnswerState extends ResolutionState {
         this(sub, u, parent, null);
     }
 
-    AnswerState(ConceptMap sub, Unifier u, AnswerPropagatorState parent, InferenceRule rule) {
+    public AnswerState(ConceptMap sub, Unifier u, AnswerPropagatorState parent, InferenceRule rule) {
         super(sub, parent);
         this.unifier = u;
         this.rule = rule;

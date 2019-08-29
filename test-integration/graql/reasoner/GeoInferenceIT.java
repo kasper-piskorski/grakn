@@ -20,6 +20,7 @@ package grakn.core.graql.reasoner;
 
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.concept.thing.Relation;
 import grakn.core.graql.reasoner.graph.GeoGraph;
 import grakn.core.rule.GraknTestServer;
 import grakn.core.server.session.SessionImpl;
@@ -27,6 +28,7 @@ import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Statement;
 import org.apache.commons.collections.CollectionUtils;
 import org.junit.AfterClass;
@@ -202,8 +204,6 @@ public class GeoInferenceIT {
     @Test
     public void testTransitiveQuery_withSubstitution_noRoles() {
         try (TransactionOLTP tx = geoGraphSession.transaction().write()) {
-            
-
             Concept masovia = getConcept(tx, "name", "Masovia");
             String queryString = "match " +
                     "($x, $y) isa is-located-in;" +

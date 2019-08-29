@@ -25,8 +25,8 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
+import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.graql.reasoner.unifier.Unifier;
-import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.graql.reasoner.utils.TarjanReachability;
 import grakn.core.server.session.TransactionOLTP;
@@ -44,10 +44,12 @@ public class TransitiveReachabilityState extends ResolutionState {
     private final ReasonerAtomicQuery query;
     private final Unifier unifier;
     private final Iterator<AnswerState> answerStateIterator;
+    private final InferenceRule rule;
 
-    public TransitiveReachabilityState(ReasonerAtomicQuery q, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
+    public TransitiveReachabilityState(InferenceRule rule, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
         super(sub, parent);
-        this.query = q;
+        this.query = rule.getHead();
+        this.rule = rule;
         this.unifier = u;
         this.answerStateIterator = generateAnswerIterator();
     }
@@ -82,17 +84,13 @@ public class TransitiveReachabilityState extends ResolutionState {
                 answerStream(baseQuery, startNode, endNode, from, to, tx) :
                 answerStream(baseQuery, endNode, startNode, to, from, tx);
 
-        UnifierImpl trivialUnifier = UnifierImpl.trivial();
         return answerStream
-                .map(ans -> new AnswerState(ans, trivialUnifier, getParentState()))
+                .map(ans -> new AnswerState(ans, unifier, getParentState(), rule))
                 .iterator();
     }
 
     @Override
     public ResolutionState generateChildState() {
-        long start = System.currentTimeMillis();
-        AnswerState answerState = answerStateIterator.hasNext() ? answerStateIterator.next() : null;
-        query.tx().profiler().updateTime(getClass().getSimpleName() + "::generateSubGoal", System.currentTimeMillis() - start);
-        return answerState;
+        return answerStateIterator.hasNext() ? answerStateIterator.next() : null;
     }
 }
