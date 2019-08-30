@@ -79,8 +79,8 @@ public abstract class SemanticCache<
 
     @Override
     public boolean isComplete(ReasonerAtomicQuery query){
-        return super.isComplete(query);
-                //|| getParents(query).stream().anyMatch(q -> super.isComplete(keyToQuery(q)));
+        return super.isComplete(query)
+                || getParents(query).stream().anyMatch(q -> super.isComplete(keyToQuery(q)));
     }
 
     @Override
@@ -145,14 +145,12 @@ public abstract class SemanticCache<
     //TODO this is fucked up
     public void propagateAnswers(){
         queries().stream()
-                .filter(q -> !super.isComplete(q))
+                .filter(this::isComplete)
                 .forEach(child-> {
-                    Set<QE> parents = getParents(child);
-                    if (parents.stream().map(this::keyToQuery).anyMatch(super::isComplete)){
-                        CacheEntry<ReasonerAtomicQuery, SE> childEntry = getEntry(child);
-                        if (childEntry != null) {
-                            propagateAnswersToQuery(child, childEntry, true);
-                        }
+                    CacheEntry<ReasonerAtomicQuery, SE> childEntry = getEntry(child);
+                    if (childEntry != null) {
+                        propagateAnswersToQuery(child, childEntry, true);
+                        ackCompleteness(child);
                     }
                 });
     }
