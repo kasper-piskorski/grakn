@@ -19,11 +19,7 @@
 package grakn.core.graql.reasoner.benchmark;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableMap;
-import grakn.client.GraknClient;
-import grakn.core.api.Transaction;
 import grakn.core.concept.Concept;
-import grakn.core.concept.answer.Answer;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
 import grakn.core.concept.type.EntityType;
@@ -36,25 +32,16 @@ import grakn.core.graql.reasoner.graph.PathTreeGraph;
 import grakn.core.graql.reasoner.graph.TransitivityChainGraph;
 import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
 import grakn.core.graql.reasoner.state.AtomicState;
-import grakn.core.graql.reasoner.state.TransitiveClosureState;
-import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.rule.GraknTestServer;
-import grakn.core.server.kb.concept.ConceptUtils;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
-import grakn.core.util.GraqlTestUtil;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
-import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -66,62 +53,6 @@ public class BenchmarkSmallIT {
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
-
-
-    @Test
-    public void test(){
-        GraknClient graknClient = new GraknClient("localhost:48555");
-        GraknClient.Session remoteSession = graknClient.session("s_acadc9f5c73741329a75e0c40b5aa9c4");
-        try(Transaction tx = remoteSession.transaction().read()) {
-            long start = System.currentTimeMillis();
-            //(5 seconds, 388.673 milliseconds)\
-            GraqlQuery query = Graql.parse(
-                    "match " +
-                            "$taxpayer isa User;" +
-                            "(filer: $taxpayer, declaration: $declaration) isa files_tax_declaration;" +
-                            "(declaration: $declaration, form: $form) isa materializes_in_form;" +
-                            "$field (form: $form, field: $field_value);" +
-                            "$field isa has_form_field; $field has identifier $field_id;" +
-                            "$field has index_group $index_group;" +
-                            "(field_relationship: $field, indexable: $index_instance) isa is_indexed_by;" +
-                            "get; limit 1;");
-            List<? extends Answer> answers = tx.execute(query);
-            System.out.println("query answers: " + answers.size() + " time : " + (System.currentTimeMillis() - start));
-        }
-        /*
-        try(Transaction tx = remoteSession.transaction().read()) {
-            long start = System.currentTimeMillis();
-            //(5 seconds, 388.673 milliseconds)\
-            GraqlQuery query1 = Graql.parse(
-                    "match " +
-                            "$fiscal_domicile_relation (citizen: $taxpayer, place_of_fiscal_domicile: $fiscal_domicile);" +
-                            "$fiscal_domicile_relation isa has_fiscal_domicile_at;" +
-                            "$fiscal_domicile_relation has is_fiscal_domicile_at_the_end_of_tax_year == false;" +
-                            "$taxpayer isa User;" +
-                            "(filer: $taxpayer, declaration: $declaration) isa files_tax_declaration;" +
-                            "(declaration: $declaration, form: $form) isa materializes_in_form;" +
-                            "$fiscal_domicile has city_code $city_code;" +
-                            "get ;");
-            List<? extends Answer> answers = tx.execute(query1);
-            System.out.println("query 1 answers: " + answers.size() + " time : " + (System.currentTimeMillis() - start));
-        }
-        try(Transaction tx = remoteSession.transaction().read()) {
-            //(2 seconds, 157.848 milliseconds)
-            long start = System.currentTimeMillis();
-            GraqlQuery query2 = Graql.parse(
-                    "match " +
-                            "$fiscal_domicile_relation (citizen: $taxpayer, place_of_fiscal_domicile: $fiscal_domicile);" +
-                            "$fiscal_domicile_relation isa has_fiscal_domicile_at; $fiscal_domicile_relation has is_fiscal_domicile_at_the_end_of_tax_year == false;" +
-                            "$taxpayer isa User;" +
-                            "(filer: $taxpayer, declaration: $declaration) isa files_tax_declaration;" +
-                            "(declaration: $declaration, form: $form) isa materializes_in_form; $fiscal_domicile has city_code $city_code;" +
-                            "get;");
-            List<? extends Answer> answers2 = tx.execute(query2);
-            System.out.println("query 2 answers: " + answers2.size() + " time : " + (System.currentTimeMillis() - start));
-        }
-
-         */
-    }
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:
@@ -254,31 +185,11 @@ public class BenchmarkSmallIT {
     private void printTimes(TransactionOLTP tx){
         System.out.println("consume time: " + AtomicState.consumeTime);
         System.out.println("propagate time: " + AtomicState.propagateTime);
-        System.out.println("ConceptMap::hashCode: " + ConceptMap.hashCodeTime);
-        System.out.println("ConceptMap::project: " + ConceptMap.projectTime);
-        System.out.println("ConceptMap::project calls: " + ConceptMap.projectCalls);
-        System.out.println("UnifierImpl::apply: " + UnifierImpl.unifyTime);
         System.out.println("IndexedAnswerSet:add " + IndexedAnswerSet.addTime);
-        System.out.println("ConceptUtils::merge: " + ConceptUtils.mergeTime);
-        System.out.println("    ConceptUtils::setTime: " + ConceptUtils.setTime);
-        System.out.println("    ConceptUtils::setEqualityTime: " + ConceptUtils.setEqualityTime);
-        System.out.println("    ConceptUtils::varIntersectionTime: " + ConceptUtils.varIntersectionTime);
-        System.out.println("ConceptUtils::disjointSet: " + ConceptUtils.disjointSetTime);
-        System.out.println("ConceptUtils::disjointType: " + ConceptUtils.disjointTypeTime);
 
         AtomicState.consumeTime = 0;
         AtomicState.propagateTime= 0;
-        ConceptMap.hashCodeTime = 0;
-        ConceptMap.projectTime= 0;
-        ConceptMap.projectCalls= 0;
-        UnifierImpl.unifyTime= 0;
         IndexedAnswerSet.addTime= 0;
-        ConceptUtils.mergeTime= 0;
-        ConceptUtils.setTime= 0;
-        ConceptUtils.setEqualityTime= 0;
-        ConceptUtils.varIntersectionTime= 0;
-        ConceptUtils.disjointSetTime= 0;
-        ConceptUtils.disjointTypeTime= 0;
 
         tx.profiler().print();
         //System.out.println("tarjan time: " + TransitiveClosureState.tarjanTime);

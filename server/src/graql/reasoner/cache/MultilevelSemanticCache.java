@@ -28,7 +28,6 @@ import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.graql.reasoner.utils.Pair;
 import graql.lang.statement.Variable;
-import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,8 +123,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
 
     @Override
     protected Stream<ConceptMap> entryToAnswerStream(CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> entry) {
-        return entry.cachedElement().get(entry.query().getAnswerIndex()).stream()
-                .sorted(Comparator.comparing(ans -> ans.explanation().explicit().size()));
+        return entry.cachedElement().get(entry.query().getAnswerIndex()).stream();
     }
 
     @Override
@@ -140,8 +138,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
                 multiUnifier.inverse()
                         .apply(answerIndex)
                         .flatMap(index -> answers.get(index).stream())
-                        .flatMap(multiUnifier::apply)
-                        .sorted(Comparator.comparing(ans -> ans.explanation().explicit().size())),
+                        .flatMap(multiUnifier::apply),
                 multiUnifier
         );
     }

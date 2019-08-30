@@ -112,10 +112,7 @@ public class QueryExecutor {
                         .map(ReasonerQueryImpl::getPattern)
                         .flatMap(p -> traversal(p, TraversalPlanner.createTraversal(p, transaction)));
             } else {
-                answerStream = matchClause.getPatterns().getNegationDNF().getPatterns().stream()
-                        .map(conj -> ReasonerQueries.resolvable(conj, transaction).rewrite())
-                        .flatMap(query -> new ResolutionIterator(query, new HashSet<>()).hasStream());
-
+                answerStream = new DisjunctionIterator(matchClause, transaction).hasStream();
             }
         } catch (GraqlCheckedException e) {
             LOG.debug(e.getMessage());

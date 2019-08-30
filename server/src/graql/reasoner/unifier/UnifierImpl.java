@@ -134,14 +134,8 @@ public class UnifierImpl implements Unifier {
         );
     }
 
-    public static long unifyTime = 0;
-
     public ConceptMap apply(ConceptMap answer) {
-        long start = System.currentTimeMillis();
-        if (this.isEmpty()){
-            unifyTime += System.currentTimeMillis() - start;
-            return answer;
-        }
+        if (this.isEmpty()) return answer;
         Map<Variable, Concept> unified = new HashMap<>();
 
         for (Map.Entry<Variable, Concept> e : answer.map().entrySet()) {
@@ -150,22 +144,14 @@ public class UnifierImpl implements Unifier {
             Collection<Variable> uvars = unifier.get(var);
             if (uvars.isEmpty() && !unifier.values().contains(var)) {
                 Concept put = unified.put(var, con);
-                if (put != null && !put.equals(con)){
-                    unifyTime += System.currentTimeMillis() - start;
-                    return new ConceptMap();
-                }
+                if (put != null && !put.equals(con)) return new ConceptMap();
             } else {
                 for (Variable uv : uvars) {
                     Concept put = unified.put(uv, con);
-                    if (put != null && !put.equals(con)){
-                        unifyTime += System.currentTimeMillis() - start;
-                        return new ConceptMap();
-                    }
+                    if (put != null && !put.equals(con)) return new ConceptMap();
                 }
             }
         }
-        ConceptMap conceptMap = new ConceptMap(unified, answer.explanation());
-        unifyTime += System.currentTimeMillis() - start;
-        return conceptMap;
+        return new ConceptMap(unified, answer.explanation());
     }
 }

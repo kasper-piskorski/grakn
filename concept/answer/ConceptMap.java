@@ -109,20 +109,12 @@ public class ConceptMap extends Answer {
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
-        long start = System.currentTimeMillis();
         ConceptMap a2 = (ConceptMap) obj;
-        boolean equals = map.equals(a2.map);
-        hashCodeTime += System.currentTimeMillis() - start;
-        return equals;
+        return map.equals(a2.map);
     }
 
     @Override
-    public int hashCode() {
-        long start = System.currentTimeMillis();
-        int hashCode = map.hashCode();
-        hashCodeTime += System.currentTimeMillis() - start;
-        return hashCode;
-    }
+    public int hashCode() { return map.hashCode();}
 
     public void forEach(BiConsumer<Variable, Concept> consumer) {
         map.forEach(consumer);
@@ -138,25 +130,17 @@ public class ConceptMap extends Answer {
         return new ConceptMap(this.map, exp.childOf(this));
     }
 
-    public static long projectTime = 0;
-    public static long hashCodeTime = 0;
-    public static long projectCalls = 0;
-
     /**
      * @param vars variables defining the projection
      * @return project the answer retaining the requested variables
      */
     @CheckReturnValue
     public ConceptMap project(Set<Variable> vars) {
-        long start = System.currentTimeMillis();
-        ConceptMap projected = new ConceptMap(
+        return new ConceptMap(
                 this.map.entrySet().stream()
                         .filter(e -> vars.contains(e.getKey()))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                 this.explanation()
         );
-        projectTime += System.currentTimeMillis() - start;
-        projectCalls++;
-        return projected;
     }
 }

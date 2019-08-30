@@ -23,7 +23,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import grakn.core.concept.answer.ConceptMap;
-import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.Atomic;
 import grakn.core.graql.reasoner.atom.AtomicFactory;
@@ -49,7 +48,6 @@ import graql.lang.pattern.Conjunction;
 import graql.lang.statement.Statement;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -144,7 +142,6 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
     @Override
     public MultiUnifier getMultiUnifier(ReasonerQuery p, UnifierType unifierType){
         if (p == this) return MultiUnifierImpl.trivial();
-        long start = System.currentTimeMillis();
         Preconditions.checkArgument(p instanceof ReasonerAtomicQuery);
 
         //NB: this is a defensive check and potentially expensive
@@ -154,10 +151,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         MultiUnifier multiUnifier = this.getAtom().getMultiUnifier(parent.getAtom(), unifierType);
 
         Set<TypeAtom> childTypes = this.getAtom().getTypeConstraints().collect(Collectors.toSet());
-        if (multiUnifier.isEmpty() || childTypes.isEmpty()){
-            tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier",  System.currentTimeMillis()- start);
-            return multiUnifier;
-        }
+        if (multiUnifier.isEmpty() || childTypes.isEmpty()) return multiUnifier;
 
         //get corresponding type unifiers
         Set<TypeAtom> parentTypes = parent.getAtom().getTypeConstraints().collect(Collectors.toSet());
@@ -165,10 +159,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         Set<Unifier> unifiers = multiUnifier.unifiers().stream()
                 .map(unifier -> ReasonerUtils.typeUnifier(childTypes, parentTypes, unifier, unifierType))
                 .collect(Collectors.toSet());
-        MultiUnifierImpl u = new MultiUnifierImpl(unifiers);
-
-        tx().profiler().updateTime(getClass().getSimpleName() + "::getMultiUnifier",  System.currentTimeMillis()- start);
-        return u;
+        return new MultiUnifierImpl(unifiers);
     }
 
     /**
@@ -190,18 +181,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      * @return stream of materialised answers
      */
     public Stream<ConceptMap> materialise(ConceptMap answer) {
-        tx().profiler().updateCallCount(getClass().getSimpleName() + "::materialise");
         return this.withSubstitution(answer)
                 .getAtom()
                 .materialise()
                 .map(ans -> ans.explain(answer.explanation()));
-    }
-
-    @Override
-    public Stream<ConceptMap> resolve(Set<ReasonerAtomicQuery> subGoals){
-        return isRuleResolvable()?
-                new ResolutionIterator(this, subGoals).hasStream() :
-                tx().queryCache().getAnswerStream(this);
     }
 
     @Override
@@ -219,39 +202,25 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
 
     @Override
     public Iterator<ResolutionState> innerStateIterator(AnswerPropagatorState parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
-        long start = System.currentTimeMillis();
         Pair<Stream<ConceptMap>, MultiUnifier> cacheEntry = tx().queryCache().getAnswerStreamWithUnifier(this);
-
-        List<AnswerState> dbStates = cacheEntry.getKey()
+        Iterator<AnswerState> dbIterator = cacheEntry.getKey()
                 .map(a -> a.explain(a.explanation().setPattern(this.getPattern())))
                 .map(ans -> new AnswerState(ans, parent.getUnifier(), parent))
-                .collect(Collectors.toList());
-        tx().profiler().updateTime(getClass().getSimpleName() + "::dbTime", System.currentTimeMillis() - start);
-        Iterator<AnswerState> dbIterator = dbStates.iterator();
+                .iterator();
 
         Iterator<ResolutionState> dbCompletionIterator =
                 Iterators.singletonIterator(new CacheCompletionState(this, new ConceptMap(), null));
 
-        //if this is ground and exists in the db then do not resolve further
-        long start2 = System.currentTimeMillis();
         boolean visited = visitedSubGoals.contains(this);
-        if (!visited){
-            visitedSubGoals.add(this);
-            //System.out.println("visiting subGoal: " + this);
-        }
-        tx().profiler().updateTime(getClass().getSimpleName() + "::visitedSubGoals.contains", System.currentTimeMillis() - start2);
+        //if this is ground and exists in the db then do not resolve further
         boolean doNotResolveFurther = visited
                 || tx().queryCache().isComplete(this)
                 || (this.isGround() && dbIterator.hasNext());
-
         Iterator<ResolutionState> subGoalIterator = !doNotResolveFurther?
                 ruleStateIterator(parent, visitedSubGoals) :
                 Collections.emptyIterator();
 
-        tx().profiler().updateTime(getClass().getSimpleName() + "::queryStateIterator", System.currentTimeMillis() - start);
-
-        //System.out.println("subGoal: " + this);
-        tx().profiler().updateCallCount(getClass().getSimpleName() + "::visitedSubGoals");
+        if (!visited) visitedSubGoals.add(this);
         return Iterators.concat(dbIterator, dbCompletionIterator, subGoalIterator);
     }
 
