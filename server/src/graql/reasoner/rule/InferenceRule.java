@@ -401,12 +401,15 @@ public class InferenceRule {
         ConceptMap partialSubPrime = ruleUnifierInverse.apply(parentSub);
         InferenceRule rule = this.propagateConstraints(parentAtom, ruleUnifierInverse);
 
-        if (isTransitive()){
-            ReasonerAtomicQuery query = ReasonerQueries.atomic(parentAtom);
+
+        if (isTransitive() && parentAtom.getApplicableRules().count() == 1){
             return partialSubPrime.isEmpty()?
                     new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, parent) :
                     new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, parent);
         }
+
+
+
         return new RuleState(rule, partialSubPrime, ruleUnifier, parent, visitedSubGoals);
     }
 
@@ -421,12 +424,16 @@ public class InferenceRule {
         Variable to = headDirectionality.getValue();
 
         HashMultimap<Variable, Variable> bodyDirectionality = HashMultimap.create();
+        int[] order = {0};
         getBody().getAtoms(RelationAtom.class)
                 .filter(at -> at.getSchemaConcept() != null)
                 .filter(at -> at.getSchemaConcept().equals(headAtom.getSchemaConcept()))
-                .forEach(at -> at.varDirectionality().forEach(pair -> bodyDirectionality.put(pair.getKey(), pair.getValue())));
+                .forEach(at -> {
+                    at.varDirectionality().forEach(pair -> bodyDirectionality.put(pair.getKey(), pair.getValue()));
+                    order[0]++;
+                });
 
-        return new TarjanSCC<>(bodyDirectionality).successorMap().get(from).contains(to);
+        return order[0] == 2 && new TarjanSCC<>(bodyDirectionality).successorMap().get(from).contains(to);
     }
 
 }

@@ -212,16 +212,13 @@ public class BenchmarkSmallIT {
      */
     @Test
     public void testTransitiveChain()  {
-        //int N = 100;
-        int limit = 10;
-        //int answers = (N+1)*N/2;
-
         System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
-
-
         List<Integer> sizes = Arrays.asList(50, 100, 200, 400, 800);
         for (Integer N : sizes) {
             long start = System.currentTimeMillis();
+            //int N = 100;
+            int limit = 10;
+            int answers = (N+1)*N/2;
             SessionImpl session = server.sessionWithNewKeyspace();
             TransitivityChainGraph transitivityChainGraph = new TransitivityChainGraph(session);
 
@@ -239,8 +236,7 @@ public class BenchmarkSmallIT {
                 //printTimes(tx);
 
                 //GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
-                //assertEquals(answers, tarjanAnswers.size());
-
+                assertEquals(answers, fullAnswers.size());
             }
 
             session.close();
@@ -348,9 +344,6 @@ public class BenchmarkSmallIT {
         }
 
          */
-
-
-
 
     }
 

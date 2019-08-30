@@ -110,13 +110,14 @@ public class TypeHierarchiesIT {
         try (SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "testSet19-recursive.gql", session);
             try (TransactionOLTP tx = session.transaction().write()) {
-                                String baseTypeQuery = "match " +
+                String baseTypeQuery = "match " +
                         "$x isa entity1;" +
                         "$y isa entity1;" +
                         "(role1: $x, role2: $y) isa relation1;";
-                String boundedBaseTypeQuery = baseTypeQuery + "$y has name 'a';";
                 List<ConceptMap> baseRPs = tx.execute(Graql.parse(baseTypeQuery + " get;").asGet());
                 assertEquals(2, baseRPs.size());
+
+                String boundedBaseTypeQuery = baseTypeQuery + "$y has name 'a';";
                 List<ConceptMap> specificBaseRPs = tx.execute(Graql.parse(boundedBaseTypeQuery + " get;").asGet());
                 assertEquals(2, specificBaseRPs.size());
 
