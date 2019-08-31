@@ -490,7 +490,25 @@ public class ReasoningIT {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "testSet28b.gql", session);
             try (TransactionOLTP tx = session.transaction().read()) {
-                
+
+                tx.getRelationType("containment").instances().forEach(System.out::println);
+/*
+                Concept conceptZ = tx.execute(Graql.parse(
+                        "match " +
+                                "($x, $y) isa containment;" +
+                                "($y, $z) isa containment;" +
+                                "$z isa entity3; get;").asGet(), false
+                ).iterator().next().get("z");
+
+
+                List<ConceptMap> execute = tx.execute(Graql.parse("match " +
+                        "(role: $c, role: $b) isa containment;" +
+                        "$c id " + conceptZ.id().getValue() + ";" +
+                        "$c isa entity3;" +
+                        "get;").asGet());
+
+ */
+
                 String queryString = "match " +
                         "$a isa entity1;" +
                         "($a, $b); $b isa entity3;" +
@@ -509,7 +527,6 @@ public class ReasoningIT {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "testSet28b.gql", session);
             try (TransactionOLTP tx = session.transaction().read()) {
-                
 
                 String pattern = "{$a isa entity1;($a, $b); $b isa entity3;};";
                 String pattern2 = "{($c, $d);};";
@@ -546,7 +563,10 @@ public class ReasoningIT {
         try(SessionImpl session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "testSet28b.gql", session);
             try (TransactionOLTP tx = session.transaction().read()) {
-                
+
+                tx.getRelationType("containment").instances().forEach(System.out::println);
+
+                /*
                 String entryPattern = "{" +
                         "$a isa entity1;" +
                         "($a, $b);" +
@@ -554,15 +574,21 @@ public class ReasoningIT {
 
                 List<ConceptMap> entryAnswers = tx.execute(Graql.match(Graql.parsePatternList(entryPattern)).get());
                 assertEquals(3, entryAnswers.size());
+                */
 
                 String partialPattern = "{" +
                         "$a isa entity1;" +
                         "($a, $b); $b isa entity3;" +
                         "($b, $c);" +
                         "};";
+                Concept conceptY = tx.execute(Graql.parse("match $x isa entity1; ($x, $y) isa containment;get;").asGet(), false).iterator().next().get("y");
 
-                List<ConceptMap> partialAnswers = tx.execute(Graql.match(Graql.parsePatternList(partialPattern)).get());
-                assertEquals(4, partialAnswers.size());
+                //List<ConceptMap> execute = tx.execute(Graql.parse("match " +
+                  //      "(role: $x, role: $y) isa containment;" +
+                    //    "$y id " + conceptY.id().getValue() + ";get;").asGet());
+
+                //List<ConceptMap> partialAnswers = tx.execute(Graql.match(Graql.parsePatternList(partialPattern)).get());
+                //assertEquals(4, partialAnswers.size());
                 String queryString = "match " +
                         partialPattern +
                         "($c, $d);" +

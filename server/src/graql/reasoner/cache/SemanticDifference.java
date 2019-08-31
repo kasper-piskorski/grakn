@@ -131,9 +131,9 @@ public class SemanticDifference {
     }
 
     /**
-     * @param answer to parent query - answer we want to propagate
-     * @param childSub partial child substitution that needs to be incorporated
-     * @param childVars       child vars
+     * @param answer     to parent query - answer we want to propagate
+     * @param childSub   partial child substitution that needs to be incorporated
+     * @param childVars  child vars
      * @param unifier    parent->child unifier
      * @return propagated answer to child query or empty answer if semantic difference not satisfied
      */
@@ -144,6 +144,11 @@ public class SemanticDifference {
         if (unified.isEmpty()) return unified;
         Set<Variable> varsToRetain = Sets.difference(unified.vars(), childSub.vars());
         return ConceptUtils.mergeAnswers(unified.project(varsToRetain), childSub).project(childVars);
+    }
+
+    @CheckReturnValue
+    public ConceptMap apply(ConceptMap answer){
+        return this.satisfiedBy(answer)? answer : new ConceptMap();
     }
 
     boolean isEmpty() { return definition.stream().allMatch(VariableDefinition::isTrivial);}

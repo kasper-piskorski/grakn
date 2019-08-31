@@ -32,6 +32,7 @@ import grakn.core.graql.reasoner.atom.binary.AttributeAtom;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
 import grakn.core.graql.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
+import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
@@ -401,14 +402,12 @@ public class InferenceRule {
         ConceptMap partialSubPrime = ruleUnifierInverse.apply(parentSub);
         InferenceRule rule = this.propagateConstraints(parentAtom, ruleUnifierInverse);
 
-
         if (isTransitive() && parentAtom.getApplicableRules().count() == 1){
+            SemanticDifference semanticDiff = getHead().getAtom().semanticDifference(parentAtom, ruleUnifier);
             return partialSubPrime.isEmpty()?
-                    new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, parent) :
-                    new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, parent);
+                    new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent) :
+                    new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent);
         }
-
-
 
         return new RuleState(rule, partialSubPrime, ruleUnifier, parent, visitedSubGoals);
     }

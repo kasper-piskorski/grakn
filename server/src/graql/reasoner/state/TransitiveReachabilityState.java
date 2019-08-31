@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
@@ -45,12 +46,14 @@ public class TransitiveReachabilityState extends ResolutionState {
     private final Unifier unifier;
     private final Iterator<AnswerState> answerStateIterator;
     private final InferenceRule rule;
+    private final SemanticDifference semDiff;
 
-    public TransitiveReachabilityState(InferenceRule rule, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
+    public TransitiveReachabilityState(InferenceRule rule, ConceptMap sub, Unifier u, SemanticDifference diff, AnswerPropagatorState parent) {
         super(sub, parent);
         this.query = rule.getHead();
         this.rule = rule;
         this.unifier = u;
+        this.semDiff = diff;
         this.answerStateIterator = generateAnswerIterator();
     }
 
@@ -79,12 +82,12 @@ public class TransitiveReachabilityState extends ResolutionState {
         Concept startNode = sub.containsVar(from)? sub.get(from) : null;
         Concept endNode = sub.containsVar(to)? sub.get(to) : null;
 
-
         Stream<ConceptMap> answerStream = startNode != null?
                 answerStream(baseQuery, startNode, endNode, from, to, tx) :
                 answerStream(baseQuery, endNode, startNode, to, from, tx);
 
         return answerStream
+                .map(semDiff::apply).filter(ans -> !ans.isEmpty())
                 .map(ans -> new AnswerState(ans, unifier, getParentState(), rule))
                 .iterator();
     }

@@ -24,6 +24,7 @@ import com.google.common.collect.Iterables;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
+import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.rule.InferenceRule;
@@ -40,12 +41,14 @@ public class TransitiveClosureState extends ResolutionState {
     private final Unifier unifier;
     private final Iterator<AnswerState> answerStateIterator;
     private final InferenceRule rule;
+    private final SemanticDifference semDiff;
 
-    public TransitiveClosureState(InferenceRule rule, ConceptMap sub, Unifier u, AnswerPropagatorState parent) {
+    public TransitiveClosureState(InferenceRule rule, ConceptMap sub, Unifier u, SemanticDifference diff, AnswerPropagatorState parent) {
         super(sub, parent);
         this.query = rule.getHead();
         this.rule = rule;
         this.unifier = u;
+        this.semDiff = diff;
         this.answerStateIterator = generateAnswerIterator();
     }
 
@@ -66,6 +69,7 @@ public class TransitiveClosureState extends ResolutionState {
                         ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
                         new LookupExplanation(query.getPattern()))
                 )
+                .map(semDiff::apply).filter(ans -> !ans.isEmpty())
                 .map(ans -> new AnswerState(ans, unifier, getParentState(), rule))
                 .iterator();
 
