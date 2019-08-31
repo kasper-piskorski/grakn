@@ -65,6 +65,8 @@ public class GeoInferenceIT {
         geoGraphSession.close();
     }
 
+
+
     @Test
     public void testEntitiesLocatedInThemselves(){
         try (TransactionOLTP tx = geoGraphSession.transaction().write()) {
