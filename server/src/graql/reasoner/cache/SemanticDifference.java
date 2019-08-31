@@ -103,7 +103,9 @@ public class SemanticDifference {
         }
         if (relations.isEmpty() && !roleRequirements.isEmpty()) return false;
 
-        return definition.stream().allMatch(vd -> {
+        return definition.stream()
+                .filter(vd -> answer.containsVar(vd.var()))
+                .allMatch(vd -> {
             Variable var = vd.var();
             Concept concept = answer.get(var);
             if (concept == null) return false;
