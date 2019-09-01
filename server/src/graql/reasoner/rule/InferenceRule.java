@@ -403,8 +403,11 @@ public class InferenceRule {
         InferenceRule rule = this.propagateConstraints(parentAtom, ruleUnifierInverse);
 
         if (isTransitive() && parentAtom.getApplicableRules().count() == 1){
-            SemanticDifference semanticDiff = getHead().getAtom().semanticDifference(parentAtom, ruleUnifier);
-            return partialSubPrime.isEmpty()?
+            Atom head = getHead().getAtom();
+            SemanticDifference semanticDiff = head.semanticDifference(parentAtom, ruleUnifier);
+            Set<Variable> rpVars = new HashSet<>(head.toRelationAtom().getRoleVarMap().values());
+            //check if we have any starting points
+            return Sets.intersection(partialSubPrime.vars(), rpVars).isEmpty()?
                     new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent) :
                     new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent);
         }
