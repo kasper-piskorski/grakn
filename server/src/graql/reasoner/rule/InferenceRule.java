@@ -35,6 +35,7 @@ import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
+import grakn.core.graql.reasoner.query.ReasonerQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
 import grakn.core.graql.reasoner.query.ResolvableQuery;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
@@ -402,7 +403,8 @@ public class InferenceRule {
         ConceptMap partialSubPrime = ruleUnifierInverse.apply(parentSub);
         InferenceRule rule = this.propagateConstraints(parentAtom, ruleUnifierInverse);
 
-        if (isTransitive() && parentAtom.getApplicableRules().count() == 1){
+        if (isTransitive()
+                && parentAtom.getApplicableRules().map(InferenceRule::getBody).filter(ReasonerQuery::isRuleResolvable).count() == 1){
             Atom head = getHead().getAtom();
             SemanticDifference semanticDiff = head.semanticDifference(parentAtom, ruleUnifier);
             Set<Variable> rpVars = new HashSet<>(head.toRelationAtom().getRoleVarMap().values());

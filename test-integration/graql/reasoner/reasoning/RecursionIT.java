@@ -385,19 +385,34 @@ public class RecursionIT {
     @Test
     public void testPathTree() {
         try (SessionImpl session = server.sessionWithNewKeyspace()) {
-            final int N = 2;
+            final int N = 3;
             final int depth = 3;
             PathTreeGraph graph = new PathTreeGraph(session);
             graph.load(N, depth);
             try (TransactionOLTP tx = session.transaction().write()) {
-                String query = "match (path-from: $x, path-to: $y) isa path;" +
+                String tcQuery = "match " +
+                        "(path-from: $x, path-to: $y) isa path;" +
+                        "get;";
+
+                List<ConceptMap> tc = tx.execute(Graql.parse(tcQuery).asGet());
+            }
+
+            try (TransactionOLTP tx = session.transaction().write()) {
+                String reachabilityQuery = "match " +
+                        "(path-from: $x, path-to: $y) isa path;" +
                         "$x has index 'a0';" +
                         "get $y;";
                 String explicitQuery = "match $y isa vertex; get;";
-                GraqlTestUtil.assertCollectionsNonTriviallyEqual(tx.execute(Graql.parse(explicitQuery).asGet(), false), tx.execute(Graql.parse(query).asGet()));
+                GraqlTestUtil.assertCollectionsNonTriviallyEqual(
+                        tx.execute(Graql.parse(explicitQuery).asGet(), false),
+                        tx.execute(Graql.parse(reachabilityQuery).asGet()));
+
+                tx.profiler().print();
 
                 String noRoleQuery = "match ($x, $y) isa path;$x has index 'a0'; get $y;";
-                GraqlTestUtil.assertCollectionsNonTriviallyEqual(tx.execute(Graql.parse(explicitQuery).asGet(), false), tx.execute(Graql.parse(noRoleQuery).asGet()));
+                GraqlTestUtil.assertCollectionsNonTriviallyEqual(
+                        tx.execute(Graql.parse(explicitQuery).asGet(), false),
+                        tx.execute(Graql.parse(noRoleQuery).asGet()));
             }
         }
     }
@@ -410,15 +425,19 @@ public class RecursionIT {
             PathMatrixGraph graph = new PathMatrixGraph(session);
             graph.load(pathSize, pathSize);
             try (TransactionOLTP tx = session.transaction().write()) {
-                String query = "match (path-from: $x, path-to: $y) isa path;$x has index 'a0'; get $y;";
+                String reachabilityQuery = "match (path-from: $x, path-to: $y) isa path;$x has index 'a0'; get $y;";
                 String explicit = "match $y isa vertex; get;";
 
-                GraqlTestUtil.assertCollectionsNonTriviallyEqual(tx.execute(Graql.parse(explicit).asGet(), false), tx.execute(Graql.parse(query).asGet()));
+                GraqlTestUtil.assertCollectionsNonTriviallyEqual(
+                        tx.execute(Graql.parse(explicit).asGet(), false),
+                        tx.execute(Graql.parse(reachabilityQuery).asGet()));
 
                 String noRoleQuery = "match ($x, $y) isa path;$x has index 'a0'; $y has index $ind;get $y, $ind;";
                 String explicitWithIndices = "match $y isa vertex;$y has index $ind; get;";
 
-                GraqlTestUtil.assertCollectionsNonTriviallyEqual(tx.execute(Graql.parse(explicitWithIndices).asGet(), false), tx.execute(Graql.parse(noRoleQuery).asGet()));
+                GraqlTestUtil.assertCollectionsNonTriviallyEqual(
+                        tx.execute(Graql.parse(explicitWithIndices).asGet(), false),
+                        tx.execute(Graql.parse(noRoleQuery).asGet()));
             }
         }
     }

@@ -34,6 +34,7 @@ import grakn.core.graql.reasoner.utils.Pair;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;
 import java.util.Iterator;
+import java.util.stream.Stream;
 
 public class TransitiveClosureState extends ResolutionState {
 
@@ -52,13 +53,20 @@ public class TransitiveClosureState extends ResolutionState {
         this.answerStateIterator = generateAnswerIterator();
     }
 
+    private Stream<ConceptMap> queryAnswerStream(ReasonerAtomicQuery query, TransactionOLTP tx){
+        return Stream.concat(
+                tx.queryCache().getAnswerStream(query),
+                query.equivalentAnswerStream()
+        );
+    }
+
     private Iterator<AnswerState> generateAnswerIterator(){
         HashMultimap<Concept, Concept> conceptGraph = HashMultimap.create();
         TransactionOLTP tx = query.tx();
 
         RelationAtom relationAtom = query.getAtom().toRelationAtom();
         Pair<Variable, Variable> varPair = Iterables.getOnlyElement(relationAtom.varDirectionality());
-        tx.queryCache().getAnswerStream(query)
+        queryAnswerStream(query, tx)
                 .forEach(ans -> {
             Concept from = ans.get(varPair.getKey());
             Concept to = ans.get(varPair.getValue());

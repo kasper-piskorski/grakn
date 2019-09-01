@@ -19,6 +19,7 @@
 package grakn.core.graql.reasoner.benchmark;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableMap;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
@@ -36,12 +37,15 @@ import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.rule.GraknTestServer;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
+import grakn.core.util.GraqlTestUtil;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -283,7 +287,7 @@ public class BenchmarkSmallIT {
 
         List<Integer> sizes = Arrays.asList(10, 20, 30, 40, 50);
 
-        int N = 10;
+        int N = 20;
         //for (Integer N : sizes) {
 
         int limit = 1000;
@@ -327,6 +331,38 @@ public class BenchmarkSmallIT {
             GraqlTestUtil.assertCollectionsEqual(fullAnswers, tarjanAnswers);
 
              */
+        }
+
+        try(TransactionOLTP tx = session.transaction().write()) {
+            String index = "a";
+            Concept startConcept = tx.execute(Graql.parse("match $x has index '" + index +"'; get;").asGet()).iterator().next().get("x");
+            String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$x id " + startConcept.id().getValue() + "; get;";
+            GraqlGet query3 = Graql.parse(queryString3).asGet();
+
+            List<ConceptMap> specificAnswers = executeQuery(query3, tx, "With start node id");
+
+            HashMultimap<Concept, Concept> tarjanTC = tarjanTC(query, tx);
+            List<ConceptMap> tarjanSpecificAnswers = tarjanTC.get(startConcept).stream()
+                    .map(target -> new ConceptMap(ImmutableMap.of(new Variable("x"), startConcept, new Variable("y"), target)))
+                    .collect(Collectors.toList());
+            GraqlTestUtil.assertCollectionsEqual(specificAnswers, tarjanSpecificAnswers);
+        }
+
+        try(TransactionOLTP tx = session.transaction().write()) {
+            String index = "a" + (N-1) + "," + (N-1);
+            Concept endConcept = tx.execute(Graql.parse("match $x has index '" + index +"'; get;").asGet()).iterator().next().get("x");
+            String queryString3 = "match (Q-from: $x, Q-to: $y) isa Q;$y id " + endConcept.id().getValue() + "; get;";
+            GraqlGet query3 = Graql.parse(queryString3).asGet();
+
+            List<ConceptMap> specificAnswers = executeQuery(query3, tx, "With end node id");
+
+            HashMultimap<Concept, Concept> tarjanTC = tarjanTC(query, tx);
+            List<ConceptMap> tarjanSpecificAnswers = tarjanTC.entries().stream()
+                    .filter(e -> e.getValue().equals(endConcept))
+                    .map(Map.Entry::getKey)
+                    .map(src -> new ConceptMap(ImmutableMap.of(new Variable("y"), endConcept, new Variable("x"), src)))
+                    .collect(Collectors.toList());
+            GraqlTestUtil.assertCollectionsEqual(specificAnswers, tarjanSpecificAnswers);
         }
 
 

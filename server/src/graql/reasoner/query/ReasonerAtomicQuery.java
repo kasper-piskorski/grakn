@@ -29,6 +29,7 @@ import grakn.core.graql.reasoner.atom.AtomicFactory;
 import grakn.core.graql.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
+import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.graql.reasoner.rule.RuleUtils;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.AnswerState;
@@ -134,6 +135,29 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      */
     public Atom getAtom() {
         return atom;
+    }
+
+    public Stream<ResolvableQuery> equivalentQueries(){
+        return getAtom().getApplicableRules().map(InferenceRule::getBody).filter(r -> !isRuleResolvable());
+    }
+
+    public Stream<ConceptMap> equivalentAnswerStream(){
+        return getAtom().getApplicableRules()
+                .filter(r -> !r.getBody().isRuleResolvable())
+                .map(r -> new Pair<>(r.getBody(), r.getHead().getMultiUnifier(this, UnifierType.RULE)))
+                .flatMap(p -> {
+                    ResolvableQuery q = p.getKey();
+                    MultiUnifier unifier = p.getValue();
+                    if (q.isAtomic()){
+                        ReasonerAtomicQuery query = (ReasonerAtomicQuery) q;
+                        return tx().queryCache().getAnswerStream(query)
+                                .flatMap(unifier::apply)
+                                .peek(ans -> tx().queryCache().record(query, ans));
+                    }
+                    return tx().stream(q.getQuery(), false)
+                            .flatMap(unifier::apply)
+                            .map(ans -> ans.project(getVarNames()));
+                });
     }
 
     /**

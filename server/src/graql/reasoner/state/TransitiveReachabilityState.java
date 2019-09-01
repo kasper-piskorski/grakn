@@ -57,10 +57,16 @@ public class TransitiveReachabilityState extends ResolutionState {
         this.answerStateIterator = generateAnswerIterator();
     }
 
+    private Stream<ConceptMap> queryAnswerStream(ReasonerAtomicQuery query, TransactionOLTP tx){
+        return Stream.concat(
+                tx.queryCache().getAnswerStream(query),
+                query.equivalentAnswerStream()
+        );
+    }
+
     private Function<Concept, Stream<Concept>> neighbourFunction(ReasonerAtomicQuery baseQuery, Variable from, Variable to, TransactionOLTP tx){
-        return (node) ->
-                tx.queryCache().getAnswerStream(baseQuery.withSubstitution(new ConceptMap(ImmutableMap.of(from, node))))
-                        .map(ans -> ans.get(to));
+        return (node) -> queryAnswerStream(baseQuery.withSubstitution(new ConceptMap(ImmutableMap.of(from, node))), tx)
+                .map(ans -> ans.get(to));
     }
 
     private Stream<ConceptMap> answerStream(ReasonerAtomicQuery baseQuery, Concept startNode, Concept endNode, Variable from, Variable to, TransactionOLTP tx){
@@ -94,6 +100,7 @@ public class TransitiveReachabilityState extends ResolutionState {
 
     @Override
     public ResolutionState generateChildState() {
+        //TODO ack cache completion here
         return answerStateIterator.hasNext() ? answerStateIterator.next() : null;
     }
 }
