@@ -20,12 +20,14 @@ package grakn.core.graql.reasoner.benchmark;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
+import grakn.core.api.Transaction;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
 import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
+import grakn.core.graql.reasoner.LazyIterator;
 import grakn.core.graql.reasoner.cache.IndexedAnswerSet;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
@@ -35,6 +37,7 @@ import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
 import grakn.core.graql.reasoner.state.AtomicState;
 import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.server.keyspace.KeyspaceImpl;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
 import grakn.core.util.GraqlTestUtil;
@@ -42,7 +45,9 @@ import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -57,6 +62,59 @@ public class BenchmarkSmallIT {
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
+
+    @Test
+    public void lazyIteratorTest() {
+        int N = 10;
+        SessionImpl session = server.sessionWithNewKeyspace();
+        TransitivityMatrixGraph transitivityMatrixGraph = new TransitivityMatrixGraph(session);
+
+        transitivityMatrixGraph.load(N, N);
+
+        try(TransactionOLTP tx = session.transaction().read()){
+            GraqlGet query = Graql.parse("match (Q-from: $x, Q-to: $y) isa Q;get;").asGet();
+
+            List<ConceptMap> fullAnswers = tx.execute(query, false);
+            List<ConceptMap> answers = new ArrayList<>();
+            List<ConceptMap> otherAnswers = new ArrayList<>();
+            LazyIterator<ConceptMap> baseIter = new LazyIterator<>(tx.stream(query, false));
+
+
+
+            Iterator<ConceptMap> answerIter = baseIter.iterator();
+
+            ConceptMap next1 = answerIter.next();
+            otherAnswers.add(next1);
+
+            Iterator<ConceptMap> anotherIter = baseIter.iterator();
+
+            ConceptMap next = anotherIter.next();
+            answers.add(next);
+
+            while(anotherIter.hasNext()) otherAnswers.add(anotherIter.next());
+
+            while(answerIter.hasNext()) answers.add(answerIter.next());
+
+            System.out.println();
+
+        }
+    }
+
+    @Test
+    public void test(){
+        SessionImpl session = server.sessionFactory().session(KeyspaceImpl.of("hierarchy_sample"));
+
+        try (Transaction tx = session.transaction().write()) {
+            GraqlGet query = Graql.parse("match " +
+                    "$sspprof isa sound_speed_profile, has sound_speed_class 'f';" +
+                    "(superior_water_in_scenario: $sc, subordinate_water_in_scenario:$sspprof) isa water_in_scenario_hierarchy; get;").asGet();
+            long start = System.currentTimeMillis();
+            List<ConceptMap> answers = tx.execute(query);
+            System.out.println("execute time: " + (System.currentTimeMillis() - start));
+        }
+
+        session.close();
+    }
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:

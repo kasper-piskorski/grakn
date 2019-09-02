@@ -409,9 +409,13 @@ public class InferenceRule {
             SemanticDifference semanticDiff = head.semanticDifference(parentAtom, ruleUnifier);
             Set<Variable> rpVars = new HashSet<>(head.toRelationAtom().getRoleVarMap().values());
             //check if we have any starting points
+            return new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent);
+            /*
             return Sets.intersection(partialSubPrime.vars(), rpVars).isEmpty()?
                     new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent) :
                     new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent);
+
+             */
         }
 
         return new RuleState(rule, partialSubPrime, ruleUnifier, parent, visitedSubGoals);

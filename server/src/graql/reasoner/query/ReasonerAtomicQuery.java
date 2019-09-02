@@ -152,7 +152,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
                         ReasonerAtomicQuery query = (ReasonerAtomicQuery) q;
                         return tx().queryCache().getAnswerStream(query)
                                 .flatMap(unifier::apply)
-                                .peek(ans -> tx().queryCache().record(query, ans));
+                                .map(ans -> ans.project(getVarNames()));
                     }
                     return tx().stream(q.getQuery(), false)
                             .flatMap(unifier::apply)

@@ -44,6 +44,8 @@ public class TransitiveClosureState extends ResolutionState {
     private final InferenceRule rule;
     private final SemanticDifference semDiff;
 
+    private final long startTime;
+
     public TransitiveClosureState(InferenceRule rule, ConceptMap sub, Unifier u, SemanticDifference diff, AnswerPropagatorState parent) {
         super(sub, parent);
         this.query = rule.getHead();
@@ -51,6 +53,7 @@ public class TransitiveClosureState extends ResolutionState {
         this.unifier = u;
         this.semDiff = diff;
         this.answerStateIterator = generateAnswerIterator();
+        this.startTime = System.currentTimeMillis();
     }
 
     private Stream<ConceptMap> queryAnswerStream(ReasonerAtomicQuery query, TransactionOLTP tx){
@@ -66,18 +69,26 @@ public class TransitiveClosureState extends ResolutionState {
 
         RelationAtom relationAtom = query.getAtom().toRelationAtom();
         Pair<Variable, Variable> varPair = Iterables.getOnlyElement(relationAtom.varDirectionality());
+        Variable from = varPair.getKey();
+        Variable to = varPair.getValue();
         queryAnswerStream(query, tx)
                 .forEach(ans -> {
-            Concept from = ans.get(varPair.getKey());
-            Concept to = ans.get(varPair.getValue());
-            conceptGraph.put(from, to);
+            Concept src = ans.get(from);
+            Concept dst = ans.get(to);
+            conceptGraph.put(src, dst);
         });
+
+        ConceptMap sub = getSubstitution();
+        Concept startNode = sub.containsVar(from) ? sub.get(from) : null;
+        Concept endNode = sub.containsVar(to)? sub.get(to) : null;
 
         return new IterativeTarjanTC<>(conceptGraph).stream().map(e -> new ConceptMap(
                         ImmutableMap.of(varPair.getKey(), e.getKey(), varPair.getValue(), e.getValue()),
                         new LookupExplanation(query.getPattern()))
                 )
                 .map(semDiff::apply).filter(ans -> !ans.isEmpty())
+                .filter(ans -> startNode == null || ans.get(from).equals(startNode))
+                .filter(ans -> endNode == null || ans.get(to).equals(endNode))
                 .map(ans -> new AnswerState(ans, unifier, getParentState(), rule))
                 .iterator();
 
@@ -85,6 +96,12 @@ public class TransitiveClosureState extends ResolutionState {
 
     @Override
     public ResolutionState generateChildState() {
-        return answerStateIterator.hasNext() ? answerStateIterator.next() : null;
+        if (answerStateIterator.hasNext()) return answerStateIterator.next();
+
+        ConceptMap sub = getSubstitution();
+        ReasonerAtomicQuery queryToCache = getSubstitution().isEmpty() ? query : query.withSubstitution(sub);
+        System.out.println("TC time: " + (System.currentTimeMillis() - startTime));
+        query.tx().queryCache().ackCompleteness(queryToCache);
+        return null;
     }
 }

@@ -34,7 +34,9 @@ import grakn.core.server.session.TransactionOLTP;
 import graql.lang.statement.Variable;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -48,6 +50,8 @@ public class TransitiveReachabilityState extends ResolutionState {
     private final InferenceRule rule;
     private final SemanticDifference semDiff;
 
+    private final long startTime;
+
     public TransitiveReachabilityState(InferenceRule rule, ConceptMap sub, Unifier u, SemanticDifference diff, AnswerPropagatorState parent) {
         super(sub, parent);
         this.query = rule.getHead();
@@ -55,13 +59,22 @@ public class TransitiveReachabilityState extends ResolutionState {
         this.unifier = u;
         this.semDiff = diff;
         this.answerStateIterator = generateAnswerIterator();
+        this.startTime = System.currentTimeMillis();
     }
 
+    long nodes = 0;
+
     private Stream<ConceptMap> queryAnswerStream(ReasonerAtomicQuery query, TransactionOLTP tx){
-        return Stream.concat(
+        System.out.println("query: " + query);
+        long start = System.currentTimeMillis();
+        Set<ConceptMap> collect = Stream.concat(
                 tx.queryCache().getAnswerStream(query),
                 query.equivalentAnswerStream()
-        );
+        ).collect(Collectors.toSet());
+        System.out.println("db time: " + (System.currentTimeMillis() - start));
+        System.out.println("node: " + nodes++);
+        System.out.println();
+        return collect.stream();
     }
 
     private Function<Concept, Stream<Concept>> neighbourFunction(ReasonerAtomicQuery baseQuery, Variable from, Variable to, TransactionOLTP tx){
