@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -66,7 +66,7 @@ public class RelatesExecutor implements PropertyExecutor.Definable {
     public Atomic atomic(ReasonerQuery parent, Statement statement, Set<Statement> otherStatements) {
         IdPredicate predicate = getIdPredicate(property.role().var(), property.role(), otherStatements, parent);
         ConceptId predicateId = predicate != null ? predicate.getPredicate() : null;
-        return RelatesAtom.create(var.asReturnedVar(), property.role().var(), predicateId, parent);
+        return RelatesAtom.create(var, property.role().var(), predicateId, parent);
     }
 
     @Override

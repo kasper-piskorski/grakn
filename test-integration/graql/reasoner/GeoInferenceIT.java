@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,6 +20,7 @@ package grakn.core.graql.reasoner;
 
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.concept.thing.Relation;
 import grakn.core.graql.reasoner.graph.GeoGraph;
 import grakn.core.rule.GraknTestServer;
 import grakn.core.server.session.SessionImpl;
@@ -27,6 +28,7 @@ import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Statement;
 import org.apache.commons.collections.CollectionUtils;
 import org.junit.AfterClass;
@@ -62,6 +64,8 @@ public class GeoInferenceIT {
     public static void closeSession(){
         geoGraphSession.close();
     }
+
+
 
     @Test
     public void testEntitiesLocatedInThemselves(){

@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,7 +34,8 @@ public abstract class IsAbstractAtom extends AtomicBase {
     @Override public abstract Statement getPattern();
     @Override public abstract ReasonerQuery getParentQuery();
 
-    public static IsAbstractAtom create(Variable varName, ReasonerQuery parent) {
+    public static IsAbstractAtom create(Variable var, ReasonerQuery parent) {
+        Variable varName = var.asReturnedVar();
         return new AutoValue_IsAbstractAtom(varName, new Statement(varName).isAbstract(), parent);
     }
 

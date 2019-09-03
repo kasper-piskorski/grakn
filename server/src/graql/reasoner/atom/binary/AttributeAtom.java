@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,6 +28,7 @@ import grakn.core.concept.Label;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Attribute;
 import grakn.core.concept.thing.Relation;
+import grakn.core.concept.type.AttributeType;
 import grakn.core.concept.type.Rule;
 import grakn.core.concept.type.SchemaConcept;
 import grakn.core.concept.type.Type;
@@ -44,7 +45,7 @@ import grakn.core.graql.reasoner.cache.VariableDefinition;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.graql.reasoner.query.ReasonerQuery;
-import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.query.ResolvableQuery;
 import grakn.core.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
@@ -54,10 +55,12 @@ import grakn.core.server.kb.concept.AttributeTypeImpl;
 import grakn.core.server.kb.concept.ConceptUtils;
 import grakn.core.server.kb.concept.EntityImpl;
 import grakn.core.server.kb.concept.RelationImpl;
+import grakn.core.server.kb.concept.ValueConverter;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.property.HasAttributeProperty;
+import graql.lang.property.ValueProperty;
 import graql.lang.property.VarProperty;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
@@ -102,8 +105,34 @@ public abstract class AttributeAtom extends Binary{
         return create(a.getPattern(), a.getAttributeVariable(), a.getRelationVariable(), a.getPredicateVariable(), a.getTypeId(), a.getMultiPredicate(), parent);
     }
 
+    private AttributeAtom convertValues(){
+        SchemaConcept type = getSchemaConcept();
+        AttributeType<Object> attributeType = type.isAttributeType()? type.asAttributeType() : null;
+        if (attributeType == null || Schema.MetaSchema.isMetaLabel(attributeType.label())) return this;
+
+        AttributeType.DataType<Object> dataType = attributeType.dataType();
+        Set<ValuePredicate> newMultiPredicate = this.getMultiPredicate().stream().map(vp -> {
+            Object value = vp.getPredicate().value();
+            if (value == null) return vp;
+            Object convertedValue;
+            try {
+                convertedValue = ValueConverter.of(dataType).convert(value);
+            } catch (ClassCastException e){
+                throw GraqlSemanticException.incompatibleAttributeValue(dataType, value);
+            }
+            ValueProperty.Operation operation = ValueProperty.Operation.Comparison.of(vp.getPredicate().comparator(), convertedValue);
+            return ValuePredicate.create(vp.getVarName(), operation, getParentQuery());
+        }).collect(Collectors.toSet());
+        return create(getPattern(), getAttributeVariable(), getRelationVariable(), getPredicateVariable(), getTypeId(), newMultiPredicate, getParentQuery());
+    }
+
     @Override
     public Atomic copy(ReasonerQuery parent){ return create(this, parent);}
+
+    @Override
+    public Atomic simplify() {
+        return this.convertValues();
+    }
 
     @Override
     public Class<? extends VarProperty> getVarPropertyClass() { return HasAttributeProperty.class;}
@@ -257,7 +286,7 @@ public abstract class AttributeAtom extends Binary{
     public Set<String> validateAsRuleHead(Rule rule){
         Set<String> errors = super.validateAsRuleHead(rule);
         if (getSchemaConcept() == null || getMultiPredicate().size() > 1){
-            errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_RESOURCE_WITH_AMBIGUOUS_PREDICATES.getMessage(rule.then(), rule.label()));
+            errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_ATTRIBUTE_WITH_AMBIGUOUS_PREDICATES.getMessage(rule.then(), rule.label()));
         }
         if (getMultiPredicate().isEmpty()){
             boolean predicateBound = getParentQuery().getAtoms(Atom.class)
@@ -271,8 +300,22 @@ public abstract class AttributeAtom extends Binary{
         getMultiPredicate().stream()
                 .filter(p -> !p.getPredicate().isValueEquality())
                 .forEach( p ->
-                        errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_RESOURCE_WITH_NONSPECIFIC_PREDICATE.getMessage(rule.then(), rule.label()))
+                        errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_ATTRIBUTE_WITH_NONSPECIFIC_PREDICATE.getMessage(rule.then(), rule.label()))
                 );
+
+        if(getMultiPredicate().isEmpty()) {
+            Variable attrVar = getAttributeVariable();
+            AttributeType.DataType<Object> dataType = getSchemaConcept().asAttributeType().dataType();
+            ResolvableQuery body = tx().ruleCache().getRule(rule).getBody();
+            ErrorMessage incompatibleValuesMsg = ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_COPYING_INCOMPATIBLE_ATTRIBUTE_VALUES;
+            body.getAtoms(AttributeAtom.class)
+                    .filter(at -> at.getAttributeVariable().equals(attrVar))
+                    .map(Binary::getSchemaConcept)
+                    .filter(type -> !type.asAttributeType().dataType().equals(dataType))
+                    .forEach(type ->
+                            errors.add(incompatibleValuesMsg.getMessage(getSchemaConcept().label(), rule.label(), type.label()))
+                    );
+        }
         return errors;
     }
 
@@ -414,9 +457,11 @@ public abstract class AttributeAtom extends Binary{
         //if the attribute already exists, only attach a new link to the owner, otherwise create a new attribute
         Attribute attribute = null;
         if(this.isValueEquality()){
-            Object value = Iterables.getOnlyElement(getMultiPredicate()).getPredicate().value();
-            Attribute existingAttribute = attributeType.attribute(value);
-            attribute = existingAttribute == null? attributeType.putAttributeInferred(value) : existingAttribute;
+            ValuePredicate vp = Iterables.getOnlyElement(getMultiPredicate());
+            Object value = vp.getPredicate().value();
+            Object persistedValue = ValueConverter.of(attributeType.dataType()).convert(value);
+            Attribute existingAttribute = attributeType.attribute(persistedValue);
+            attribute = existingAttribute == null? attributeType.putAttributeInferred(persistedValue) : existingAttribute;
         } else {
             Attribute existingAttribute = substitution.containsVar(resourceVariable)? substitution.get(resourceVariable).asAttribute() : null;
             //even if the attribute exists but is of different type (supertype for instance) we create a new one

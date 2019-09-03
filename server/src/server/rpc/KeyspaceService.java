@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,17 +20,10 @@ package grakn.core.server.rpc;
 
 import grakn.protocol.keyspace.KeyspaceProto;
 import grakn.protocol.keyspace.KeyspaceServiceGrpc;
-import grakn.core.server.keyspace.KeyspaceImpl;
-import grakn.core.server.keyspace.KeyspaceManager;
-import grakn.core.server.session.JanusGraphFactory;
-import grakn.core.server.session.SessionFactory;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.stream.Collectors;
 
 /**
  * Grakn RPC Keyspace Service
@@ -38,26 +31,16 @@ import java.util.stream.Collectors;
 public class KeyspaceService extends KeyspaceServiceGrpc.KeyspaceServiceImplBase {
     private final Logger LOG = LoggerFactory.getLogger(KeyspaceService.class);
 
-    private final KeyspaceManager keyspaceStore;
-    private SessionFactory sessionFactory;
-    private JanusGraphFactory janusGraphFactory;
+    private final KeyspaceRequestsHandler requestsHandler;
 
-    public KeyspaceService(KeyspaceManager keyspaceStore, SessionFactory sessionFactory, JanusGraphFactory janusGraphFactory) {
-        this.keyspaceStore = keyspaceStore;
-        this.sessionFactory = sessionFactory;
-        this.janusGraphFactory = janusGraphFactory;
-    }
-
-    @Override
-    public void create(KeyspaceProto.Keyspace.Create.Req request, StreamObserver<KeyspaceProto.Keyspace.Create.Res> response) {
-        response.onError(new StatusRuntimeException(Status.UNIMPLEMENTED));
+    public KeyspaceService(KeyspaceRequestsHandler handler) {
+        this.requestsHandler = handler;
     }
 
     @Override
     public void retrieve(KeyspaceProto.Keyspace.Retrieve.Req request, StreamObserver<KeyspaceProto.Keyspace.Retrieve.Res> response) {
         try {
-            Iterable<String> list = keyspaceStore.keyspaces().stream().map(KeyspaceImpl::name)
-                    .collect(Collectors.toSet());
+            Iterable<String> list = this.requestsHandler.retrieve(request);
             response.onNext(KeyspaceProto.Keyspace.Retrieve.Res.newBuilder().addAllNames(list).build());
             response.onCompleted();
         } catch (RuntimeException e) {
@@ -69,17 +52,9 @@ public class KeyspaceService extends KeyspaceServiceGrpc.KeyspaceServiceImplBase
     @Override
     public void delete(KeyspaceProto.Keyspace.Delete.Req request, StreamObserver<KeyspaceProto.Keyspace.Delete.Res> response) {
         try {
-            KeyspaceImpl keyspace = KeyspaceImpl.of(request.getName());
-            // removing references to open keyspaces JanusGraph instances
-            sessionFactory.deleteKeyspace(keyspace);
-            // remove the keyspace from the system keyspace
-            keyspaceStore.deleteKeyspace(keyspace);
-            // actually remove the keyspace
-            janusGraphFactory.drop(keyspace.name());
-
+            this.requestsHandler.delete(request);
             response.onNext(KeyspaceProto.Keyspace.Delete.Res.getDefaultInstance());
             response.onCompleted();
-
         } catch (RuntimeException e) {
             LOG.error("Exception during keyspace deletion.", e);
             response.onError(ResponseBuilder.exception(e));

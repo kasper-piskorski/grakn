@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,17 +18,20 @@
 
 package grakn.core.server;
 
+import com.datastax.driver.core.Cluster;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.common.config.Config;
 import grakn.core.common.config.ConfigKey;
 import grakn.core.server.keyspace.KeyspaceManager;
+import grakn.core.server.rpc.KeyspaceRequestsHandler;
 import grakn.core.server.rpc.KeyspaceService;
 import grakn.core.server.rpc.OpenRequest;
+import grakn.core.server.rpc.ServerKeyspaceRequestsHandler;
 import grakn.core.server.rpc.ServerOpenRequest;
 import grakn.core.server.rpc.SessionService;
+import grakn.core.server.session.HadoopGraphFactory;
 import grakn.core.server.session.JanusGraphFactory;
 import grakn.core.server.session.SessionFactory;
-import grakn.core.server.util.ServerID;
 import grakn.core.server.util.LockManager;
 import io.grpc.ServerBuilder;
 
@@ -36,6 +39,7 @@ import io.grpc.ServerBuilder;
  * This is a factory class which contains methods for instantiating a Server in different ways.
  */
 public class ServerFactory {
+
     /**
      * Create a Server configured for Grakn Core.
      *
@@ -43,7 +47,6 @@ public class ServerFactory {
      */
     public static Server createServer(boolean benchmark) {
         // Grakn Server configuration
-        ServerID serverID = ServerID.me();
         Config config = Config.create();
 
         JanusGraphFactory janusGraphFactory = new JanusGraphFactory(config);
@@ -51,10 +54,17 @@ public class ServerFactory {
         // locks
         LockManager lockManager = new LockManager();
 
-        KeyspaceManager keyspaceStore = new KeyspaceManager(janusGraphFactory, config);
+        // CQL cluster used by KeyspaceManager to fetch all existing keyspaces
+        Cluster cluster = Cluster.builder()
+                .addContactPoint(config.getProperty(ConfigKey.STORAGE_HOSTNAME))
+                .withPort(config.getProperty(ConfigKey.STORAGE_CQL_NATIVE_PORT))
+                .build();
+
+        KeyspaceManager keyspaceManager = new KeyspaceManager(cluster);
+        HadoopGraphFactory hadoopGraphFactory = new HadoopGraphFactory(config);
 
         // session factory
-        SessionFactory sessionFactory = new SessionFactory(lockManager, janusGraphFactory, keyspaceStore, config);
+        SessionFactory sessionFactory = new SessionFactory(lockManager, janusGraphFactory, hadoopGraphFactory, config);
 
         // Enable server tracing
         if (benchmark) {
@@ -62,9 +72,9 @@ public class ServerFactory {
         }
 
         // create gRPC server
-        io.grpc.Server serverRPC = createServerRPC(config, sessionFactory, keyspaceStore, janusGraphFactory);
+        io.grpc.Server serverRPC = createServerRPC(config, sessionFactory, keyspaceManager, janusGraphFactory);
 
-        return createServer(serverID, serverRPC, keyspaceStore);
+        return createServer(serverRPC);
     }
 
     /**
@@ -73,25 +83,28 @@ public class ServerFactory {
      * @return a Server instance
      */
 
-    public static Server createServer(ServerID serverID, io.grpc.Server rpcServer, KeyspaceManager keyspaceStore) {
-        Server server = new Server(serverID, rpcServer, keyspaceStore);
+    public static Server createServer(io.grpc.Server rpcServer) {
+        Server server = new Server(rpcServer);
 
         Runtime.getRuntime().addShutdownHook(new Thread(server::close, "grakn-server-shutdown"));
 
         return server;
     }
 
-    private static io.grpc.Server createServerRPC(Config config, SessionFactory sessionFactory, KeyspaceManager keyspaceStore, JanusGraphFactory janusGraphFactory) {
+    private static io.grpc.Server createServerRPC(Config config, SessionFactory sessionFactory, KeyspaceManager keyspaceManager, JanusGraphFactory janusGraphFactory) {
         int grpcPort = config.getProperty(ConfigKey.GRPC_PORT);
         OpenRequest requestOpener = new ServerOpenRequest(sessionFactory);
 
         SessionService sessionService = new SessionService(requestOpener);
 
+        KeyspaceRequestsHandler requestsHandler = new ServerKeyspaceRequestsHandler(
+                keyspaceManager, sessionFactory, janusGraphFactory);
+
         Runtime.getRuntime().addShutdownHook(new Thread(sessionService::shutdown, "session-service-shutdown"));
 
         return ServerBuilder.forPort(grpcPort)
                 .addService(sessionService)
-                .addService(new KeyspaceService(keyspaceStore, sessionFactory, janusGraphFactory))
+                .addService(new KeyspaceService(requestsHandler))
                 .build();
     }
 

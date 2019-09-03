@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -135,15 +135,12 @@ public class HasAttributeTypeExecutor implements PropertyExecutor.Definable {
     @Override
     public Atomic atomic(ReasonerQuery parent, Statement statement, Set<Statement> otherStatements) {
         //NB: HasResourceType is a special case and it doesn't allow variables as resource types
-        Variable varName = var.asReturnedVar();
         String label = property.attributeType().getType().orElse(null);
 
         Variable predicateVar = new Variable();
         SchemaConcept attributeType = parent.tx().getSchemaConcept(Label.of(label));
         ConceptId predicateId = attributeType != null ? attributeType.id() : null;
-        //isa part
-        Statement resVar = new Statement(varName).has(Graql.type(label));
-        return HasAtom.create(resVar, predicateVar, predicateId, parent);
+        return HasAtom.create(var, predicateVar, predicateId, parent);
     }
 
     @Override

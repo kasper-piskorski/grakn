@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,7 +37,8 @@ public abstract class DataTypeAtom extends AtomicBase {
     @Override public abstract ReasonerQuery getParentQuery();
     public abstract AttributeType.DataType<?> getDataType();
 
-    public static DataTypeAtom create(Variable varName, DataTypeProperty prop, ReasonerQuery parent, AttributeType.DataType<?> dataType) {
+    public static DataTypeAtom create(Variable var, DataTypeProperty prop, ReasonerQuery parent, AttributeType.DataType<?> dataType) {
+        Variable varName = var.asReturnedVar();
         return new AutoValue_DataTypeAtom(varName, new Statement(varName).datatype(prop.dataType()), parent, dataType);
     }
 

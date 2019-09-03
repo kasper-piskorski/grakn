@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -36,7 +36,8 @@ public abstract class RegexAtom extends AtomicBase {
     @Override public abstract ReasonerQuery getParentQuery();
     public abstract String getRegex();
 
-    public static RegexAtom create(Variable varName, RegexProperty prop, ReasonerQuery parent) {
+    public static RegexAtom create(Variable var, RegexProperty prop, ReasonerQuery parent) {
+        Variable varName = var.asReturnedVar();
         return new AutoValue_RegexAtom(varName, new Statement(varName).regex(prop.regex()), parent, prop.regex());
     }
 

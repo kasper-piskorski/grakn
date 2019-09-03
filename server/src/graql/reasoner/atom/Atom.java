@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -230,7 +230,7 @@ public abstract class Atom extends AtomicBase {
         if (applicableRules == null) {
             applicableRules = new HashSet<>();
             getPotentialRules()
-                    .map(rule -> tx().ruleCache().getRule(rule, () -> new InferenceRule(rule, tx())))
+                    .map(rule -> tx().ruleCache().getRule(rule))
                     .filter(this::isRuleApplicable)
                     .map(r -> r.rewrite(this))
                     .forEach(applicableRules::add);
@@ -253,7 +253,7 @@ public abstract class Atom extends AtomicBase {
      */
     public boolean requiresDecomposition() {
         return this.getPotentialRules()
-                .map(r -> tx().ruleCache().getRule(r, () -> new InferenceRule(r, tx())))
+                .map(r -> tx().ruleCache().getRule(r))
                 .anyMatch(InferenceRule::appendsRolePlayers);
     }
 

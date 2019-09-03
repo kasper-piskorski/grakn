@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -155,6 +155,14 @@ public class GraknConsoleIT {
                 "match movie sub entity; get; count;",
                 containsString("1")
         );
+    }
+
+    @Test
+    public void when_loadingInvalidDataFromFile_expectError() {
+        Response response = runConsoleSession("", "-f", "console/test/invalid-data.cql");
+
+        assertThat(response.err(), allOf(containsString("Failed to load file:"), containsString("A structural validation error has occurred.")));
+        assertThat(response.out(), not(containsString("Successful commit:")));
     }
 
     @Test

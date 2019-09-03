@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,7 +40,6 @@ import graql.lang.statement.Variable;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static grakn.core.graql.gremlin.sets.EquivalentFragmentSets.neq;
 import static grakn.core.graql.gremlin.sets.EquivalentFragmentSets.rolePlayer;
@@ -103,8 +102,7 @@ public class HasAttributeExecutor implements PropertyExecutor.Insertable {
         Statement resVar = relationVariable.isReturned() ?
                 new Statement(varName).has(property.type(), new Statement(attributeVariable), new Statement(relationVariable)) :
                 new Statement(varName).has(property.type(), new Statement(attributeVariable));
-        return AttributeAtom.create(resVar, attributeVariable, relationVariable,
-                                    predicateVariable, predicateId, predicates, parent);
+        return AttributeAtom.create(resVar, attributeVariable, relationVariable, predicateVariable, predicateId, predicates, parent);
     }
 
     @Override

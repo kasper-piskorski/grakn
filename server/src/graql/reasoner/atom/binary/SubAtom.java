@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,8 +45,10 @@ public abstract class SubAtom extends OntologicalAtom {
     @Override public abstract Statement getPattern();
     @Override public abstract ReasonerQuery getParentQuery();
 
-    public static SubAtom create(Variable var, Variable predicateVar, ConceptId predicateId, ReasonerQuery parent) {
-        return new AutoValue_SubAtom(var, predicateId, predicateVar, new Statement(var).sub(new Statement(predicateVar)), parent);
+    public static SubAtom create(Variable var, Variable pVar, ConceptId predicateId, ReasonerQuery parent) {
+        Variable varName = var.asReturnedVar();
+        Variable predicateVar = pVar.asReturnedVar();
+        return new AutoValue_SubAtom(varName, predicateId, predicateVar, new Statement(varName).sub(new Statement(predicateVar)), parent);
     }
 
     private static SubAtom create(SubAtom a, ReasonerQuery parent) {
@@ -55,7 +57,7 @@ public abstract class SubAtom extends OntologicalAtom {
 
     @Override
     OntologicalAtom createSelf(Variable var, Variable predicateVar, ConceptId predicateId, ReasonerQuery parent) {
-        return SubAtom.create(var, predicateVar, predicateId, parent);
+        return create(var, predicateVar, predicateId, parent);
     }
 
     @Override

@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -64,7 +64,7 @@ public abstract class IsaAtom extends IsaAtomBase {
     @Override public abstract ReasonerQuery getParentQuery();
 
     public static IsaAtom create(Variable var, Variable predicateVar, Statement pattern, @Nullable ConceptId predicateId, ReasonerQuery parent) {
-        return new AutoValue_IsaAtom(var, predicateId, predicateVar, pattern, parent);
+        return new AutoValue_IsaAtom(var.asReturnedVar(), predicateId, predicateVar, pattern, parent);
     }
 
     public static IsaAtom create(Variable var, Variable predicateVar, @Nullable ConceptId predicateId, boolean isDirect, ReasonerQuery parent) {

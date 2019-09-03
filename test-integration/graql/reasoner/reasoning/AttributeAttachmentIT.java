@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -69,6 +69,23 @@ public class AttributeAttachmentIT {
     @AfterClass
     public static void closeSession(){
         attributeAttachmentSession.close();
+    }
+
+    @Test
+    //Expected result: When the head of a rule contains attribute assertions, the respective unique attributes should be generated or reused.
+    public void whenUsingNonPersistedDataType_noDuplicatesAreCreated() {
+        try(TransactionOLTP tx = attributeAttachmentSession.transaction().write()) {
+
+            String queryString = "match $x isa genericEntity, has reattachable-resource-string $y; get;";
+            List<ConceptMap> answers = tx.execute(Graql.parse(queryString).asGet());
+            String queryString2 = "match $x isa reattachable-resource-string; get;";
+            List<ConceptMap> answers2 = tx.execute(Graql.parse(queryString2).asGet());
+
+            //two attributes for each entity
+            assertEquals(tx.getEntityType("genericEntity").instances().count() * 2, answers.size());
+            //one base resource, one sub
+            assertEquals(2, answers2.size());
+        }
     }
 
     @Test

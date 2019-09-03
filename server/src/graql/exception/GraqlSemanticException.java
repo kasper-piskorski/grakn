@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -216,6 +216,10 @@ public class GraqlSemanticException extends GraknException {
 
     public static GraqlSemanticException kValueSmallerThanTwo() {
         return new GraqlSemanticException(ErrorMessage.K_SMALLER_THAN_TWO.getMessage());
+    }
+
+    public static GraqlSemanticException incompatibleAttributeValue(AttributeType.DataType dataType, Object value) {
+        return new GraqlSemanticException("Value " + value + " is not compatible with attribute datatype: " + dataType.name());
     }
 
     public static GraqlSemanticException attributeMustBeANumber(AttributeType.DataType dataType, Label attributeType) {

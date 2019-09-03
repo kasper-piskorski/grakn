@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -41,6 +41,11 @@ import java.util.stream.Stream;
 public abstract class OntologicalAtom extends TypeAtom {
 
     abstract OntologicalAtom createSelf(Variable var, Variable predicateVar, ConceptId predicateId, ReasonerQuery parent);
+
+    @Override
+    public String toString(){
+        return getPattern().toString() +
+                (getTypePredicate() != null? getTypePredicate().toString() : ""); }
 
     @Override
     public boolean isSelectable() {

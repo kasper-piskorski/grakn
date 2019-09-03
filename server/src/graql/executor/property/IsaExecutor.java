@@ -1,6 +1,6 @@
 /*
  * GRAKN.AI - THE KNOWLEDGE GRAPH
- * Copyright (C) 2018 Grakn Labs Ltd
+ * Copyright (C) 2019 Grakn Labs Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -71,7 +71,6 @@ public class IsaExecutor implements PropertyExecutor.Insertable {
         //IsaProperty is unique within a var, so skip if this is a relation
         if (statement.hasProperty(RelationProperty.class)) return null;
 
-        Variable varName = var.asReturnedVar();
         Variable typeVar = property.type().var();
 
         IdPredicate predicate = getIdPredicate(typeVar, property.type(), otherStatements, parent);
@@ -81,12 +80,12 @@ public class IsaExecutor implements PropertyExecutor.Insertable {
         Statement isaVar;
 
         if (property.isExplicit()) {
-            isaVar = new Statement(varName).isaX(new Statement(typeVar));
+            isaVar = new Statement(var).isaX(new Statement(typeVar));
         } else {
-            isaVar = new Statement(varName).isa(new Statement(typeVar));
+            isaVar = new Statement(var).isa(new Statement(typeVar));
         }
 
-        return IsaAtom.create(varName, typeVar, isaVar, predicateId, parent);
+        return IsaAtom.create(var, typeVar, isaVar, predicateId, parent);
     }
 
     @Override
