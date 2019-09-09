@@ -105,6 +105,7 @@ public class WriteExecutor {
     }
 
     static WriteExecutor create(TransactionOLTP transaction, ImmutableSet<Writer> writers) {
+        long start = System.currentTimeMillis();
         transaction.checkMutationAllowed();
         /*
             We build several many-to-many relations, indicated by a `Multimap<X, Y>`. These are used to represent
@@ -194,7 +195,10 @@ public class WriteExecutor {
         Multimap<Writer, Writer> writerDependencies =
                 writerDependencies(executorToRequiredVars, varToProducingWriter);
 
-        return new WriteExecutor(transaction, writers, equivalentVars, writerDependencies);
+        WriteExecutor writeExecutor = new WriteExecutor(transaction, writers, equivalentVars, writerDependencies);
+
+        transaction.session().profiler().updateTime("WriteExecutor::create", start);
+        return writeExecutor;
     }
 
     private static Multimap<VarProperty, Variable> propertyToEquivalentVars(Set<Writer> executors) {
@@ -232,6 +236,7 @@ public class WriteExecutor {
     }
 
     ConceptMap write(ConceptMap preExisting) {
+        long start = System.currentTimeMillis();
         concepts.putAll(preExisting.map());
 
         // time to execute writers for properties
@@ -254,14 +259,19 @@ public class WriteExecutor {
 
         ServerTracing.closeScopedChildSpan(deleteConceptsSpanId);
 
-        // time to build concepts
+        transaction.session().profiler().updateTime(getClass().getSimpleName() + "::write::preBuild", start);
 
+        // time to build concepts
+        long start2 = System.currentTimeMillis();
         int buildConceptsSpanId = ServerTracing.startScopedChildSpan("WriteExecutor.write build concepts for answer");
 
         conceptBuilders.forEach((var, builder) -> buildConcept(var, builder));
 
         ServerTracing.closeScopedChildSpan(buildConceptsSpanId);
 
+        transaction.session().profiler().updateTime(getClass().getSimpleName() + "::write::build", start2);
+
+        long start3 = System.currentTimeMillis();
         ImmutableMap.Builder<Variable, Concept> allConcepts = ImmutableMap.<Variable, Concept>builder().putAll(concepts);
 
         // Make sure to include all equivalent vars in the result
@@ -274,7 +284,10 @@ public class WriteExecutor {
         //mark all inferred concepts that are required for the insert for persistence explicitly
         markConceptsForPersistence(namedConcepts.values());
 
-        return new ConceptMap(namedConcepts);
+        ConceptMap conceptMap = new ConceptMap(namedConcepts);
+
+        transaction.session().profiler().updateTime(getClass().getSimpleName() + "::write::afterBuild", start3);
+        return conceptMap;
     }
 
     private void markConceptsForPersistence(Collection<Concept> concepts){

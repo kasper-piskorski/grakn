@@ -111,6 +111,8 @@ public class TransactionOLTP implements Transaction {
     private final KeyspaceCache keyspaceCache;
     private final TransactionCache transactionCache;
 
+
+
     // TransactionOLTP Specific
     private final JanusGraphTransaction janusTransaction;
     private Transaction.Type txType;
@@ -435,6 +437,7 @@ public class TransactionOLTP implements Transaction {
     public UncomittedStatisticsDelta statisticsDelta() {
         return uncomittedStatisticsDelta;
     }
+
 
     @Override
     public boolean isClosed() {
@@ -904,12 +907,14 @@ public class TransactionOLTP implements Transaction {
      */
     @Override
     public void commit() throws InvalidKBException {
+        long start = System.currentTimeMillis();
         if (isClosed()) {
             return;
         }
         try {
             /* This method has permanent tracing because commits can take varying lengths of time depending on operations */
             int validateSpanId = ServerTracing.startScopedChildSpan("commit validate");
+
 
             checkMutationAllowed();
             removeInferredConcepts();
@@ -927,9 +932,12 @@ public class TransactionOLTP implements Transaction {
             }
 
             ServerTracing.closeScopedChildSpan(commitSpanId);
+
         } finally {
             String closeMessage = ErrorMessage.TX_CLOSED_ON_ACTION.getMessage("committed", keyspace());
             closeTransaction(closeMessage);
+            session().profiler().updateTime(getClass().getSimpleName() + "::commit", start);
+            session().profiler().print();
         }
     }
 
@@ -938,6 +946,7 @@ public class TransactionOLTP implements Transaction {
         this.isTxOpen = false;
         ruleCache().clear();
         queryCache().clear();
+
     }
 
     private void removeInferredConcepts() {

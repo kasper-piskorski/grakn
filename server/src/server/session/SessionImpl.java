@@ -67,6 +67,10 @@ public class SessionImpl implements Session {
     private final ReadWriteLock graphLock;
     private Consumer<SessionImpl> onClose;
 
+    private final Profiler profiler = new Profiler();
+
+    public Profiler profiler(){ return profiler;}
+
     private boolean isClosed = false;
 
     /**

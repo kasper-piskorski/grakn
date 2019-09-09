@@ -33,6 +33,7 @@ import grakn.core.server.kb.Cache;
 import grakn.core.server.kb.structure.EdgeElement;
 import grakn.core.server.kb.structure.Shard;
 import grakn.core.server.kb.structure.VertexElement;
+import grakn.core.server.session.Profiler;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 
 import java.util.HashMap;
@@ -83,6 +84,8 @@ public class TypeImpl<T extends Type, V extends Thing> extends SchemaConceptImpl
         return (TypeImpl<X, Y>) type;
     }
 
+    public static long addVertexElementTime = 0;
+    public static long produceInstanceTime = 0;
     /**
      * Utility method used to create an instance of this type
      *
@@ -91,12 +94,18 @@ public class TypeImpl<T extends Type, V extends Thing> extends SchemaConceptImpl
      * @return A new instance
      */
     V addInstance(Schema.BaseType instanceBaseType, BiFunction<VertexElement, T, V> producer, boolean isInferred) {
+        Profiler profiler = vertex().tx().session().profiler();
         preCheckForInstanceCreation();
 
         if (isAbstract()) throw TransactionException.addingInstancesToAbstractType(this);
 
+        long start = System.currentTimeMillis();
         VertexElement instanceVertex = vertex().tx().addVertexElement(instanceBaseType);
+        profiler.updateTime(getClass().getSimpleName()+"::addInstance::addVertexElement", start);
 
+        addVertexElementTime += System.currentTimeMillis() - start;
+
+        long start2 = System.currentTimeMillis();
         vertex().tx().ruleCache().ackTypeInstance(this);
         vertex().tx().statisticsDelta().increment(label());
 
@@ -110,9 +119,14 @@ public class TypeImpl<T extends Type, V extends Thing> extends SchemaConceptImpl
                 vertex().tx().queryCache().ackInsertion();
             }
         }
+        profiler.updateTime(getClass().getSimpleName()+"::addInstance::cacheHandling", start2);
 
+        long start3 = System.currentTimeMillis();
         V instance = producer.apply(instanceVertex, getThis());
         Preconditions.checkNotNull(instance, "producer should never return null");
+        profiler.updateTime(getClass().getSimpleName()+"::addInstance::produceInstance", start3);
+        produceInstanceTime += System.currentTimeMillis() - start3;
+
         if(isInferred) vertex().tx().cache().inferredInstance(instance);
 
         return instance;

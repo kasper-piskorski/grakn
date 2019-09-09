@@ -18,6 +18,12 @@
 
 package grakn.core.graql.reasoner.benchmark;
 
+import grakn.client.GraknClient;
+//import grakn.core.api.Transaction;
+import grakn.client.rpc.RequestBuilder;
+import grakn.client.rpc.ResponseReader;
+import grakn.client.rpc.Transceiver;
+import grakn.core.api.Transaction;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
@@ -30,12 +36,19 @@ import grakn.core.graql.reasoner.graph.PathTreeGraph;
 import grakn.core.graql.reasoner.graph.TransitivityChainGraph;
 import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.server.kb.concept.TypeImpl;
+import grakn.core.server.keyspace.KeyspaceImpl;
+import grakn.core.server.rpc.SessionService;
 import grakn.core.server.session.SessionImpl;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
+import graql.lang.query.GraqlDefine;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlInsert;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -48,6 +61,113 @@ public class BenchmarkSmallIT {
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
+
+    @Test
+    public void stats() {
+
+        GraknClient graknClient = new GraknClient("localhost:48555");
+        GraknClient.Session session = graknClient.session(new KeyspaceImpl("semmed").name());
+    }
+
+    @Test
+    public void test() {
+
+        GraknClient graknClient = new GraknClient(server.grpcUri());
+        GraknClient.Session session = graknClient.session(new KeyspaceImpl("banana").name());
+        //SessionImpl session = server.sessionWithNewKeyspace();
+
+        final long noOfCommits = 20;
+        final long conceptsPerCommit = 5000;
+
+        try (Transaction tx = session.transaction().write()) {
+
+            GraqlDefine define = Graql.parse("define " +
+                    "person sub entity;"
+            ).asDefine();
+
+            tx.execute(define);
+            tx.commit();
+        }
+
+        long start = System.currentTimeMillis();
+        long queryTime = 0;
+        long streamTime = 0;
+        long collectTime = 0;
+
+        long openTxTime = 0;
+
+        GraqlInsert insert = Graql.parse("insert " +
+                "$x isa person;"
+        ).asInsert();
+
+        for(int i = 0; i < noOfCommits ; i++) {
+            long start4 = System.currentTimeMillis();
+            Transaction tx = session.transaction().write();
+            openTxTime += System.currentTimeMillis() - start4;
+
+                long start2 = System.currentTimeMillis();
+                //EntityType person = tx.getEntityType("person");
+                for (int j = 0; j < conceptsPerCommit ; j++) {
+                    long st = System.currentTimeMillis();
+                    Stream<ConceptMap> stream = tx.stream(insert);
+                    streamTime += System.currentTimeMillis() - st;
+
+                    long st2= System.currentTimeMillis();
+                    //stream.collect(Collectors.toList());
+                    collectTime += System.currentTimeMillis() - st2;
+                    //person.create();
+                }
+                queryTime += System.currentTimeMillis() - start2;
+
+                long start3 = System.currentTimeMillis();
+                tx.commit();
+                long commitTime = System.currentTimeMillis() - start3;
+
+                long txTime = System.currentTimeMillis() - start2;
+                System.out.println("tx: "  + i +
+                        " time: " + txTime +
+                        " commit time: " + commitTime +
+                        " throughput: " + (double) conceptsPerCommit*1000/(txTime));
+
+        }
+        long totalTime = (System.currentTimeMillis() - start);
+        long totalInserted = noOfCommits * conceptsPerCommit;
+        System.out.println("iterators next:" + SessionService.iteratorsNextTime);
+        System.out.println("Server: TransactionListener::query: " + SessionService.queryTime);
+        System.out.println("Server: TransactionListener::query::onNextResponse " + SessionService.onNextResponseTime);
+        System.out.println("Server: TransactionListener::query::queryIterator " + SessionService.queryIteratorTime);
+        System.out.println("Server: TransactionListener::query::queryParse " + SessionService.queryParseTime);
+        System.out.println("Server: TransactionListener::query::queryStreamCreate " + SessionService.queryStreamCreateTime);
+        System.out.println("Server: TransactionListener::query::queryStream " + SessionService.queryStreamTime);
+
+        System.out.println();
+        System.out.println("GraknClient::streamTime " + GraknClient.streamTime);
+        System.out.println("GraknClient::rpcIterator " + GraknClient.rpcIteratorTime);
+        System.out.println("GraknClient::responseTime " + GraknClient.responseTime);
+        System.out.println("GraknClient::sendRequestTime " + GraknClient.sendRequestTime);
+        System.out.println("GraknClient::createIteratorTime " + GraknClient.createIteratorTime);
+
+        System.out.println("Transceiver.pollTime " + Transceiver.pollTime);
+        System.out.println("Transceiver.takeTime " + Transceiver.takeTime);
+        System.out.println("RequestBuilder.buildQueryResponse " + RequestBuilder.buildQueryResponse);
+        System.out.println("RequestBuilder.buildAnswer " + ResponseReader.buildAnswer);
+        System.out.println("Total execute time: " + queryTime);
+        System.out.println("Total stream time: " + streamTime);
+        System.out.println("Total collect time: " + collectTime);
+
+        System.out.println();
+        System.out.println("total inserted: " + totalInserted);
+        System.out.println("totalLoadTime: " + totalTime);
+        System.out.println("open tx time: " + openTxTime);
+
+        System.out.println("av throughput: " + (double) (totalInserted)/totalTime);
+
+        try (Transaction tx = session.transaction().write()) {
+            assertEquals(noOfCommits * conceptsPerCommit, tx.getEntityType("person").instances().count());
+        }
+
+        session.close();
+    }
 
 
     /**

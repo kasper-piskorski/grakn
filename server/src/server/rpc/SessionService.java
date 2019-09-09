@@ -27,6 +27,7 @@ import grakn.core.api.Transaction.Type;
 import grakn.core.concept.Concept;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.Label;
+import grakn.core.concept.answer.Answer;
 import grakn.core.concept.thing.Attribute;
 import grakn.core.concept.type.AttributeType;
 import grakn.core.concept.type.EntityType;
@@ -63,6 +64,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.map;
 
 
 /**
@@ -125,6 +128,13 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
             responseObserver.onError(ResponseBuilder.exception(e));
         }
     }
+
+    public static long queryTime = 0;
+    public static long onNextResponseTime = 0;
+    public static long queryIteratorTime = 0;
+    public static long queryParseTime = 0;
+    public static long queryStreamTime = 0;
+    public static long queryStreamCreateTime = 0;
 
 
     /**
@@ -205,6 +215,7 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
         }
 
         private void handleRequest(Transaction.Req request) {
+            //System.out.println("request: " + request.getReqCase());
             try {
                 switch (request.getReqCase()) {
                     case OPEN_REQ:
@@ -317,20 +328,39 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
 
         private void query(SessionProto.Transaction.Query.Req request) {
             /* permanent tracing hooks, as performance here varies depending on query and what's in the graph */
+            long start = System.currentTimeMillis();
             int parseQuerySpanId = ServerTracing.startScopedChildSpan("Parsing Graql Query");
 
             GraqlQuery query = Graql.parse(request.getQuery());
+
+            queryParseTime += System.currentTimeMillis() - start;
 
             ServerTracing.closeScopedChildSpan(parseQuerySpanId);
 
             int createStreamSpanId = ServerTracing.startScopedChildSpan("Creating query stream");
 
-            Stream<Transaction.Res> responseStream = tx().stream(query, request.getInfer().equals(Transaction.Query.INFER.TRUE)).map(ResponseBuilder.Transaction.Iter::query);
+            long start4 = System.currentTimeMillis();
+
+            Stream<? extends Answer> stream = tx().stream(query, request.getInfer().equals(Transaction.Query.INFER.TRUE));
+
+            queryStreamCreateTime += System.currentTimeMillis() - start4;
+
+            Stream<Transaction.Res> responseStream = stream
+                    .map(ResponseBuilder.Transaction.Iter::query);
+
+            queryStreamTime += System.currentTimeMillis() - start4;
+
+            long start3 = System.currentTimeMillis();
             Transaction.Res response = ResponseBuilder.Transaction.queryIterator(iterators.add(responseStream.iterator()));
+            queryIteratorTime += System.currentTimeMillis() - start3;
+
 
             ServerTracing.closeScopedChildSpan(createStreamSpanId);
 
+            long start2 = System.currentTimeMillis();
             onNextResponse(response);
+            onNextResponseTime += System.currentTimeMillis() - start2;
+            queryTime += System.currentTimeMillis() - start;
         }
 
         private void getSchemaConcept(Transaction.GetSchemaConcept.Req request) {
@@ -418,6 +448,8 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
         }
     }
 
+    public static long iteratorsNextTime = 0;
+
     /**
      * Contains a mutable map of iterators of Transaction.Res for gRPC. These iterators are used for returning
      * lazy, streaming responses such as for Graql query results.
@@ -433,6 +465,7 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
         }
 
         public Transaction.Res next(int iteratorId) {
+            long start = System.currentTimeMillis();
             Iterator<Transaction.Res> iterator = iterators.get(iteratorId);
             if (iterator == null) return null;
 
@@ -441,11 +474,12 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
                 response = iterator.next();
             } else {
                 response = SessionProto.Transaction.Res.newBuilder()
-                        .setIterateRes(SessionProto.Transaction.Iter.Res.newBuilder()
-                                .setDone(true)).build();
+                        .setIterateRes(SessionProto.Transaction.Iter.Res.newBuilder().setDone(true))
+                        .build();
                 stop(iteratorId);
             }
 
+            iteratorsNextTime += System.currentTimeMillis() - start;
             return response;
         }
 

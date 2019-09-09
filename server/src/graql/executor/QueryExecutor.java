@@ -19,6 +19,7 @@
 package grakn.core.graql.executor;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.concept.Concept;
@@ -64,11 +65,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -256,6 +259,7 @@ public class QueryExecutor {
     }
 
     public Stream<ConceptMap> insert(GraqlInsert query) {
+        long start = System.currentTimeMillis();
         int createExecSpanId = ServerTracing.startScopedChildSpan("QueryExecutor.insert create executors");
 
         Collection<Statement> statements = query.statements().stream()
@@ -273,6 +277,9 @@ public class QueryExecutor {
 
         int answerStreamSpanId = ServerTracing.startScopedChildSpan("QueryExecutor.insert create answer stream");
 
+        transaction.session().profiler().updateTime(getClass().getSimpleName() + "::insert::preStream", start);
+
+        long start2 = System.currentTimeMillis();
         Stream<ConceptMap> answerStream;
         if (query.match() != null) {
             MatchClause match = query.match();
@@ -285,10 +292,18 @@ public class QueryExecutor {
             Stream<ConceptMap> answers = transaction.stream(match.get(projectedVars), infer);
             answerStream = answers
                     .map(answer -> WriteExecutor.create(transaction, executors.build()).write(answer))
-                    .collect(toList()).stream();
+                    .collect(toList())
+                    .stream();
         } else {
-            answerStream = Stream.of(WriteExecutor.create(transaction, executors.build()).write(new ConceptMap()));
+            Supplier<ConceptMap> answerSupplier = () -> WriteExecutor.create(transaction, executors.build()).write(new ConceptMap());
+            answerStream = Stream.of(answerSupplier).map(Supplier::get);
+
+            //answerStream = Stream.of(WriteExecutor.create(transaction, executors.build()).write(new ConceptMap()));
         }
+
+        //answerStream = answerStream.collect(Collectors.toList()).stream();
+
+        transaction.session().profiler().updateTime(getClass().getSimpleName() + "::insert::answerStream", start2);
 
         ServerTracing.closeScopedChildSpan(answerStreamSpanId);
 
