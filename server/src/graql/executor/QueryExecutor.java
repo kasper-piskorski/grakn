@@ -23,6 +23,7 @@ import com.google.common.collect.Sets;
 import grakn.benchmark.lib.instrumentation.ServerTracing;
 import grakn.core.concept.Concept;
 import grakn.core.concept.ConceptId;
+import grakn.core.concept.Label;
 import grakn.core.concept.answer.Answer;
 import grakn.core.concept.answer.AnswerGroup;
 import grakn.core.concept.answer.ConceptList;
@@ -53,6 +54,7 @@ import graql.lang.query.GraqlDefine;
 import graql.lang.query.GraqlDelete;
 import graql.lang.query.GraqlGet;
 import graql.lang.query.GraqlInsert;
+import graql.lang.query.GraqlStat;
 import graql.lang.query.GraqlUndefine;
 import graql.lang.query.MatchClause;
 import graql.lang.query.builder.Filterable;
@@ -439,5 +441,11 @@ public class QueryExecutor {
     public Stream<ConceptSet> compute(GraqlCompute.Cluster query) {
         if (query.getException().isPresent()) throw query.getException().get();
         return new ComputeExecutor(transaction).stream(query);
+    }
+
+    public Stream<Numeric> stat(GraqlStat query){
+        return query.labels().stream()
+                .map(label -> transaction.session().keyspaceStatistics().count(transaction, Label.of(label)))
+                .map(Numeric::new);
     }
 }

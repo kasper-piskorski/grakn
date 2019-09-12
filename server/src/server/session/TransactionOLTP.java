@@ -66,6 +66,7 @@ import graql.lang.query.GraqlDefine;
 import graql.lang.query.GraqlDelete;
 import graql.lang.query.GraqlGet;
 import graql.lang.query.GraqlInsert;
+import graql.lang.query.GraqlStat;
 import graql.lang.query.GraqlUndefine;
 import graql.lang.query.MatchClause;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -341,6 +342,11 @@ public class TransactionOLTP implements Transaction {
     @Override
     public Stream<ConceptMap> stream(GraqlGet query, boolean infer) {
         return executor(infer).get(query);
+    }
+
+    @Override
+    public Stream<Numeric> stream(GraqlStat query, boolean infer) {
+        return executor().stat(query);
     }
 
     @Override

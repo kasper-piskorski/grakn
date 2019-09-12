@@ -43,6 +43,7 @@ import graql.lang.query.GraqlDelete;
 import graql.lang.query.GraqlGet;
 import graql.lang.query.GraqlInsert;
 import graql.lang.query.GraqlQuery;
+import graql.lang.query.GraqlStat;
 import graql.lang.query.GraqlUndefine;
 
 import javax.annotation.CheckReturnValue;
@@ -164,6 +165,17 @@ public interface Transaction extends AutoCloseable {
     }
 
     Stream<ConceptMap> stream(GraqlGet query, boolean infer);
+
+    // Stat Query
+
+    default List<Numeric> execute(GraqlStat query) {
+        return execute(query, true);
+    }
+    default List<Numeric> execute(GraqlStat query, boolean infer) { return stream(query, infer).collect(Collectors.toList()); }
+    default Stream<Numeric> stream(GraqlStat query) {
+        return stream(query, true);
+    }
+    Stream<Numeric> stream(GraqlStat query, boolean infer);
 
     // Aggregate Query
 
