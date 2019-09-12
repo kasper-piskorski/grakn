@@ -325,7 +325,8 @@ public class SessionService extends SessionServiceGrpc.SessionServiceImplBase {
 
             int createStreamSpanId = ServerTracing.startScopedChildSpan("Creating query stream");
 
-            Stream<Transaction.Res> responseStream = tx().stream(query, request.getInfer().equals(Transaction.Query.INFER.TRUE)).map(ResponseBuilder.Transaction.Iter::query);
+            Stream<Transaction.Res> responseStream = tx().stream(query, request.getInfer().equals(Transaction.Query.INFER.TRUE))
+                    .map(ResponseBuilder.Transaction.Iter::query);
             Transaction.Res response = ResponseBuilder.Transaction.queryIterator(iterators.add(responseStream.iterator()));
 
             ServerTracing.closeScopedChildSpan(createStreamSpanId);

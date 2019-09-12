@@ -22,10 +22,12 @@ java_test(
     classpath_resources = ["//test-integration/resources:logback-test"],
     test_class = "grakn.core.graql.analytics.GraqlStatIT",
     deps = [
+        "//api",
         "//concept",
         "//dependencies/maven/artifacts/com/google/guava",
         "//server",
         "//test-integration/rule:grakn-test-server",
+        "@graknlabs_client_java//:client-java",
         "@graknlabs_graql//java:graql",
     ],
 )

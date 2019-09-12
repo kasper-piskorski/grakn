@@ -71,16 +71,6 @@ jobs:
       - run-bazel-rbe:
           command: bazel test //common/... --test_output=errors
 
-  test-console:
-    machine: true
-    working_directory: ~/grakn
-    steps:
-      - apt-wait
-      - install-bazel-linux-rbe
-      - checkout
-      - run-bazel-rbe:
-          command: bazel test //console/... --test_output=errors
-
   test-server:
     machine: true
     working_directory: ~/grakn
@@ -204,14 +194,11 @@ jobs:
       - install-bazel-linux-rbe
       - checkout
       - run-bazel-rbe:
-          command: bazel build //bin:assemble-linux-apt
+          command: bazel build @graknlabs_common//bin:assemble-linux-apt
       - run-bazel-rbe:
           command: bazel build //server:assemble-linux-apt
-      - run-bazel-rbe:
-          command: bazel build //console:assemble-linux-apt
-      - run: sudo dpkg -i bazel-bin/bin/grakn-core-bin__all.deb
+      - run: sudo dpkg -i bazel-bin/external/graknlabs_common/bin/grakn-bin__all.deb
       - run: sudo dpkg -i bazel-bin/server/grakn-core-server__all.deb
-      - run: sudo dpkg -i bazel-bin/console/grakn-core-console__all.deb
       - run: sudo chown -R circleci:circleci /opt/grakn/ # TODO: how do we avoid having to chown?
       - run: nohup grakn server start
       - run: bazel test //test/common:grakn-application-test --test_output=streamed --spawn_strategy=standalone --cache_test_results=no
@@ -259,7 +246,7 @@ jobs:
       - apt-wait
       - install-bazel-linux-rbe
       - checkout
-      - run: echo $(date +%s)-$(cat VERSION)-$CIRCLE_SHA1 > VERSION && cat VERSION
+      - run: echo $(cat VERSION)-$CIRCLE_SHA1 > VERSION && cat VERSION
       - run: |
           export DEPLOY_APT_USERNAME=$REPO_GRAKN_USERNAME
           export DEPLOY_APT_PASSWORD=$REPO_GRAKN_PASSWORD
@@ -267,11 +254,6 @@ jobs:
           bazel run //console:deploy-apt -- snapshot
           bazel run //server:deploy-apt -- snapshot
           bazel run //:deploy-apt -- snapshot
-      - run: cp VERSION VERSION.apt
-      - persist_to_workspace:
-          root: ~/grakn
-          paths:
-            - VERSION.apt
 
   deploy-rpm-snapshot:
     machine: true
@@ -285,15 +267,8 @@ jobs:
       - run: |
           export DEPLOY_RPM_USERNAME=$REPO_GRAKN_USERNAME
           export DEPLOY_RPM_PASSWORD=$REPO_GRAKN_PASSWORD
-          bazel run //bin:deploy-rpm -- snapshot
           bazel run //server:deploy-rpm -- snapshot
-          bazel run //console:deploy-rpm -- snapshot
           bazel run //:deploy-rpm -- snapshot
-      - run: cp VERSION VERSION.rpm
-      - persist_to_workspace:
-          root: ~/grakn
-          paths:
-            - VERSION.rpm
 
   test-deployment-linux-apt:
     machine: true
@@ -302,16 +277,13 @@ jobs:
       - apt-wait
       - install-bazel-linux-rbe
       - checkout
-      - attach_workspace:
-          at: ~/circleci-workspace
       - run: sudo add-apt-repository 'deb [ arch=all ] https://repo.grakn.ai/repository/apt-snapshot/ trusty main'
       - run: sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 8F3DA4B5E9AEF44C
       - run: sudo apt update
-      - run: mv ~/circleci-workspace/VERSION.apt VERSION
-      - run: cat VERSION
+      - run: echo $(cat VERSION)-$CIRCLE_SHA1 > VERSION && cat VERSION
       - run: |
-          sudo apt install grakn-core-all=$(cat VERSION) grakn-core-bin=$(cat VERSION) \
-                           grakn-core-server=$(cat VERSION) grakn-core-console=$(cat VERSION)
+          sudo apt install grakn-core-all=$(cat VERSION) grakn-bin=$(cat VERSION) \
+                           grakn-core-server=$(cat VERSION) grakn-console=$(cat VERSION)
       - run: sudo chown -R circleci:circleci /opt/grakn/ # TODO: how do we avoid having to chown?
       - run: nohup grakn server start
       - run: bazel test //test/common:grakn-application-test --test_output=streamed --spawn_strategy=standalone --cache_test_results=no
@@ -329,9 +301,7 @@ jobs:
     steps:
       - apt-wait
       - checkout
-      - attach_workspace:
-          at: ~/circleci-workspace
-      - run: mv ~/circleci-workspace/VERSION.rpm VERSION
+      - run: echo $(cat VERSION)_$CIRCLE_SHA1 > VERSION && cat VERSION
       - run: test/deployment/rpm.py
       - store_artifacts:
           path: ./grakn.log
@@ -500,10 +470,6 @@ workflows:
           filters:
             branches:
               ignore: grakn-release-branch
-      - test-console:
-          filters:
-            branches:
-              ignore: grakn-release-branch
       - test-server:
           filters:
             branches:
@@ -531,7 +497,6 @@ workflows:
           requires:
             - build
             - test-common
-            - test-console
             - test-server
             - test-integration
             - test-integration-reasoner
@@ -544,7 +509,6 @@ workflows:
           requires:
             - build
             - test-common
-            - test-console
             - test-server
             - test-integration
             - test-integration-reasoner
@@ -557,7 +521,6 @@ workflows:
           requires:
             - build
             - test-common
-            - test-console
             - test-server
             - test-integration
             - test-integration-reasoner
@@ -570,7 +533,6 @@ workflows:
           requires:
             - build
             - test-common
-            - test-console
             - test-server
             - test-integration
             - test-integration-reasoner
@@ -583,7 +545,6 @@ workflows:
           requires:
             - build
             - test-common
-            - test-console
             - test-server
             - test-integration
             - test-integration-reasoner

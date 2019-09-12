@@ -302,6 +302,9 @@ public interface Transaction extends AutoCloseable {
         } else if (query instanceof GraqlCompute.Cluster) {
             return stream((GraqlCompute.Cluster) query);
 
+        } else if (query instanceof GraqlStat) {
+            return stream((GraqlStat) query);
+
         } else {
             throw new IllegalArgumentException("Unrecognised Query object");
         }
