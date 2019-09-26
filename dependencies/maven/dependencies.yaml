@@ -342,3 +342,7 @@ dependencies:
       lang: java
       exclude:
       - "commons-io:commons-io"
+  io.vavr:
+    vavr:
+      version: "0.10.2"
+      lang: java
