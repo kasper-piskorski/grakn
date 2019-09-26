@@ -1,7 +1,7 @@
 java_library(
-    name = "uuid",
+    name = "HdrHistogram",
     exports = [
-        "//external:jar/com/eaio/uuid/uuid"
+        "//external:jar/org/hdrhistogram/HdrHistogram"
     ],
     visibility = [
         "//dependencies/maven/artifacts:__subpackages__"

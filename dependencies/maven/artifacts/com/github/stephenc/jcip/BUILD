@@ -1,7 +1,7 @@
 java_library(
-    name = "stax-api",
+    name = "jcip-annotations",
     exports = [
-        "//external:jar/stax/stax-api"
+        "//external:jar/com/github/stephenc/jcip/jcip-annotations"
     ],
     visibility = [
         "//dependencies/maven/artifacts:__subpackages__"

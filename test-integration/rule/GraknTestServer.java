@@ -195,10 +195,10 @@ public class GraknTestServer extends ExternalResource {
         //Override gRPC port with a random free port
         config.setConfigProperty(ConfigKey.GRPC_PORT, grpcPort);
         //Override Storage Port used by Janus to communicate with Cassandra Backend
-        config.setConfigProperty(ConfigKey.STORAGE_PORT, thriftPort);
+        config.setConfigProperty(ConfigKey.STORAGE_PORT, nativeTransportPort);
 
         //Override ports used by HadoopGraph
-        config.setConfigProperty(ConfigKey.HADOOP_STORAGE_PORT, thriftPort);
+        config.setConfigProperty(ConfigKey.HADOOP_STORAGE_PORT, nativeTransportPort);
         config.setConfigProperty(ConfigKey.STORAGE_CQL_NATIVE_PORT, nativeTransportPort);
 
         return config;

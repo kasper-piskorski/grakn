@@ -58,7 +58,7 @@ final public class JanusGraphFactory {
     private static final String STORAGE_KEYSPACE = ConfigKey.STORAGE_KEYSPACE.name();
     private static final String STORAGE_BACKEND = ConfigKey.STORAGE_BACKEND.name();
     private static final String STORAGE_FRAME_SIZE = ConfigKey.STORAGE_FRAME_SIZE.name();
-    private static final String THRIFT_BACKEND = "cassandrathrift";
+    private static final String CQL_BACKEND = "cql";
 
     private Config config;
 
@@ -99,7 +99,7 @@ final public class JanusGraphFactory {
 
     private static StandardJanusGraph configureGraph(String keyspace, Config config) {
         org.janusgraph.core.JanusGraphFactory.Builder builder = org.janusgraph.core.JanusGraphFactory.build()
-                .set(STORAGE_BACKEND, THRIFT_BACKEND)
+                .set(STORAGE_BACKEND, CQL_BACKEND)
                 .set(STORAGE_KEYSPACE, keyspace)
                 .set(STORAGE_FRAME_SIZE, 60);
 

@@ -1,29 +1,4 @@
 java_library(
-    name = "janusgraph-cassandra",
-    exports = [
-        "//external:jar/org/janusgraph/janusgraph-cassandra"
-    ],
-    runtime_deps = [
-        "//dependencies/maven/artifacts/com/netflix/astyanax:astyanax-cassandra",
-        "//dependencies/maven/artifacts/com/netflix/astyanax:astyanax-core",
-        "//dependencies/maven/artifacts/com/netflix/astyanax:astyanax-recipes",
-        "//dependencies/maven/artifacts/com/netflix/astyanax:astyanax-thrift",
-        "//dependencies/maven/artifacts/commons-pool:commons-pool",
-        "//dependencies/maven/artifacts/io/dropwizard/metrics:metrics-jvm",
-        "//dependencies/maven/artifacts/javax/validation:validation-api",
-        "//dependencies/maven/artifacts/net/jpountz/lz4:lz4",
-        "//dependencies/maven/artifacts/org/apache/cassandra:cassandra-all",
-        "//dependencies/maven/artifacts/org/xerial/snappy:snappy-java",
-        ":janusgraph-core"
-    ],
-    visibility = [
-        "//visibility:public"
-    ]
-)
-
-
-
-java_library(
     name = "janusgraph-core",
     exports = [
         "//external:jar/org/janusgraph/janusgraph-core"
@@ -58,6 +33,25 @@ java_library(
 
 
 java_library(
+    name = "janusgraph-cql",
+    exports = [
+        "//external:jar/org/janusgraph/janusgraph-cql"
+    ],
+    runtime_deps = [
+        "//dependencies/maven/artifacts/com/datastax/oss:java-driver-core",
+        "//dependencies/maven/artifacts/com/datastax/oss:java-driver-query-builder",
+        "//dependencies/maven/artifacts/com/google/guava:guava",
+        "//dependencies/maven/artifacts/io/netty:netty-handler",
+        ":janusgraph-core"
+    ],
+    visibility = [
+        "//visibility:public"
+    ]
+)
+
+
+
+java_library(
     name = "janusgraph-hadoop",
     exports = [
         "//external:jar/org/janusgraph/janusgraph-hadoop"
@@ -66,10 +60,13 @@ java_library(
         "//dependencies/maven/artifacts/ch/qos/logback:logback-classic",
         "//dependencies/maven/artifacts/com/datastax/cassandra:cassandra-driver-core",
         "//dependencies/maven/artifacts/com/fasterxml/jackson/module:jackson-module-scala-2-11",
+        "//dependencies/maven/artifacts/org/apache/cassandra:cassandra-all",
+        "//dependencies/maven/artifacts/org/apache/hadoop:hadoop-client",
         "//dependencies/maven/artifacts/org/apache/tinkerpop:hadoop-gremlin",
         "//dependencies/maven/artifacts/org/apache/tinkerpop:spark-gremlin",
         "//dependencies/maven/artifacts/org/apache/tinkerpop:tinkergraph-gremlin",
-        ":janusgraph-core"
+        ":janusgraph-core",
+        ":janusgraph-cql"
     ],
     visibility = [
         "//visibility:public"

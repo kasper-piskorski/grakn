@@ -1,7 +1,7 @@
 java_library(
-    name = "scala-xml-2-11",
+    name = "config",
     exports = [
-        "//external:jar/org/scala-lang/modules/scala-xml-2-11"
+        "//external:jar/com/typesafe/config"
     ],
     visibility = [
         "//dependencies/maven/artifacts:__subpackages__"
