@@ -1,7 +1,7 @@
-java_library(
+java_import(
     name = "janusgraph-core",
-    exports = [
-        "//external:jar/org/janusgraph/janusgraph-core"
+    jars = [
+        "janusgraph-core-0.0.4-grakn-janus.jar"
     ],
     runtime_deps = [
         "//dependencies/maven/artifacts/com/carrotsearch:hppc",
@@ -31,26 +31,45 @@ java_library(
 )
 
 
+#java_library(
+#    name = "janusgraph-cql",
+#    exports = [
+#        "//external:jar/org/janusgraph/janusgraph-cql"
+#    ],
+#    runtime_deps = [
+#        "//dependencies/maven/artifacts/com/datastax/oss:java-driver-core",
+#        "//dependencies/maven/artifacts/com/datastax/oss:java-driver-query-builder",
+#        "//dependencies/maven/artifacts/com/google/guava:guava",
+#        "//dependencies/maven/artifacts/io/netty:netty-handler",
+#        "//dependencies/maven/artifacts/io/vavr:vavr",
+#        ":janusgraph-core"
+#    ],
+#    visibility = [
+#        "//visibility:public"
+#    ]
+#)
 
-java_library(
-    name = "janusgraph-cql",
-    exports = [
-        "//external:jar/org/janusgraph/janusgraph-cql"
-    ],
-    runtime_deps = [
-        "//dependencies/maven/artifacts/com/datastax/oss:java-driver-core",
-        "//dependencies/maven/artifacts/com/datastax/oss:java-driver-query-builder",
-        "//dependencies/maven/artifacts/com/google/guava:guava",
-        "//dependencies/maven/artifacts/io/netty:netty-handler",
-        "//dependencies/maven/artifacts/io/vavr:vavr",
-        ":janusgraph-core"
-    ],
-    visibility = [
-        "//visibility:public"
-    ]
-)
 
-
+java_import(
+        name = "janusgraph-cql",
+        runtime_deps = [
+                "//dependencies/maven/artifacts/com/datastax/oss:java-driver-core",
+                "//dependencies/maven/artifacts/com/datastax/oss:java-driver-query-builder",
+                "//dependencies/maven/artifacts/com/google/guava:guava",
+                "//dependencies/maven/artifacts/io/netty:netty-handler",
+                "//dependencies/maven/artifacts/io/vavr:vavr",
+                ":janusgraph-core"
+            ],
+        jars = [
+            "janusgraph-cql-0.0.4-grakn-janus.jar",
+            #"maven_model/maven-aether-provider-3.2.3.jar",
+            #"maven_model/maven-model-3.2.3.jar",
+            #"maven_model/maven-model-builder-3.2.3.jar",
+        ],
+        visibility = [
+                "//visibility:public"
+        ]
+    )
 
 java_library(
     name = "janusgraph-hadoop",

@@ -18,9 +18,11 @@
 
 package grakn.core.graql.reasoner.benchmark;
 
+import grakn.client.GraknClient;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
+import grakn.core.concept.type.AttributeType;
 import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
@@ -36,6 +38,9 @@ import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Random;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -49,6 +54,82 @@ public class BenchmarkSmallIT {
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
 
+    @Test
+    public void simpleEntityInsertions() {
+        System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
+        Session session = server.sessionWithNewKeyspace();
+
+        //GraknClient graknClient = new GraknClient(server.grpcUri());
+        //Session session = graknClient.session("banana");
+
+        //NB: loading data here as defining it as KB and using graql api leads to circular dependencies
+        try(TransactionOLTP tx = session.transaction().write()) {
+            AttributeType<String> resource = tx.putAttributeType("resource", AttributeType.DataType.STRING);
+            tx.putEntityType("person").has(resource);
+            tx.commit();
+            }
+
+        final int txs = 1;
+        final int batchSize = 1;
+        long start = System.currentTimeMillis();
+        for(int i = 0 ; i < txs ; i++){
+            try(TransactionOLTP tx = session.transaction().write()) {
+                EntityType person = tx.getEntityType("person");
+                for (int j = 0; j < batchSize; j++) {
+                    person.create();
+                }
+                tx.commit();
+            }
+        }
+        System.out.println(txs*batchSize +" vertices loadTime : " + (System.currentTimeMillis() - start));
+    }
+
+    @Test
+    public void simpleAttributeInsertions() {
+        System.out.println(new Object(){}.getClass().getEnclosingMethod().getName());
+        Session session = server.sessionWithNewKeyspace();
+
+        //GraknClient graknClient = new GraknClient(server.grpcUri());
+        //GraknClient.Session session = graknClient.session("banana");
+
+        //NB: loading data here as defining it as KB and using graql api leads to circular dependencies
+        try(TransactionOLTP tx = session.transaction().write()) {
+            tx.putAttributeType("resource", AttributeType.DataType.STRING);
+            tx.commit();
+        }
+
+        final int txs = 1;
+        final int batchSize = 1;
+
+        Random random = new Random();
+
+        long stringGenerationTime =0;
+
+        long start2 = System.currentTimeMillis();
+        List<String> strings = new ArrayList<>();
+        for(int i = 0 ; i < txs ; i++){
+            for (int j = 0; j < batchSize; j++) {
+                byte[] array = new byte[12];
+                random.nextBytes(array);
+                strings.add(new String(array, Charset.forName("UTF-8")));
+            }
+        }
+        stringGenerationTime += System.currentTimeMillis() - start2;
+        System.out.println("stringGenerationTime: " + stringGenerationTime);
+
+        long start = System.currentTimeMillis();
+        for(int i = 0 ; i < txs ; i++){
+            try(TransactionOLTP tx = session.transaction().write()) {
+                AttributeType<Object> resourceType = tx.getAttributeType("resource");
+                for (int j = 0; j < batchSize; j++) {
+                    String val = strings.get((i *batchSize) + j);
+                    resourceType.create(val);
+                }
+                tx.commit();
+            }
+        }
+        System.out.println(txs*batchSize + " attributes loadTime : " + (System.currentTimeMillis() - start));
+    }
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:
