@@ -111,7 +111,7 @@ public class AttributeTypeImpl<D> extends TypeImpl<AttributeType<D>, Attribute<D
 
         if (dataType().equals(DataType.STRING)) checkConformsToRegexes((String) value);
 
-        Attribute<D> instance = getAttributeWithLock(value);
+        Attribute<D> instance = null;//getAttributeWithLock(value);
         if (instance == null) {
             // create a brand new vertex and concept
             instance = conceptManager.createAttribute( this, value, isInferred);

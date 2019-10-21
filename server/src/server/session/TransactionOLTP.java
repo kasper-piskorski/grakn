@@ -240,7 +240,7 @@ public class TransactionOLTP implements AutoCloseable {
     // When there are new attributes in the current transaction that is about to be committed
     // we serialise the commit by locking and merge attributes that are duplicates.
     private void mergeAttributesAndCommit() {
-        session.graphLock().writeLock().lock();
+        //session.graphLock().writeLock().lock();
         try {
             createNewTypeShardsWhenThresholdReached();
             cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
@@ -261,7 +261,7 @@ public class TransactionOLTP implements AutoCloseable {
             session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
             janusTransaction.commit();
         } finally {
-            session.graphLock().writeLock().unlock();
+            //session.graphLock().writeLock().unlock();
         }
     }
 

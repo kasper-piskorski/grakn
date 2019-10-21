@@ -18,6 +18,7 @@
 
 package grakn.core.graql.reasoner.benchmark;
 
+import grakn.client.GraknClient;
 import grakn.core.concept.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.thing.Entity;
@@ -36,6 +37,12 @@ import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import junit.framework.TestCase;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -47,7 +54,109 @@ import static org.junit.Assert.assertEquals;
 public class BenchmarkSmallIT {
 
     @ClassRule
-    public static final GraknTestServer server = new GraknTestServer();
+    public static final GraknTestServer server = null; //new GraknTestServer();
+
+    private List<CompletableFuture<Void>> getAsyncJobs(GraknClient.Session session, ExecutorService executorService,
+                                               int numberOfConcurrentTransactions, int commitSize, int shift) {
+        List<CompletableFuture<Void>> asyncInsertions = new ArrayList<>();
+        for (int i = 0; i < numberOfConcurrentTransactions; i++) {
+            CompletableFuture<Void> asyncInsert = CompletableFuture.supplyAsync(() -> {
+                final long threadId = Thread.currentThread().getId();
+                System.out.println("threadId: " + threadId);
+
+                try (GraknClient.Transaction threadTx = session.transaction().write()) {
+                    final long idShift = threadId * commitSize + shift;
+                    for (int j = 0; j < commitSize; j++) {
+                        final long id = idShift + j;
+                        threadTx.execute(Graql.parse(
+                                "insert " +
+                                        //"$x isa person;" +
+                                        //"$x has name '" + id + "';" +
+                                        //"$x has surname '" + id + "';" +
+                                        //"$x has age " + id + ";" +
+                                        "$x '" + id + "' isa name ;" +
+                                        "$y '" + id + "' isa surname ;" +
+                                        "$z " + id + " isa age ;"
+                        ).asInsert());
+                    }
+                    threadTx.commit();
+                }
+                return null;
+            }, executorService);
+            asyncInsertions.add(asyncInsert);
+        }
+        return asyncInsertions;
+    }
+
+    @Test
+    public void test() throws ExecutionException, InterruptedException {
+        GraknClient graknClient = new GraknClient("localhost:48555");
+        GraknClient.Session session = graknClient.session("concurrency");
+        GraknClient.Transaction tx = session.transaction().write();
+        tx.execute(Graql.parse("define " +
+                "person sub entity, has name, has surname, has age; " +
+                "name sub attribute, datatype string;" +
+                "surname sub attribute, datatype string;" +
+                "age sub attribute, datatype long;").asDefine());
+
+        tx.commit();
+
+        // We need a good amount of parallelism to have a good chance to spot possible issues. Don't use smaller values.
+        final int numberOfConcurrentTransactions = 6;
+        final int commitSize = 3000;
+        final int txs = 50;
+        ExecutorService executorService = Executors.newFixedThreadPool(numberOfConcurrentTransactions);
+        final long start = System.currentTimeMillis();
+
+        //allOf returns when all jobs are finished
+        for( int i = 0 ; i < txs ; i++) {
+            CompletableFuture.allOf(getAsyncJobs(session, executorService, numberOfConcurrentTransactions, commitSize, i).toArray(new CompletableFuture[]{})).get();
+        }
+
+        final long multiplicity = numberOfConcurrentTransactions * commitSize*txs;
+        final long noOfConcepts = multiplicity * 3;
+        final long totalTime = System.currentTimeMillis() - start;
+        System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
+
+        // Retrieve all the attribute values to make sure we don't have any person linked to a broken vertex.
+        // This step is needed because it's only when retrieving attributes that we would be able to spot a
+        // ghost vertex (which is might be introduced while merging 2 attribute nodes)
+        /*
+        tx = session.transaction().write();
+        List<ConceptMap> conceptMaps = tx.execute(Graql.parse("match $x isa person; get;").asGet());
+        conceptMaps.forEach(map -> {
+            Collection<Concept> concepts = map.concepts();
+            concepts.forEach(concept -> {
+                Set<Attribute<?>> collect = concept.asThing().attributes().collect(toSet());
+                assertEquals(3, collect.size());
+                collect.forEach(attribute -> {
+                    String value = attribute.value().toString();
+                });
+            });
+        });
+        tx.close();
+        */
+
+        tx = session.transaction().write();
+        System.out.println("fetching counts");
+        /*
+        int numOfPersons = tx.execute(Graql.parse("match $x isa person; get; count;").asGetAggregate()).get(0).number().intValue();
+        int numOfNames = tx.execute(Graql.parse("match $x isa name; get; count;").asGetAggregate()).get(0).number().intValue();
+        int numOfSurnames = tx.execute(Graql.parse("match $x isa surname; get; count;").asGetAggregate()).get(0).number().intValue();
+        int numOfAges = tx.execute(Graql.parse("match $x isa age; get; count;").asGetAggregate()).get(0).number().intValue();
+         */
+        int numOfPersons = tx.execute(Graql.parse("compute count in person;").asComputeStatistics()).get(0).number().intValue();
+        int numOfNames = tx.execute(Graql.parse("compute count in name;").asComputeStatistics()).get(0).number().intValue();
+        int numOfSurnames = tx.execute(Graql.parse("compute count in surname;").asComputeStatistics()).get(0).number().intValue();
+        int numOfAges = tx.execute(Graql.parse("compute count in age;").asComputeStatistics()).get(0).number().intValue();
+        tx.close();
+
+        //TestCase.assertEquals(multiplicity, numOfPersons);
+        TestCase.assertEquals(multiplicity, numOfNames);
+        TestCase.assertEquals(multiplicity, numOfSurnames);
+        TestCase.assertEquals(multiplicity, numOfAges);
+        System.out.println("SUCCESS");
+    }
 
 
     /**
