@@ -39,6 +39,8 @@ import org.janusgraph.graphdb.database.StandardJanusGraph;
 import javax.annotation.CheckReturnValue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class represents a Grakn Session.
@@ -66,6 +68,7 @@ public class Session implements AutoCloseable {
     private final Cache<String, ConceptId> attributesCache;
     private final ReadWriteLock graphLock;
     private Consumer<Session> onClose;
+    private final static Logger LOG = LoggerFactory.getLogger(Session.class);
 
     private boolean isClosed = false;
 
@@ -91,6 +94,7 @@ public class Session implements AutoCloseable {
      public Session(Keyspace keyspace, Config config, KeyspaceSchemaCache keyspaceSchemaCache, StandardJanusGraph graph,
                     HadoopGraph hadoopGraph, KeyspaceStatistics keyspaceStatistics,
                     Cache<String, ConceptId> attributesCache, ReadWriteLock graphLock) {
+         LOG.debug("#######################GRAKN IS RUNNING IN BATCH MODE##########################");
         this.keyspace = keyspace;
         this.config = config;
         this.hadoopGraph = hadoopGraph;
