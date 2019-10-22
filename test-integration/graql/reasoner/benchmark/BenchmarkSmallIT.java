@@ -102,9 +102,9 @@ public class BenchmarkSmallIT {
         tx.commit();
 
         // We need a good amount of parallelism to have a good chance to spot possible issues. Don't use smaller values.
-        final int numberOfConcurrentTransactions = 6;
+        final int numberOfConcurrentTransactions = 8;
         final int commitSize = 3000;
-        final int txs = 50;
+        final int txs = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfConcurrentTransactions);
         final long start = System.currentTimeMillis();
 
