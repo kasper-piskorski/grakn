@@ -319,6 +319,7 @@ public class WriteExecutor {
      * This method uses a topological sort (Kahn's algorithm) in order to find a valid ordering.
      */
     private ImmutableList<Writer> sortedWriters() {
+        long start = System.currentTimeMillis();
         ImmutableList.Builder<Writer> sorted = ImmutableList.builder();
 
         // invertedDependencies is intended to just be a 'view' on dependencies, so when dependencies is modified
@@ -358,8 +359,11 @@ public class WriteExecutor {
             throw GraqlSemanticException.insertRecursive(printableRepresentation(var));
         }
 
+        sortedWritersTime += System.currentTimeMillis() - start;
         return sorted.build();
     }
+
+    public static long sortedWritersTime = 0;
 
     /**
      * Return a ConceptBuilder for given Variable. This can be used to provide information for how to create

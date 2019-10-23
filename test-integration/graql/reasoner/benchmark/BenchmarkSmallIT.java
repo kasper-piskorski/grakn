@@ -25,6 +25,7 @@ import grakn.core.concept.thing.Entity;
 import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
+import grakn.core.graql.executor.WriteExecutor;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
 import grakn.core.graql.reasoner.graph.PathTreeGraph;
@@ -54,9 +55,9 @@ import static org.junit.Assert.assertEquals;
 public class BenchmarkSmallIT {
 
     @ClassRule
-    public static final GraknTestServer server = null; //new GraknTestServer();
+    public static final GraknTestServer server = new GraknTestServer();
 
-    private List<CompletableFuture<Void>> getAsyncJobs(GraknClient.Session session, ExecutorService executorService,
+    private List<CompletableFuture<Void>> getAsyncJobs(Session session, ExecutorService executorService,
                                                int numberOfConcurrentTransactions, int commitSize, int shift) {
         List<CompletableFuture<Void>> asyncInsertions = new ArrayList<>();
         for (int i = 0; i < numberOfConcurrentTransactions; i++) {
@@ -64,21 +65,17 @@ public class BenchmarkSmallIT {
                 final long threadId = Thread.currentThread().getId();
                 System.out.println("threadId: " + threadId);
 
-                try (GraknClient.Transaction threadTx = session.transaction().write()) {
+                try (TransactionOLTP threadTx = session.transaction().write()) {
                     final long idShift = threadId * commitSize + shift;
+                    String query = "insert ";
                     for (int j = 0; j < commitSize; j++) {
                         final long id = idShift + j;
-                        threadTx.execute(Graql.parse(
-                                "insert " +
-                                        //"$x isa person;" +
-                                        //"$x has name '" + id + "';" +
-                                        //"$x has surname '" + id + "';" +
-                                        //"$x has age " + id + ";" +
-                                        "$x '" + id + "' isa name ;" +
-                                        "$y '" + id + "' isa surname ;" +
-                                        "$z " + id + " isa age ;"
-                        ).asInsert());
+                        query +=
+                                        "$x_" + id + " '" + id + "' isa name ;" +
+                                        "$y_" + id + " '" + id + "' isa surname ;" +
+                                        "$z_" + id + " " + id + " isa age ;";
                     }
+                    threadTx.execute(Graql.parse(query).asInsert());
                     threadTx.commit();
                 }
                 return null;
@@ -90,9 +87,14 @@ public class BenchmarkSmallIT {
 
     @Test
     public void test() throws ExecutionException, InterruptedException {
+        /*
         GraknClient graknClient = new GraknClient("localhost:48555");
         GraknClient.Session session = graknClient.session("concurrency");
         GraknClient.Transaction tx = session.transaction().write();
+
+         */
+        Session session = server.sessionWithNewKeyspace();
+        TransactionOLTP tx = session.transaction().write();
         tx.execute(Graql.parse("define " +
                 "person sub entity, has name, has surname, has age; " +
                 "name sub attribute, datatype string;" +
@@ -102,9 +104,9 @@ public class BenchmarkSmallIT {
         tx.commit();
 
         // We need a good amount of parallelism to have a good chance to spot possible issues. Don't use smaller values.
-        final int numberOfConcurrentTransactions = 8;
-        final int commitSize = 3000;
-        final int txs = 5;
+        final int numberOfConcurrentTransactions = 1;
+        final int commitSize = 1000;
+        final int txs = 40;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfConcurrentTransactions);
         final long start = System.currentTimeMillis();
 
@@ -116,6 +118,7 @@ public class BenchmarkSmallIT {
         final long multiplicity = numberOfConcurrentTransactions * commitSize*txs;
         final long noOfConcepts = multiplicity * 3;
         final long totalTime = System.currentTimeMillis() - start;
+        System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
         System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
 
         // Retrieve all the attribute values to make sure we don't have any person linked to a broken vertex.
