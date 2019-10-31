@@ -25,6 +25,8 @@ import grakn.core.concept.thing.Entity;
 import grakn.core.concept.type.EntityType;
 import grakn.core.concept.type.RelationType;
 import grakn.core.concept.type.Role;
+import grakn.core.graql.executor.ConceptBuilder;
+import grakn.core.graql.executor.QueryExecutor;
 import grakn.core.graql.executor.WriteExecutor;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
@@ -36,6 +38,7 @@ import grakn.core.server.session.Session;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlInsert;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
 import java.util.ArrayList;
@@ -87,14 +90,14 @@ public class BenchmarkSmallIT {
 
     @Test
     public void test() throws ExecutionException, InterruptedException {
-        /*
+
         GraknClient graknClient = new GraknClient("localhost:48555");
         GraknClient.Session session = graknClient.session("concurrency");
         GraknClient.Transaction tx = session.transaction().write();
 
-         */
-        Session session = server.sessionWithNewKeyspace();
-        TransactionOLTP tx = session.transaction().write();
+
+        //Session session = server.sessionWithNewKeyspace();
+        //TransactionOLTP tx = session.transaction().write();
         tx.execute(Graql.parse("define " +
                 "person sub entity, has name, has surname, has age; " +
                 "name sub attribute, datatype string;" +
@@ -104,22 +107,58 @@ public class BenchmarkSmallIT {
         tx.commit();
 
         // We need a good amount of parallelism to have a good chance to spot possible issues. Don't use smaller values.
-        final int numberOfConcurrentTransactions = 1;
-        final int commitSize = 1000;
+        final int numberOfConcurrentTransactions = 8;
+        final int commitSize = 3000;
         final int txs = 40;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfConcurrentTransactions);
+
         final long start = System.currentTimeMillis();
 
+        List<CompletableFuture<Void>> asyncInsertions = new ArrayList<>();
+        for (int i = 0; i < numberOfConcurrentTransactions; i++) {
+            CompletableFuture<Void> asyncInsert = CompletableFuture.supplyAsync(() -> {
+                final long threadId = Thread.currentThread().getId();
+                System.out.println("threadId: " + threadId);
+                for(int txNo = 1 ; txNo <= txs; txNo++) {
+                try (GraknClient.Transaction threadTx = session.transaction().write()) {
+                    final long idShift = threadId * commitSize * txNo;
+                        for (int j = 0; j < commitSize; j++) {
+                            final long id = idShift + j;
+                            String query = "insert " +
+                                    "$x_" + id + " '" + id + "' isa name ;" +
+                                    "$y_" + id + " '" + id + "' isa surname ;" +
+                                    "$z_" + id + " " + id + " isa age ;";
+                            threadTx.execute(Graql.parse(query).asInsert());
+                        }
+                        threadTx.commit();
+                    }
+                }
+                return null;
+            }, executorService);
+            asyncInsertions.add(asyncInsert);
+        }
+
         //allOf returns when all jobs are finished
+        /*
         for( int i = 0 ; i < txs ; i++) {
             CompletableFuture.allOf(getAsyncJobs(session, executorService, numberOfConcurrentTransactions, commitSize, i).toArray(new CompletableFuture[]{})).get();
         }
+         */
 
-        final long multiplicity = numberOfConcurrentTransactions * commitSize*txs;
+        CompletableFuture.allOf(asyncInsertions.toArray(new CompletableFuture[]{})).get();
+        executorService.shutdown();
+
+        final long multiplicity = numberOfConcurrentTransactions * commitSize * txs;
         final long noOfConcepts = multiplicity * 3;
         final long totalTime = System.currentTimeMillis() - start;
         System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
         System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
+        System.out.println("getConcept: " + ConceptBuilder.getConceptTime);
+        System.out.println("putConcept: " + ConceptBuilder.getConceptTime);
+        System.out.println("buildConcept: " + ConceptBuilder.buildConceptTime);
+        System.out.println("executeTime: " + WriteExecutor.executeTime);
+        System.out.println("conceptBuildTime: " + WriteExecutor.conceptBuildTime);
+        System.out.println("writeTime: " + QueryExecutor.writeTime);
 
         // Retrieve all the attribute values to make sure we don't have any person linked to a broken vertex.
         // This step is needed because it's only when retrieving attributes that we would be able to spot a
@@ -155,6 +194,73 @@ public class BenchmarkSmallIT {
         tx.close();
 
         //TestCase.assertEquals(multiplicity, numOfPersons);
+        TestCase.assertEquals(multiplicity, numOfNames);
+        TestCase.assertEquals(multiplicity, numOfSurnames);
+        TestCase.assertEquals(multiplicity, numOfAges);
+        System.out.println("SUCCESS");
+    }
+
+    @Test
+    public void singleThreadPerformanceTest(){
+        Session session = server.sessionWithNewKeyspace();
+        TransactionOLTP tx = session.transaction().write();
+        tx.execute(Graql.parse("define " +
+                "person sub entity, has name, has surname, has age; " +
+                "name sub attribute, datatype string;" +
+                "surname sub attribute, datatype string;" +
+                "age sub attribute, datatype long;").asDefine());
+
+        tx.commit();
+
+        final int commitSize = 3000;
+        final int txs = 25;
+        final long start = System.currentTimeMillis();
+        long queryPrep = 0;
+        long commitTime =0;
+        for(int txNo = 1 ; txNo <= txs; txNo++) {
+            try (TransactionOLTP threadTx = session.transaction().write()) {
+                final long idShift = commitSize * txNo;
+                for (int j = 0; j < commitSize; j++) {
+                    final long id = idShift + j;
+                    long start2 = System.currentTimeMillis();
+                            String query = "insert " +
+                                    "$x_" + id + " '" + id + "' isa name ;" +
+                                    "$y_" + id + " '" + id + "' isa surname ;" +
+                                    "$z_" + id + " " + id + " isa age ;";
+                    GraqlInsert graqlInsert = Graql.parse(query).asInsert();
+                    queryPrep += System.currentTimeMillis() - start2;
+                    threadTx.execute(graqlInsert);
+                }
+                long start3 = System.currentTimeMillis();
+                threadTx.commit();
+                commitTime += System.currentTimeMillis() - start3;
+            }
+        }
+
+        final long multiplicity = commitSize * txs;
+        final long noOfConcepts = multiplicity * 3;
+        final long totalTime = System.currentTimeMillis() - start;
+        System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
+        System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
+        System.out.println("getConcept: " + ConceptBuilder.getConceptTime);
+        System.out.println("putConcept: " + ConceptBuilder.getConceptTime);
+        System.out.println("buildConcept: " + ConceptBuilder.buildConceptTime);
+        System.out.println("executeTime: " + WriteExecutor.executeTime);
+        System.out.println("conceptBuildTime: " + WriteExecutor.conceptBuildTime);
+        System.out.println("writeTime: " + QueryExecutor.writeTime);
+        System.out.println("prepExecutors: " + QueryExecutor.prepareExecutorsTime);
+        System.out.println("queryPrep: " + queryPrep);
+        System.out.println("commitTime: " + commitTime);
+        System.out.println("janusCommitTime: " + TransactionOLTP.janusCommitTime);
+        System.out.println("commitInternalTime: " + TransactionOLTP.commitInternalTime);
+
+        tx = session.transaction().write();
+        System.out.println("fetching counts");
+        int numOfNames = tx.execute(Graql.parse("compute count in name;").asComputeStatistics()).get(0).number().intValue();
+        int numOfSurnames = tx.execute(Graql.parse("compute count in surname;").asComputeStatistics()).get(0).number().intValue();
+        int numOfAges = tx.execute(Graql.parse("compute count in age;").asComputeStatistics()).get(0).number().intValue();
+        tx.close();
+
         TestCase.assertEquals(multiplicity, numOfNames);
         TestCase.assertEquals(multiplicity, numOfSurnames);
         TestCase.assertEquals(multiplicity, numOfAges);
