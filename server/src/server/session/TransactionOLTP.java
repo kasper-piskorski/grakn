@@ -220,18 +220,18 @@ public class TransactionOLTP implements AutoCloseable {
             // that are trying to create new attributes will read an updated version of attributesCache
             // Not locking here might lead to concurrent transactions reading the attributesCache that still
             // contains attributes that we are removing in this transaction.
-            session.graphLock().writeLock().lock();
+            //session.graphLock().writeLock().lock();
             try {
                 createNewTypeShardsWhenThresholdReached();
                 session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
                 janusTransaction.commit();
                 cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
             } finally {
-                session.graphLock().writeLock().unlock();
+                //session.graphLock().writeLock().unlock();
             }
         } else {
             createNewTypeShardsWhenThresholdReached();
-            session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
+            //session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
             janusTransaction.commit();
         }
         LOG.trace("Graph committed.");
@@ -243,13 +243,14 @@ public class TransactionOLTP implements AutoCloseable {
         //session.graphLock().writeLock().lock();
         try {
             createNewTypeShardsWhenThresholdReached();
-            cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
-            cache().getNewAttributes().forEach(((labelIndexPair, conceptId) -> {
+            //cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
+            //cache().getNewAttributes().forEach(((labelIndexPair, conceptId) -> {
                 // If the same index is contained in attributesCache, it means
                 // another concurrent transaction inserted the same attribute, time to merge!
                 // NOTE: we still need to rely on attributesCache instead of checking in the graph
                 // if the index exists, because apparently JanusGraph does not make indexes available
                 // in a Read Committed fashion
+            /*
                 ConceptId targetId = session.attributesCache().getIfPresent(labelIndexPair.getValue());
                 if (targetId != null) {
                     merge(getTinkerTraversal(), conceptId, targetId);
@@ -258,7 +259,8 @@ public class TransactionOLTP implements AutoCloseable {
                     session.attributesCache().put(labelIndexPair.getValue(), conceptId);
                 }
             }));
-            session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
+             */
+            //session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
             janusTransaction.commit();
         } finally {
             //session.graphLock().writeLock().unlock();

@@ -34,6 +34,7 @@ import grakn.core.graql.reasoner.graph.PathTreeGraph;
 import grakn.core.graql.reasoner.graph.TransitivityChainGraph;
 import grakn.core.graql.reasoner.graph.TransitivityMatrixGraph;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.server.keyspace.Keyspace;
 import grakn.core.server.session.Session;
 import grakn.core.server.session.TransactionOLTP;
 import graql.lang.Graql;
@@ -47,6 +48,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -92,10 +94,10 @@ public class BenchmarkSmallIT {
     public void test() throws ExecutionException, InterruptedException {
 
         GraknClient graknClient = new GraknClient("localhost:48555");
-        GraknClient.Session session = graknClient.session("concurrency");
+        String keyspace = "t" + RandomStringUtils.random(10, true, true);
+        GraknClient.Session session = graknClient.session(keyspace);
+
         GraknClient.Transaction tx = session.transaction().write();
-
-
         //Session session = server.sessionWithNewKeyspace();
         //TransactionOLTP tx = session.transaction().write();
         tx.execute(Graql.parse("define " +
@@ -153,12 +155,6 @@ public class BenchmarkSmallIT {
         final long totalTime = System.currentTimeMillis() - start;
         System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
         System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
-        System.out.println("getConcept: " + ConceptBuilder.getConceptTime);
-        System.out.println("putConcept: " + ConceptBuilder.getConceptTime);
-        System.out.println("buildConcept: " + ConceptBuilder.buildConceptTime);
-        System.out.println("executeTime: " + WriteExecutor.executeTime);
-        System.out.println("conceptBuildTime: " + WriteExecutor.conceptBuildTime);
-        System.out.println("writeTime: " + QueryExecutor.writeTime);
 
         // Retrieve all the attribute values to make sure we don't have any person linked to a broken vertex.
         // This step is needed because it's only when retrieving attributes that we would be able to spot a
@@ -242,17 +238,6 @@ public class BenchmarkSmallIT {
         final long totalTime = System.currentTimeMillis() - start;
         System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
         System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
-        System.out.println("getConcept: " + ConceptBuilder.getConceptTime);
-        System.out.println("putConcept: " + ConceptBuilder.getConceptTime);
-        System.out.println("buildConcept: " + ConceptBuilder.buildConceptTime);
-        System.out.println("executeTime: " + WriteExecutor.executeTime);
-        System.out.println("conceptBuildTime: " + WriteExecutor.conceptBuildTime);
-        System.out.println("writeTime: " + QueryExecutor.writeTime);
-        System.out.println("prepExecutors: " + QueryExecutor.prepareExecutorsTime);
-        System.out.println("queryPrep: " + queryPrep);
-        System.out.println("commitTime: " + commitTime);
-        System.out.println("janusCommitTime: " + TransactionOLTP.janusCommitTime);
-        System.out.println("commitInternalTime: " + TransactionOLTP.commitInternalTime);
 
         tx = session.transaction().write();
         System.out.println("fetching counts");
