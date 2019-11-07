@@ -92,7 +92,6 @@ public class BenchmarkSmallIT {
 
     @Test
     public void test() throws ExecutionException, InterruptedException {
-
         GraknClient graknClient = new GraknClient("localhost:48555");
         String keyspace = "t" + RandomStringUtils.random(10, true, true);
         GraknClient.Session session = graknClient.session(keyspace);
@@ -108,7 +107,6 @@ public class BenchmarkSmallIT {
 
         tx.commit();
 
-        // We need a good amount of parallelism to have a good chance to spot possible issues. Don't use smaller values.
         final int numberOfConcurrentTransactions = 8;
         final int commitSize = 3000;
         final int txs = 40;
@@ -140,13 +138,6 @@ public class BenchmarkSmallIT {
             asyncInsertions.add(asyncInsert);
         }
 
-        //allOf returns when all jobs are finished
-        /*
-        for( int i = 0 ; i < txs ; i++) {
-            CompletableFuture.allOf(getAsyncJobs(session, executorService, numberOfConcurrentTransactions, commitSize, i).toArray(new CompletableFuture[]{})).get();
-        }
-         */
-
         CompletableFuture.allOf(asyncInsertions.toArray(new CompletableFuture[]{})).get();
         executorService.shutdown();
 
@@ -155,34 +146,8 @@ public class BenchmarkSmallIT {
         final long totalTime = System.currentTimeMillis() - start;
         System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
         System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
-
-        // Retrieve all the attribute values to make sure we don't have any person linked to a broken vertex.
-        // This step is needed because it's only when retrieving attributes that we would be able to spot a
-        // ghost vertex (which is might be introduced while merging 2 attribute nodes)
-        /*
-        tx = session.transaction().write();
-        List<ConceptMap> conceptMaps = tx.execute(Graql.parse("match $x isa person; get;").asGet());
-        conceptMaps.forEach(map -> {
-            Collection<Concept> concepts = map.concepts();
-            concepts.forEach(concept -> {
-                Set<Attribute<?>> collect = concept.asThing().attributes().collect(toSet());
-                assertEquals(3, collect.size());
-                collect.forEach(attribute -> {
-                    String value = attribute.value().toString();
-                });
-            });
-        });
-        tx.close();
-        */
-
         tx = session.transaction().write();
         System.out.println("fetching counts");
-        /*
-        int numOfPersons = tx.execute(Graql.parse("match $x isa person; get; count;").asGetAggregate()).get(0).number().intValue();
-        int numOfNames = tx.execute(Graql.parse("match $x isa name; get; count;").asGetAggregate()).get(0).number().intValue();
-        int numOfSurnames = tx.execute(Graql.parse("match $x isa surname; get; count;").asGetAggregate()).get(0).number().intValue();
-        int numOfAges = tx.execute(Graql.parse("match $x isa age; get; count;").asGetAggregate()).get(0).number().intValue();
-         */
         int numOfPersons = tx.execute(Graql.parse("compute count in person;").asComputeStatistics()).get(0).number().intValue();
         int numOfNames = tx.execute(Graql.parse("compute count in name;").asComputeStatistics()).get(0).number().intValue();
         int numOfSurnames = tx.execute(Graql.parse("compute count in surname;").asComputeStatistics()).get(0).number().intValue();
@@ -195,63 +160,6 @@ public class BenchmarkSmallIT {
         TestCase.assertEquals(multiplicity, numOfAges);
         System.out.println("SUCCESS");
     }
-
-    @Test
-    public void singleThreadPerformanceTest(){
-        Session session = server.sessionWithNewKeyspace();
-        TransactionOLTP tx = session.transaction().write();
-        tx.execute(Graql.parse("define " +
-                "person sub entity, has name, has surname, has age; " +
-                "name sub attribute, datatype string;" +
-                "surname sub attribute, datatype string;" +
-                "age sub attribute, datatype long;").asDefine());
-
-        tx.commit();
-
-        final int commitSize = 3000;
-        final int txs = 25;
-        final long start = System.currentTimeMillis();
-        long queryPrep = 0;
-        long commitTime =0;
-        for(int txNo = 1 ; txNo <= txs; txNo++) {
-            try (TransactionOLTP threadTx = session.transaction().write()) {
-                final long idShift = commitSize * txNo;
-                for (int j = 0; j < commitSize; j++) {
-                    final long id = idShift + j;
-                    long start2 = System.currentTimeMillis();
-                            String query = "insert " +
-                                    "$x_" + id + " '" + id + "' isa name ;" +
-                                    "$y_" + id + " '" + id + "' isa surname ;" +
-                                    "$z_" + id + " " + id + " isa age ;";
-                    GraqlInsert graqlInsert = Graql.parse(query).asInsert();
-                    queryPrep += System.currentTimeMillis() - start2;
-                    threadTx.execute(graqlInsert);
-                }
-                long start3 = System.currentTimeMillis();
-                threadTx.commit();
-                commitTime += System.currentTimeMillis() - start3;
-            }
-        }
-
-        final long multiplicity = commitSize * txs;
-        final long noOfConcepts = multiplicity * 3;
-        final long totalTime = System.currentTimeMillis() - start;
-        System.out.println("sort time: " + WriteExecutor.sortedWritersTime);
-        System.out.println("Concepts: " + noOfConcepts + " totalTime: " + totalTime + " throughput: " + noOfConcepts*1000*60/(totalTime));
-
-        tx = session.transaction().write();
-        System.out.println("fetching counts");
-        int numOfNames = tx.execute(Graql.parse("compute count in name;").asComputeStatistics()).get(0).number().intValue();
-        int numOfSurnames = tx.execute(Graql.parse("compute count in surname;").asComputeStatistics()).get(0).number().intValue();
-        int numOfAges = tx.execute(Graql.parse("compute count in age;").asComputeStatistics()).get(0).number().intValue();
-        tx.close();
-
-        TestCase.assertEquals(multiplicity, numOfNames);
-        TestCase.assertEquals(multiplicity, numOfSurnames);
-        TestCase.assertEquals(multiplicity, numOfAges);
-        System.out.println("SUCCESS");
-    }
-
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:

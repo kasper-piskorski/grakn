@@ -23,12 +23,13 @@ load("@graknlabs_build_tools//checkstyle:rules.bzl", "checkstyle_test")
 java_library(
     name = "common",
     srcs = glob(["**/*.java"]),
+    tags = ["maven_coordinates=io.grakn.core:grakn-common:{pom_version}"],
+    visibility = ["//visibility:public"],
     deps = [
         "//dependencies/maven/artifacts/com/google/code/findbugs:jsr305",
+        "//dependencies/maven/artifacts/com/google/guava",
         "//dependencies/maven/artifacts/org/slf4j:slf4j-api",
     ],
-    visibility = ["//visibility:public"],
-    tags = ["maven_coordinates=io.grakn.core:grakn-common:{pom_version}"],
 )
 
 checkstyle_test(

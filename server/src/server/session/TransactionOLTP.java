@@ -231,7 +231,7 @@ public class TransactionOLTP implements AutoCloseable {
             }
         } else {
             createNewTypeShardsWhenThresholdReached();
-            //session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
+            session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
             janusTransaction.commit();
         }
         LOG.trace("Graph committed.");
@@ -243,14 +243,14 @@ public class TransactionOLTP implements AutoCloseable {
         //session.graphLock().writeLock().lock();
         try {
             createNewTypeShardsWhenThresholdReached();
-            //cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
-            //cache().getNewAttributes().forEach(((labelIndexPair, conceptId) -> {
+            cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
+            cache().getNewAttributes().forEach(((labelIndexPair, conceptId) -> {
                 // If the same index is contained in attributesCache, it means
                 // another concurrent transaction inserted the same attribute, time to merge!
                 // NOTE: we still need to rely on attributesCache instead of checking in the graph
                 // if the index exists, because apparently JanusGraph does not make indexes available
                 // in a Read Committed fashion
-            /*
+
                 ConceptId targetId = session.attributesCache().getIfPresent(labelIndexPair.getValue());
                 if (targetId != null) {
                     merge(getTinkerTraversal(), conceptId, targetId);
@@ -259,8 +259,7 @@ public class TransactionOLTP implements AutoCloseable {
                     session.attributesCache().put(labelIndexPair.getValue(), conceptId);
                 }
             }));
-             */
-            //session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
+            session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
             janusTransaction.commit();
         } finally {
             //session.graphLock().writeLock().unlock();

@@ -117,7 +117,6 @@ public class WriteExecutor {
             For example, the property `$x isa $y` depends on the existence of the concept represented by `$y`.
          */
         Multimap<Writer, Variable> executorToRequiredVars = HashMultimap.create();
-
         for (Writer writer : writers) {
             for (Variable requiredVar : writer.requiredVars()) {
                 executorToRequiredVars.put(writer, requiredVar);
@@ -131,10 +130,9 @@ public class WriteExecutor {
             For example, the concept represented by `$x` will not exist before the property `$x isa $y` is inserted.
          */
         Multimap<Variable, Writer> varToProducingWriter = HashMultimap.create();
-
-        for (Writer executor : writers) {
-            for (Variable producedVar : executor.producedVars()) {
-                varToProducingWriter.put(producedVar, executor);
+        for (Writer writer : writers) {
+            for (Variable producedVar : writer.producedVars()) {
+                varToProducingWriter.put(producedVar, writer);
             }
         }
 
@@ -167,9 +165,7 @@ public class WriteExecutor {
             // These vars must refer to the same concept, so share their dependencies
             Collection<Writer> producingWriters =
                     vars.stream().flatMap(var -> varToProducingWriter.get(var).stream()).collect(toList());
-
             Variable first = vars.iterator().next();
-
             vars.forEach(var -> {
                 varToProducingWriter.replaceValues(var, producingWriters);
                 equivalentVars.merge(first, var);
@@ -235,36 +231,17 @@ public class WriteExecutor {
     ConceptMap write(ConceptMap preExisting) {
         concepts.putAll(preExisting.map());
 
-        // time to execute writers for properties
-        int executeWritersSpanId = ServerTracing.startScopedChildSpan("WriteExecutor.write execute writers");
-
-
         for (Writer writer : sortedWriters()) {
             writer.execute(this);
         }
-
-        ServerTracing.closeScopedChildSpan(executeWritersSpanId);
-        // time to delete concepts marked for deletion
-
-        int deleteConceptsSpanId = ServerTracing.startScopedChildSpan("WriteExecutor.write delete concepts");
-
 
         for (Concept concept : conceptsToDelete) {
             concept.delete();
         }
 
-        ServerTracing.closeScopedChildSpan(deleteConceptsSpanId);
-
         // time to build concepts
 
-        int buildConceptsSpanId = ServerTracing.startScopedChildSpan("WriteExecutor.write build concepts for answer");
-
         conceptBuilders.forEach((var, builder) -> buildConcept(var, builder));
-
-        ServerTracing.closeScopedChildSpan(buildConceptsSpanId);
-
-        int answerAndPersistId = ServerTracing.startScopedChildSpan("WriteExecutor.write create answers and persist dependent inferred concepts");
-
         ImmutableMap.Builder<Variable, Concept> allConcepts = ImmutableMap.<Variable, Concept>builder().putAll(concepts);
 
         // Make sure to include all equivalent vars in the result
@@ -279,9 +256,6 @@ public class WriteExecutor {
         if (tx().cache().getInferredInstances().findAny().isPresent()) {
             markConceptsForPersistence(namedConcepts.values());
         }
-
-        ServerTracing.closeScopedChildSpan(answerAndPersistId);
-
 
         return new ConceptMap(namedConcepts);
     }

@@ -284,10 +284,10 @@ public class QueryExecutor {
                 .flatMap(statement -> statement.innerStatements().stream())
                 .collect(Collectors.toList());
 
-        ImmutableSet.Builder<PropertyExecutor.Writer> executors = ImmutableSet.builder();
+        ImmutableSet.Builder<PropertyExecutor.Writer> writers = ImmutableSet.builder();
         for (Statement statement : statements) {
             for (VarProperty property : statement.properties()) {
-                executors.addAll(PropertyExecutor.insertable(statement.var(), property).insertExecutors());
+                writers.addAll(PropertyExecutor.insertable(statement.var(), property).insertExecutors());
             }
         }
 
@@ -306,10 +306,10 @@ public class QueryExecutor {
 
             Stream<ConceptMap> answers = transaction.stream(match.get(projectedVars), infer);
             answerStream = answers
-                    .map(answer -> WriteExecutor.create(transaction, executors.build()).write(answer))
+                    .map(answer -> WriteExecutor.create(transaction, writers.build()).write(answer))
                     .collect(toList()).stream();
         } else {
-            answerStream = Stream.of(WriteExecutor.create(transaction, executors.build()).write(new ConceptMap()));
+            answerStream = Stream.of(WriteExecutor.create(transaction, writers.build()).write(new ConceptMap()));
         }
 
         ServerTracing.closeScopedChildSpan(answerStreamSpanId);
