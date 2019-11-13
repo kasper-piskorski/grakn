@@ -165,7 +165,7 @@ public class RuleUtils {
                     .filter(q -> q.getAtom().isRelation() || q.getAtom().isResource())
                     .collect(toSet());
             //if we don't have full information (query answers in cache), we assume reiteration is needed
-            if (!queries.stream().allMatch(q -> queryCache.isDBComplete(q))) return true;
+            if (!queries.stream().allMatch(queryCache::isDBComplete)) return true;
 
             HashMultimap<Concept, Concept> conceptMap = HashMultimap.create();
             for (ReasonerAtomicQuery q : queries) {

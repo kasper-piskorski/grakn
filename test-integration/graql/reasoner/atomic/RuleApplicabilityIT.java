@@ -42,6 +42,8 @@ import grakn.core.kb.server.Transaction;
 import graql.lang.Graql;
 import graql.lang.pattern.Conjunction;
 import graql.lang.pattern.Pattern;
+import graql.lang.query.GraqlDefine;
+import graql.lang.query.GraqlInsert;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
 import java.util.List;
@@ -500,6 +502,71 @@ public class RuleApplicabilityIT {
             assertEquals(1, relation3.getApplicableRules().count());
             assertEquals(1, relation4.getApplicableRules().count());
             assertEquals(1, relation5.getApplicableRules().count());
+        }
+    }
+
+    @Test
+    public void RolePlayerConnectivityDeterminesApplicability(){
+        Session session = server.sessionWithNewKeyspace();
+        try(Transaction tx = session.writeTransaction()) {
+            tx.execute(Graql.<GraqlDefine>parse(
+                    "define " +
+                            "baseEntity sub entity, plays someRole, plays anotherRole;" +
+                            "someEntity sub baseEntity;" +
+                            "anotherEntity sub baseEntity;" +
+                            "specificRelationOne sub relation, relates someRole, relates anotherRole;" +
+                            "specificRelationTwo sub relation, relates someRole, relates anotherRole;" +
+                            "anotherSpecificRelationOne sub relation, relates someRole, relates anotherRole;" +
+                            "anotherSpecificRelationTwo sub relation, relates someRole, relates anotherRole;" +
+                            "inferredRelation sub relation, relates someRole, relates anotherRole;"
+            ));
+
+            String patternOne = "{" +
+                    "(someRole: $link, anotherRole: $index) isa specificRelationOne;" +
+                    "(someRole: $index, anotherRole: $anotherLink) isa anotherSpecificRelationOne;" +
+                    "};";
+
+            String patternTwo = "{" +
+                    "(someRole: $link, anotherRole: $index) isa specificRelationTwo;" +
+                    "(someRole: $index, anotherRole: $anotherLink) isa anotherSpecificRelationTwo;" +
+                    "};";
+
+            String conclusionPattern = "(someRole: $link, anotherRole: $anotherLink) isa inferredRelation;";
+            Statement relationRuleOne = Graql
+                    .type("relationRuleOne")
+                    .when(Graql.and(Graql.parsePattern(patternOne)))
+                    .then(Graql.and(Graql.parsePattern(conclusionPattern)));
+            Statement relationRuleTwo = Graql
+                    .type("relationRuleTwo")
+                    .when(Graql.and(Graql.parsePattern(patternTwo)))
+                    .then(Graql.and(Graql.parsePattern(conclusionPattern)));
+            tx.execute(Graql.define(relationRuleOne));
+            tx.execute(Graql.define(relationRuleTwo));
+
+            tx.execute(Graql.<GraqlInsert>parse(
+                    "insert " +
+                            "$link isa someEntity;" +
+                            "$index isa anotherEntity;" +
+                            "$anotherLink isa anotherEntity;" +
+                            "(someRole: $link, anotherRole: $index) isa specificRelationOne;" +
+                            "(someRole: $index, anotherRole: $anotherLink) isa anotherSpecificRelationOne;"
+            ));
+            tx.execute(Graql.<GraqlInsert>parse(
+                    "insert " +
+                            "$link isa someEntity;" +
+                            "$index isa anotherEntity;" +
+                            "$anotherLink isa anotherEntity;" +
+                            "(someRole: $link, anotherRole: $index) isa specificRelationTwo;" +
+                            "(someRole: $index, anotherRole: $anotherLink) isa anotherSpecificRelationTwo;"
+            ));
+            tx.commit();
+        }
+
+        try(Transaction tx = session.writeTransaction()){
+            String id = tx.getEntityType("someEntity").instances().iterator().next().id().getValue();
+            String query = "{$link id " + id + ";(someRole: $link, anotherRole: $anotherLink) isa inferredRelation;};";
+            Atom relation = ReasonerQueries.atomic(conjunction(query, tx), tx).getAtom();
+            assertEquals(1, relation.getApplicableRules().count());
         }
     }
 
