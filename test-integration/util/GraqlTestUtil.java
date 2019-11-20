@@ -18,6 +18,7 @@
 
 package grakn.core.util;
 
+import grakn.client.GraknClient;
 import grakn.core.kb.concept.api.Attribute;
 import grakn.core.kb.concept.api.EntityType;
 import grakn.core.kb.concept.api.Label;
@@ -27,6 +28,7 @@ import grakn.core.kb.server.Transaction;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlInsert;
+import graql.lang.query.GraqlQuery;
 import graql.lang.query.MatchClause;
 import graql.lang.statement.Statement;
 import java.io.BufferedReader;
@@ -150,6 +152,44 @@ public class GraqlTestUtil {
                         tx.commit();
                         inserted = 0;
                         tx = session.writeTransaction();
+                    }
+                }
+                if (inserted != 0) tx.commit();
+                System.out.println("Thread: " + Thread.currentThread().getId() + " elements: " + subList.size() + " time: " + (System.currentTimeMillis() - start2));
+                return null;
+            }, executorService);
+            asyncInsertions.add(asyncInsert);
+        }
+        CompletableFuture.allOf(asyncInsertions.toArray(new CompletableFuture[]{})).get();
+        executorService.shutdown();
+    }
+
+    public static void insertQueriesConcurrently(GraknClient.Session session, List<GraqlQuery> queries,
+                                                 int threads, int queriesPerCommit) throws ExecutionException, InterruptedException {
+        ExecutorService executorService = Executors.newFixedThreadPool(threads);
+        int listSize = queries.size();
+        int listChunk = listSize / threads;
+
+        List<CompletableFuture<Void>> asyncInsertions = new ArrayList<>();
+        for (int threadNo = 0; threadNo < threads; threadNo++) {
+            boolean lastChunk = threadNo == threads - 1;
+            final int startIndex = threadNo * listChunk;
+            int endIndex = (threadNo + 1) * listChunk;
+            if (endIndex > listSize && lastChunk) endIndex = listSize;
+
+            List<GraqlQuery> subList = queries.subList(startIndex, endIndex);
+            System.out.println("indices: " + startIndex + "-" + endIndex + " , size: " + subList.size());
+            CompletableFuture<Void> asyncInsert = CompletableFuture.supplyAsync(() -> {
+                long start2 = System.currentTimeMillis();
+                GraknClient.Transaction tx = session.transaction().write();
+                int inserted = 0;
+                for (GraqlQuery query : subList) {
+                    tx.execute(query);
+                    inserted++;
+                    if (inserted % queriesPerCommit == 0) {
+                        tx.commit();
+                        inserted = 0;
+                        tx = session.transaction().write();
                     }
                 }
                 if (inserted != 0) tx.commit();

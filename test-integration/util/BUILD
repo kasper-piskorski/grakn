@@ -9,6 +9,7 @@ java_library(
         "//dependencies/maven/artifacts/junit",
         "//kb",
         "//kb/concept/api",
+        "@graknlabs_client_java//:client-java",
         "@graknlabs_graql//java:graql",
     ],
 )
@@ -18,7 +19,7 @@ java_library(
     srcs = ["ConceptDowncasting.java"],
     visibility = ["//test-integration:__subpackages__"],
     deps = [
-        "//concept/impl:impl",
+        "//concept/impl",
         "//kb/concept/api",
     ],
 )

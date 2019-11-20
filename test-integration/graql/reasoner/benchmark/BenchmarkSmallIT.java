@@ -19,6 +19,7 @@
 package grakn.core.graql.reasoner.benchmark;
 
 
+import grakn.client.GraknClient;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
@@ -33,11 +34,21 @@ import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.server.Session;
 import grakn.core.kb.server.Transaction;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.util.GraqlTestUtil;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlInsert;
+import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -48,6 +59,55 @@ public class BenchmarkSmallIT {
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
+
+    @Test
+    public void load(){
+        String gqlPath = "test-integration/graql/reasoner/stubs/";
+        String gqlFile = "keboola-data.gql";
+
+        GraknClient graknClient = new GraknClient("localhost:48555");
+        GraknClient.Session remoteSession = graknClient.session("keboola2");
+        try {
+            System.out.println("Loading... " + gqlPath + gqlFile);
+            InputStream inputStream = BenchmarkSmallIT.class.getClassLoader().getResourceAsStream(gqlPath + gqlFile);
+            String s = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            List<GraqlQuery> queries = Graql.parseList(s).collect(Collectors.toList());
+
+            List<GraqlQuery> plainInserts = queries.stream().map(GraqlQuery::asInsert).filter(q -> q.match() == null).collect(Collectors.toList());
+            List<GraqlQuery> matchInserts = queries.stream().map(GraqlQuery::asInsert).filter(q -> q.match() != null).collect(Collectors.toList());
+            GraqlTestUtil.insertQueriesConcurrently(remoteSession, plainInserts, 8, 500);
+            GraqlTestUtil.insertQueriesConcurrently(remoteSession, matchInserts, 8, 500);
+
+        } catch (Exception e) {
+            System.err.println(e);
+            throw new RuntimeException(e);
+        }
+        remoteSession.close();
+    }
+
+    @Test
+    public void testQuery(){
+        String queryString = "match\n" +
+                "        $o isa organization, has identifier 251;\n" +
+                "        $ps isa project, has identifier 5701;\n" +
+                "        $pt isa project, has isDeleted false;\n" +
+                "        (projectRole: $ps, organizationRole: $o) isa organizationToProject;\n" +
+
+                "        (projectSourceRole: $ps, projectTargetRole: $pt) isa projectSharing;\n" +
+                "      get $pt; limit 10;";
+
+        GraknClient graknClient = new GraknClient("localhost:48555");
+        GraknClient.Session remoteSession = graknClient.session("keboola2");
+
+        try(GraknClient.Transaction tx = remoteSession.transaction().write()){
+            long start = System.currentTimeMillis();
+            List<grakn.client.answer.ConceptMap> answers = tx.execute(Graql.parse(queryString).asGet());
+            System.out.println("answers: " + answers.size());
+            System.out.println("execute time: " + (System.currentTimeMillis() - start));
+        }
+
+
+    }
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:
