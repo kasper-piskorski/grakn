@@ -178,7 +178,6 @@ public class GeoInferenceIT {
     @Test
     public void testTransitiveQuery_withSubstitution() {
         try (Transaction tx = geoGraphSession.writeTransaction()) {
-            
             Concept poland = getConcept(tx, "name", "Poland");
             Concept europe = getConcept(tx, "name", "Europe");
             String queryString = "match " +

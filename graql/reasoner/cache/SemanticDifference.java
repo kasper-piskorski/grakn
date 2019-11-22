@@ -149,6 +149,12 @@ public class SemanticDifference {
         return ConceptUtils.joinAnswers(unified.project(varsToRetain), childSub).project(childVars);
     }
 
+    @CheckReturnValue
     boolean isEmpty() { return definition.stream().allMatch(VariableDefinition::isTrivial);}
+
+    @CheckReturnValue
+    public ConceptMap apply(ConceptMap answer){
+        return this.satisfiedBy(answer)? answer : new ConceptMap();
+    }
 
 }

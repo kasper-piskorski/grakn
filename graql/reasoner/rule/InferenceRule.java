@@ -19,8 +19,14 @@
 
 package grakn.core.graql.reasoner.rule;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import grakn.common.util.Pair;
+import grakn.core.graql.reasoner.cache.SemanticDifference;
+import grakn.core.graql.reasoner.state.TransitiveClosureState;
+import grakn.core.graql.reasoner.state.TransitiveReachabilityState;
+import grakn.core.graql.reasoner.utils.TarjanSCC;
 import grakn.core.kb.concept.api.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.kb.concept.api.Rule;
@@ -38,6 +44,7 @@ import grakn.core.graql.reasoner.query.ResolvableQuery;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.ResolutionState;
 import grakn.core.graql.reasoner.state.RuleState;
+import grakn.core.kb.graql.reasoner.query.ReasonerQuery;
 import grakn.core.kb.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
@@ -386,11 +393,47 @@ public class InferenceRule {
         Unifier ruleUnifierInverse = ruleUnifier.inverse();
 
         //delta' = theta . thetaP . delta
-        ConceptMap partialSubPrime = ruleUnifierInverse.apply(
-                parentAtom.getParentQuery().getSubstitution()
-        );
+        ConceptMap parentSub = parentAtom.getParentQuery().getSubstitution();
+        ConceptMap partialSubPrime = ruleUnifierInverse.apply(parentSub);
+        InferenceRule rule = this.propagateConstraints(parentAtom, ruleUnifierInverse);
 
-        return new RuleState(this.propagateConstraints(parentAtom, ruleUnifierInverse), partialSubPrime, ruleUnifier, parent, visitedSubGoals);
+        if (isTransitive()
+                && parentAtom.getApplicableRules().map(InferenceRule::getBody).filter(ReasonerQuery::isRuleResolvable).count() == 1){
+            Atom head = getHead().getAtom();
+            SemanticDifference semanticDiff = head.semanticDifference(parentAtom, ruleUnifier);
+            Set<Variable> rpVars = new HashSet<>(head.toRelationAtom().getRoleVarMap().values());
+            //check if we have any starting points
+            //return new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent);
+
+            return Sets.intersection(partialSubPrime.vars(), rpVars).isEmpty()?
+                    new TransitiveClosureState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent) :
+                    new TransitiveReachabilityState(rule, partialSubPrime, ruleUnifier, semanticDiff, parent);
+        }
+
+        return new RuleState(rule, partialSubPrime, ruleUnifier, parent, visitedSubGoals);
+    }
+
+    private boolean isTransitive(){
+        Atom atom = getHead().getAtom();
+        if (!atom.isRelation()) return false;
+        RelationAtom headAtom = (RelationAtom) atom;
+        Set<Pair<Variable, Variable>> pairs = headAtom.varDirectionality();
+        if (pairs.size() != 1) return false;
+        Pair<Variable, Variable> headDirectionality = Iterables.getOnlyElement(pairs);
+        Variable from = headDirectionality.first();
+        Variable to = headDirectionality.second();
+
+        HashMultimap<Variable, Variable> bodyDirectionality = HashMultimap.create();
+        int[] order = {0};
+        getBody().getAtoms(RelationAtom.class)
+                .filter(at -> at.getSchemaConcept() != null)
+                .filter(at -> at.getSchemaConcept().equals(headAtom.getSchemaConcept()))
+                .forEach(at -> {
+                    at.varDirectionality().forEach(pair -> bodyDirectionality.put(pair.first(), pair.second()));
+                    order[0]++;
+                });
+
+        return order[0] == 2 && new TarjanSCC<>(bodyDirectionality).successorMap().get(from).contains(to);
     }
 
 }

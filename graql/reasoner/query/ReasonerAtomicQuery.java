@@ -30,7 +30,9 @@ import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.AtomicFactory;
 import grakn.core.graql.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
+import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
+import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.graql.reasoner.rule.RuleUtils;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.AnswerState;
@@ -138,6 +140,38 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      */
     public Atom getAtom() {
         return atom;
+    }
+
+    /**
+     * TODO
+     * @return
+     */
+    public Stream<ResolvableQuery> equivalentQueries(){
+        return getAtom().getApplicableRules().map(InferenceRule::getBody).filter(r -> !isRuleResolvable());
+    }
+
+    /**
+     * TODO
+     * @return
+     */
+    public Stream<ConceptMap> equivalentAnswerStream(){
+        return getAtom().getApplicableRules()
+                .filter(r -> !r.getBody().isRuleResolvable())
+                .map(r -> new Pair<>(r.getBody(), r.getHead().getMultiUnifier(this, UnifierType.RULE)))
+                .flatMap(p -> {
+                    ResolvableQuery q = p.first();
+                    MultiUnifier unifier = p.second();
+                    if (q.isAtomic()){
+                        ReasonerAtomicQuery query = (ReasonerAtomicQuery) q;
+                        return CacheCasting.queryCacheCast(tx().queryCache()).getAnswerStream(query)
+                                .flatMap(unifier::apply)
+                                .flatMap(unifier::apply)
+                                .map(ans -> ans.project(getVarNames()));
+                    }
+                    return tx().stream(q.getQuery(), false)
+                            .flatMap(unifier::apply)
+                            .map(ans -> ans.project(getVarNames()));
+                });
     }
 
     /**
