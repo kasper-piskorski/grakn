@@ -39,7 +39,7 @@ java_test(
 
 java_test(
     name = "benchmark-small-it",
-    size = "large",
+    size = "enormous",
     srcs = ["BenchmarkSmallIT.java"],
     classpath_resources = ["//test-integration/resources:logback-test"],
     resources = [
