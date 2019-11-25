@@ -45,6 +45,7 @@ import grakn.core.kb.concept.api.Concept;
 import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.Label;
 import grakn.core.kb.concept.api.Relation;
+import grakn.core.kb.concept.api.RelationType;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.concept.api.SchemaConcept;
 import grakn.core.kb.concept.api.Type;
@@ -55,6 +56,7 @@ import grakn.core.kb.graql.reasoner.query.ReasonerQuery;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
 import grakn.core.kb.server.Transaction;
 import grakn.core.kb.server.exception.GraqlSemanticException;
+import grakn.core.kb.server.statistics.KeyspaceStatistics;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.property.HasAttributeProperty;
@@ -287,6 +289,34 @@ public class AttributeAtom extends Binary{
 
     @Override
     public boolean isSelectable(){ return true;}
+
+    @Override
+    public boolean containsSuperNode(){
+        Transaction tx = tx();
+        KeyspaceStatistics statistics = tx.session().keyspaceStatistics();
+        // here we estimate the number of owners of an attribute instance of this type
+        // as this is the most common usage/expensive component of an attribute
+        // given that there's only 1 attribute of a type and value at any time
+        Label attributeLabel = getSchemaConcept().label();
+
+        AttributeType attributeType = tx.getSchemaConcept(attributeLabel).asAttributeType();
+        Stream<AttributeType> attributeSubs = attributeType.subs();
+
+        Label implicitAttributeType = Schema.ImplicitType.HAS.getLabel(attributeLabel);
+        SchemaConcept implicitAttributeRelationType = tx.getSchemaConcept(implicitAttributeType);
+        long totalImplicitRels = 0L;
+        if (implicitAttributeRelationType != null) {
+            RelationType implicitRelationType = implicitAttributeRelationType.asRelationType();
+            Stream<RelationType> implicitSubs = implicitRelationType.subs();
+            totalImplicitRels = implicitSubs.mapToLong(t -> statistics.count(tx, t.label())).sum();
+        }
+
+        long totalAttributes = attributeSubs.mapToLong(t -> statistics.count(tx, t.label())).sum();
+        if (totalAttributes == 0)  return false;
+
+        long SUPERNODE_THRESHOLD = 100L;
+        return totalImplicitRels / totalAttributes > SUPERNODE_THRESHOLD;
+    }
 
     public boolean isValueEquality(){ return getMultiPredicate().stream().anyMatch(p -> p.getPredicate().isValueEquality());}
 

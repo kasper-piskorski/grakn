@@ -301,6 +301,10 @@ public class ReasonerQueryImpl implements ResolvableQuery {
                 .anyMatch(Atom::isDisconnected);
     }
 
+    public boolean containsSuperNode(){
+        return selectAtoms().anyMatch(Atom::containsSuperNode);
+    }
+
     /**
      * @return true if the query requires direct schema lookups
      */

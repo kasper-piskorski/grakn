@@ -21,6 +21,7 @@ package grakn.core.graql.reasoner.cache;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
+import grakn.core.kb.concept.api.Label;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.concept.api.SchemaConcept;
 import grakn.core.kb.concept.api.Type;
@@ -146,10 +147,20 @@ public class RuleCacheImpl implements RuleCache {
         return match.stream();
     }
 
+    private boolean instancePresent(Type type){
+        return type.subs()
+                .anyMatch(t -> {
+                    Label label = t.label();
+                    return tx.session().keyspaceStatistics().count(tx, label) != 0
+                            || tx.statisticsDelta().delta(label) != 0;
+                });
+    }
+
     private boolean typeHasInstances(Type type){
         if (checkedTypes.contains(type)) return !absentTypes.contains(type);
         checkedTypes.add(type);
-        boolean instancePresent = type.instances().findFirst().isPresent()
+        boolean instancePresent = instancePresent(type)
+                //type.instances().findFirst().isPresent()
                 || type.subs().flatMap(SchemaConcept::thenRules).anyMatch(this::isRuleMatchable);
         if (!instancePresent){
             absentTypes.add(type);

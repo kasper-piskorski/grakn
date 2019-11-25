@@ -27,6 +27,8 @@ filegroup(
         "freshEntityDerivation.gql",
         "freshEntityDerivationFromRelations.gql",
         "freshRelationDerivation.gql",
+        "keboola-data.gql",
+        "keboola-schema.gql",
         "negation.gql",
         "recipeTest.gql",
         "reflexiveRelation.gql",

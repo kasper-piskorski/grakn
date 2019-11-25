@@ -75,7 +75,8 @@ public class ResolutionQueryPlan {
         List<Atom> nonResolvableAtoms = new ArrayList<>();
         while (!atoms.isEmpty()) {
             Atom top = atoms.remove();
-            if (top.isRuleResolvable()) {
+            boolean containsSuperNode = top.containsSuperNode();
+            if (top.isRuleResolvable() || containsSuperNode) {
                 if (!nonResolvableAtoms.isEmpty()) {
                     queries.add(ReasonerQueries.create(nonResolvableAtoms, tx));
                     nonResolvableAtoms.clear();
@@ -96,6 +97,7 @@ public class ResolutionQueryPlan {
                 .sorted(Comparator.comparing(q -> !q.isAtomic()))
                 .sorted(Comparator.comparing(ReasonerQueryImpl::isRuleResolvable))
                 .sorted(Comparator.comparing(ReasonerQueryImpl::isBoundlesslyDisconnected))
+                .sorted(Comparator.comparing(ReasonerQueryImpl::containsSuperNode))
                 .collect(Collectors.toCollection(LinkedList::new));
     }
 

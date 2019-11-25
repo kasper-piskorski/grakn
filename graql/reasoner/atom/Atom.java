@@ -140,6 +140,10 @@ public abstract class Atom extends AtomicBase {
         return getApplicableRules().findFirst().isPresent();
     }
 
+    public boolean containsSuperNode() {
+        return false;
+    }
+
     /**
      * @return true if the atom is ground (all variables are bound)
      */

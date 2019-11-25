@@ -33,14 +33,21 @@ import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.server.Session;
 import grakn.core.kb.server.Transaction;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.util.GraqlTestUtil;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
+import graql.lang.query.GraqlQuery;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import static grakn.core.util.GraqlTestUtil.loadFromFileAndCommit;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings({"CheckReturnValue", "Duplicates"})
@@ -48,6 +55,51 @@ public class BenchmarkSmallIT {
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
+
+    @Test
+    public void load(){
+        String gqlPath = "test-integration/graql/reasoner/stubs/";
+        String gqlDataFile = "keboola-data.gql";
+        String gqlSchemaFile = "keboola-schema.gql";
+
+        Session session = server.sessionWithNewKeyspace();
+        loadFromFileAndCommit(gqlPath, gqlSchemaFile, session);
+
+        //load data
+        try {
+            System.out.println("Loading... " + gqlPath + gqlDataFile);
+            InputStream inputStream = BenchmarkSmallIT.class.getClassLoader().getResourceAsStream(gqlPath + gqlDataFile);
+            String s = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            List<GraqlQuery> queries = Graql.parseList(s).collect(Collectors.toList());
+
+            List<GraqlQuery> plainInserts = queries.stream().map(GraqlQuery::asInsert).filter(q -> q.match() == null).collect(Collectors.toList());
+            List<GraqlQuery> matchInserts = queries.stream().map(GraqlQuery::asInsert).filter(q -> q.match() != null).collect(Collectors.toList());
+            GraqlTestUtil.insertQueriesConcurrently(session, plainInserts, 8, 500);
+            GraqlTestUtil.insertQueriesConcurrently(session, matchInserts, 8, 500);
+        } catch (Exception e) {
+            System.err.println(e);
+            throw new RuntimeException(e);
+        }
+
+        String queryString = "match\n" +
+                "        $o isa organization, has identifier 251;\n" +
+                "        $ps isa project, has identifier 5701;\n" +
+                "        $pt isa project, has isDeleted false;\n" +
+                "        (projectRole: $ps, organizationRole: $o) isa organizationToProject;\n" +
+
+                "        (projectSourceRole: $ps, projectTargetRole: $pt) isa projectSharing;\n" +
+                "      get $pt;";
+
+        try(Transaction tx = session.writeTransaction()){
+            System.out.println("About to execute the query, timestamp: " + System.currentTimeMillis());
+            long start = System.currentTimeMillis();
+            List<ConceptMap> answers = tx.execute(Graql.parse(queryString).asGet());
+            System.out.println("answers: " + answers.size());
+            System.out.println("execute time: " + (System.currentTimeMillis() - start));
+            assertEquals(12, answers.size());
+        }
+        session.close();
+    }
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:

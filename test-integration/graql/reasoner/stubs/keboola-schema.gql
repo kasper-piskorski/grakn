@@ -1,0 +1,118 @@
+define
+identifier sub attribute,
+    datatype long;
+idBucket sub attribute,
+    datatype long;
+name sub attribute,
+    datatype string;
+projectType sub attribute,
+    datatype string;
+sharing sub attribute,
+    datatype string;
+createdTime sub attribute,
+    datatype date;
+deletedTime sub attribute,
+    datatype date;
+isDeleted sub attribute,
+    datatype boolean;
+idTable sub attribute,
+    datatype string;
+idConfiguration sub attribute,
+    datatype string;
+version sub attribute,
+    datatype long;
+maintainer sub entity,
+    plays maintainerRole,
+    key identifier,
+    has name,
+    has createdTime,
+    has deletedTime,
+    has isDeleted;
+organization sub entity,
+    plays organizationRole,
+    key identifier,
+    has name,
+    has createdTime,
+    has deletedTime,
+    has isDeleted;
+project sub entity,
+    plays projectRole,
+    plays projectSourceRole,
+    plays projectTargetRole,
+    key identifier,
+    has name,
+    has projectType,
+    has createdTime,
+    has deletedTime,
+    has isDeleted;
+bucket sub entity,
+    plays bucketRole,
+    plays sharedBucketSourceRole,
+    plays sharedBucketTargetRole,
+    key identifier,
+    has name,
+    has createdTime,
+    has sharing;
+table sub entity,
+    plays tableRole,
+    plays tableToConfigurationSource,
+    plays configurationToTableTarget,
+    key idBucket,
+    key idTable,
+    has name,
+    has createdTime;
+configuration sub entity,
+    plays configurationRole,
+    plays configurationToTableSource,
+    plays tableToConfigurationTarget,
+    key idConfiguration,
+    has name,
+    has version,
+    has createdTime;
+maintainerToOrganization sub relation,
+    relates maintainerRole,
+    relates organizationRole;
+organizationToProject sub relation,
+    relates organizationRole,
+    relates projectRole;
+projectToBucket sub relation,
+    relates projectRole,
+    relates bucketRole;
+projectToConfiguration sub relation,
+    relates projectRole,
+    relates configurationRole;
+bucketToTable sub relation,
+    relates bucketRole,
+    relates tableRole;
+sharedBucket sub relation,
+    relates sharedBucketSourceRole,
+    relates sharedBucketTargetRole;
+projectSharing sub relation,
+    relates projectSourceRole,
+    relates projectTargetRole;
+configurationToTable sub relation,
+    relates configurationToTableSource,
+    relates configurationToTableTarget;
+tableToConfiguration sub relation,
+    relates tableToConfigurationSource,
+    relates tableToConfigurationTarget;
+project-sharing sub rule,
+  when {
+    $ps isa project;
+    $pt isa project;
+    $bs isa bucket;
+    $bt isa bucket;
+    (projectRole: $ps, bucketRole: $bs) isa projectToBucket;
+    (projectRole: $pt, bucketRole: $bt) isa projectToBucket;
+    (sharedBucketSourceRole: $bs, sharedBucketTargetRole: $bt) isa sharedBucket;
+    $ps != $pt;
+  }, then {
+    (projectSourceRole: $ps, projectTargetRole: $pt) isa projectSharing;
+  };
+transitive-project-sharing sub rule,
+  when {
+    (projectSourceRole: $a, projectTargetRole: $b) isa projectSharing;
+    (projectSourceRole: $b, projectTargetRole: $c) isa projectSharing;
+  }, then {
+    (projectSourceRole: $a, projectTargetRole: $c) isa projectSharing;
+  };
