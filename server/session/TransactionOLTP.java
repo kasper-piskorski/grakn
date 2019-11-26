@@ -21,7 +21,7 @@ package grakn.core.server.session;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import grakn.benchmark.lib.instrumentation.ServerTracing;
+import grakn.common.util.Pair;
 import grakn.core.common.config.ConfigKey;
 import grakn.core.common.exception.ErrorMessage;
 import grakn.core.concept.answer.Answer;
@@ -36,12 +36,12 @@ import grakn.core.concept.impl.ConceptManagerImpl;
 import grakn.core.concept.impl.ConceptVertex;
 import grakn.core.concept.impl.SchemaConceptImpl;
 import grakn.core.concept.impl.TypeImpl;
-import grakn.core.kb.concept.structure.GraknElementException;
-import grakn.core.kb.concept.structure.PropertyNotUniqueException;
 import grakn.core.core.Schema;
+import grakn.core.graph.core.JanusGraphTransaction;
 import grakn.core.graql.executor.QueryExecutorImpl;
 import grakn.core.graql.executor.property.PropertyExecutorFactoryImpl;
 import grakn.core.graql.gremlin.TraversalPlanFactoryImpl;
+import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.kb.concept.api.Attribute;
 import grakn.core.kb.concept.api.AttributeType;
 import grakn.core.kb.concept.api.Concept;
@@ -55,24 +55,24 @@ import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.concept.api.SchemaConcept;
 import grakn.core.kb.concept.api.Thing;
+import grakn.core.kb.concept.structure.GraknElementException;
+import grakn.core.kb.concept.structure.PropertyNotUniqueException;
 import grakn.core.kb.concept.structure.VertexElement;
 import grakn.core.kb.concept.util.Serialiser;
 import grakn.core.kb.graql.executor.QueryExecutor;
 import grakn.core.kb.graql.executor.property.PropertyExecutorFactory;
 import grakn.core.kb.graql.planning.TraversalPlanFactory;
-import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.kb.graql.reasoner.cache.QueryCache;
-import grakn.core.kb.graql.reasoner.query.ReasonerQuery;
+import grakn.core.kb.graql.reasoner.cache.RuleCache;
 import grakn.core.kb.server.Session;
 import grakn.core.kb.server.Transaction;
-import grakn.core.server.cache.CacheProviderImpl;
-import grakn.core.kb.graql.reasoner.cache.RuleCache;
 import grakn.core.kb.server.cache.TransactionCache;
 import grakn.core.kb.server.exception.InvalidKBException;
 import grakn.core.kb.server.exception.TransactionException;
 import grakn.core.kb.server.keyspace.Keyspace;
 import grakn.core.kb.server.statistics.UncomittedStatisticsDelta;
 import grakn.core.server.Validator;
+import grakn.core.server.cache.CacheProviderImpl;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlCompute;
@@ -83,21 +83,6 @@ import graql.lang.query.GraqlInsert;
 import graql.lang.query.GraqlQuery;
 import graql.lang.query.GraqlUndefine;
 import graql.lang.query.MatchClause;
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
-import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.ReadOnlyStrategy;
-import org.apache.tinkerpop.gremlin.structure.Direction;
-import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.structure.Property;
-import org.apache.tinkerpop.gremlin.structure.Vertex;
-import org.apache.tinkerpop.gremlin.structure.VertexProperty;
-import org.janusgraph.core.JanusGraphTransaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -107,6 +92,19 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.CheckReturnValue;
+import javax.annotation.Nullable;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.ReadOnlyStrategy;
+import org.apache.tinkerpop.gremlin.structure.Direction;
+import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Property;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.structure.VertexProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A TransactionOLTP that wraps a Tinkerpop OLTP transaction, using JanusGraph as a vendor backend.
@@ -165,76 +163,134 @@ public class TransactionOLTP implements Transaction {
         this.transactionCache.updateSchemaCacheFromKeyspaceCache();
     }
 
-
     /**
-     * This method handles 3 committing scenarios:
-     * - use a lock to serialise all commits that are trying to create new attributes, so that we can merge real-time
-     * - use a lock to serialise commits that are removing attributes, so concurrent txs don't use outdated attribute IDs from attributesCache
-     * - don't lock when added or removed attributes are not involved
+     * This method handles the following committing scenarios:
+     * - use a lock to serialise commits if two given txs try to insert the same attribute
+     * - use a lock to serialise commits if two given txs try to insert a shard for the same type that
+     * - use a lock if there is a tx that deletes attributes
+     * - use a lock if there is a tx that mutates key implicit relations
+     * - otherwise do not lock
+     * @return true if graph lock need to be acquired for commit
      */
-    private void commitInternal() {
-        LOG.trace("Graph is valid. Committing graph...");
-        if (!cache().getNewAttributes().isEmpty()) {
-            mergeAttributesAndCommit();
-        } else if (!cache().getRemovedAttributes().isEmpty()) {
-            // In this case we need to lock, so that other concurrent Transactions
-            // that are trying to create new attributes will read an updated version of attributesCache
-            // Not locking here might lead to concurrent transactions reading the attributesCache that still
-            // contains attributes that we are removing in this transaction.
-            session.graphLock().writeLock().lock();
-            try {
-                createNewTypeShardsWhenThresholdReached();
-                session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
-                janusTransaction.commit();
-                cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
-            } finally {
-                session.graphLock().writeLock().unlock();
-            }
-        } else {
-            createNewTypeShardsWhenThresholdReached();
-            session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
-            janusTransaction.commit();
+    @VisibleForTesting
+    boolean commitLockRequired(){
+        String txId = this.janusTransaction.toString();
+        boolean attributeLockRequired = session.attributeManager().requiresLock(txId);
+        boolean shardLockRequired = session.shardManager().requiresLock(txId);
+        boolean keyLockRequired = false;
+        Set<String> modifiedKeyIndices = cache().getModifiedKeyIndices();
+        if (!modifiedKeyIndices.isEmpty()){
+            Set<String> insertedIndices = cache().getNewAttributes().keySet().stream().map(Pair::second).collect(Collectors.toSet());
+            keyLockRequired = modifiedKeyIndices.stream().anyMatch(keyIndex -> !insertedIndices.contains(keyIndex));
         }
+        boolean lockRequired = attributeLockRequired
+                || shardLockRequired
+                // In this case we need to lock, so that other concurrent Transactions
+                // that are trying to create new attributes will read an updated version of attributesCache
+                // Not locking here might lead to concurrent transactions reading the attributesCache that still
+                // contains attributes that we are removing in this transaction.
+                || !cache().getRemovedAttributes().isEmpty()
+                || keyLockRequired;
+        if (lockRequired){
+            LOG.debug(txId + " needs lock: " +
+                    (attributeLockRequired? "attribute" : "") +
+                    (shardLockRequired? "shard" : "") +
+                    (keyLockRequired? "key" : "")+
+                    (!cache().getRemovedAttributes().isEmpty()? "delete" : ""));
+        }
+        return lockRequired;
+    }
+
+    private void commitInternal() throws InvalidKBException {
+        boolean lockRequired = commitLockRequired();
+        if (lockRequired) session.graphLock().writeLock().lock();
+        try {
+            createNewTypeShardsWhenThresholdReached();
+            cache().getRemovedAttributes().forEach(index -> session.attributeManager().attributesCommitted().invalidate(index));
+            Set<String> deduplicatedIndices = mergeAttributes();
+            persistInternal();
+            ackCommit(deduplicatedIndices);
+
+        } finally {
+            if (lockRequired) session.graphLock().writeLock().unlock();
+        }
+    }
+
+    private void persistInternal() throws InvalidKBException {
+        validateGraph();
+        session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
+        LOG.trace("Graph is valid. Committing graph...");
+        janusTransaction.commit();
         LOG.trace("Graph committed.");
+    }
+
+    private void ackCommit(Set<String> deduplicatedIndices){
+        String txId = this.janusTransaction.toString();
+        session.shardManager().ackCommit(cache().getNewShards().keySet(), txId);
+        //this should ack all inserts so that insert requests are cleared
+        Set<String> newIndices = cache().getNewAttributes().keySet().stream().map(Pair::second).collect(Collectors.toSet());
+        session.attributeManager().ackCommit(newIndices, txId);
+
+        //this should ack all inserts that weren't deduplicated so that we have correct attributes in attributesCommitted
+        cache().getNewAttributes().forEach((indexPair, conceptId) -> {
+            String index = indexPair.second();
+            if (!deduplicatedIndices.contains(index)) session.attributeManager().attributesCommitted().put(index, conceptId);
+        });
+
     }
 
     // When there are new attributes in the current transaction that is about to be committed
     // we serialise the commit by locking and merge attributes that are duplicates.
-    private void mergeAttributesAndCommit() {
-        session.graphLock().writeLock().lock();
-        try {
-            createNewTypeShardsWhenThresholdReached();
-            cache().getRemovedAttributes().forEach(index -> session.attributesCache().invalidate(index));
-            cache().getNewAttributes().forEach(((labelIndexPair, conceptId) -> {
-                // If the same index is contained in attributesCache, it means
-                // another concurrent transaction inserted the same attribute, time to merge!
-                // NOTE: we still need to rely on attributesCache instead of checking in the graph
-                // if the index exists, because apparently JanusGraph does not make indexes available
-                // in a Read Committed fashion
-                ConceptId targetId = session.attributesCache().getIfPresent(labelIndexPair.second());
-                if (targetId != null) {
-                    merge(getTinkerTraversal(), conceptId, targetId);
-                    statisticsDelta().decrementAttribute(labelIndexPair.first());
-                } else {
-                    session.attributesCache().put(labelIndexPair.second(), conceptId);
-                }
-            }));
-            session.keyspaceStatistics().commit(this, uncomittedStatisticsDelta);
-            janusTransaction.commit();
-        } finally {
-            session.graphLock().writeLock().unlock();
-        }
+    private Set<String> mergeAttributes() {
+        Set<String> deduplicatesIndices = new HashSet<>();
+        cache().getNewAttributes().forEach(((labelIndexPair, conceptId) -> {
+            // If the same index is contained in attributesCommitted, it means
+            // another concurrent transaction inserted the same attribute, time to merge!
+            // NOTE: we still need to rely on attributesCommitted instead of checking in the graph
+            // if the index exists, because apparently JanusGraph does not make indexes available
+            // in a Read Committed fashion
+            String index = labelIndexPair.second();
+            Label label = labelIndexPair.first();
+            ConceptId targetId = session.attributeManager().attributesCommitted().getIfPresent(index);
+            if (targetId != null) {
+                merge(getTinkerTraversal(), conceptId, targetId);
+                deduplicatesIndices.add(index);
+                statisticsDelta().decrementAttribute(label);
+            }
+        }));
+        return deduplicatesIndices;
+    }
+
+    @VisibleForTesting
+    void computeShardCandidates() {
+        String txId = this.janusTransaction.toString();
+        uncomittedStatisticsDelta.instanceDeltas().entrySet().stream()
+                .filter(e -> !Schema.MetaSchema.isMetaLabel(e.getKey()))
+                .forEach(e -> {
+            Label label = e.getKey();
+            Long uncommittedCount = e.getValue();
+            long instanceCount = session.keyspaceStatistics().count(this, label) + uncommittedCount;
+            long hardCheckpoint = getShardCheckpoint(label);
+            if (instanceCount - hardCheckpoint >= typeShardThreshold) {
+                session().shardManager().ackShardRequest(label, txId);
+                //update cache to signal fulfillment of shard request later at commit time
+                cache().getNewShards().put(label, instanceCount);
+            }
+        });
     }
 
     private void createNewTypeShardsWhenThresholdReached() {
-        uncomittedStatisticsDelta.instanceDeltas().forEach((label, uncommittedCount) -> {
-            long instancesCount = session.keyspaceStatistics().count(this, label) + uncomittedStatisticsDelta.instanceDeltas().get(label) + uncommittedCount;
-            long lastShardCheckpointForThisInstance = getShardCheckpoint(label);
-            if (instancesCount - lastShardCheckpointForThisInstance >= typeShardThreshold) {
-                LOG.trace(label + " has a count of " + instancesCount + ". last sharding happens at " + lastShardCheckpointForThisInstance + ". Will create a new shard.");
-                shard(getType(label).id());
-                setShardCheckpoint(label, instancesCount);
-            }
+        String txId = this.janusTransaction.toString();
+        cache().getNewShards()
+                .forEach((label, count) -> {
+                    Long softCheckPoint = session.shardManager().getEphemeralShardCount(label);
+                    long instanceCount = session.keyspaceStatistics().count(this, label) + uncomittedStatisticsDelta.delta(label);
+                    if (softCheckPoint == null || instanceCount - softCheckPoint >= typeShardThreshold) {
+                        session.shardManager().updateEphemeralShardCount(label, instanceCount);
+                        LOG.trace(txId + " creates a shard for type: " + label + ", instance count: " + instanceCount + " ,");
+                        shard(getType(label).id());
+                        setShardCheckpoint(label, instanceCount);
+                    }
         });
     }
 
@@ -825,7 +881,6 @@ public class TransactionOLTP implements Transaction {
     }
 
 
-
     /**
      * Get the root of all Types.
      *
@@ -1023,7 +1078,9 @@ public class TransactionOLTP implements Transaction {
             return;
         }
         try {
-            janusTransaction.close();
+            if (janusTransaction.isOpen()) {
+                janusTransaction.rollback();
+            }
         } finally {
             closeTransaction(closeMessage);
         }
@@ -1040,23 +1097,14 @@ public class TransactionOLTP implements Transaction {
             return;
         }
         try {
-            /* This method has permanent tracing because commits can take varying lengths of time depending on operations */
-            int validateSpanId = ServerTracing.startScopedChildSpan("commit validate");
-
             checkMutationAllowed();
             removeInferredConcepts();
-            validateGraph();
-
-            ServerTracing.closeScopedChildSpan(validateSpanId);
-
-            int commitSpanId = ServerTracing.startScopedChildSpan("commit");
+            computeShardCandidates();
 
             // lock on the keyspace cache shared between concurrent tx's to the same keyspace
             // force serialized updates, keeping Janus and our KeyspaceCache in sync
             commitInternal();
             transactionCache.flushSchemaLabelIdsToCache();
-
-            ServerTracing.closeScopedChildSpan(commitSpanId);
         } finally {
             String closeMessage = ErrorMessage.TX_CLOSED_ON_ACTION.getMessage("committed", keyspace());
             closeTransaction(closeMessage);
@@ -1103,8 +1151,6 @@ public class TransactionOLTP implements Transaction {
 
     /**
      * Set a new type shard checkpoint for a given label
-     *
-     * @param label
      */
     private void setShardCheckpoint(Label label, long checkpoint) {
         Concept schemaConcept = getSchemaConcept(label);
@@ -1203,7 +1249,6 @@ public class TransactionOLTP implements Transaction {
     public ConceptManagerImpl factory() {
         return conceptManager;
     }
-
 
 
     @Override

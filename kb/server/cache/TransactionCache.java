@@ -72,12 +72,15 @@ public class TransactionCache {
     private final Set<Thing> inferredConcepts = new HashSet<>();
     private final Set<Thing> inferredConceptsToPersist = new HashSet<>();
 
+    private Map<Label, Long> newShards = new HashMap<>();
+
     //New attributes are tracked so that we can merge any duplicate attributes at commit time.
     // The label, index and id are directly cached to prevent unneeded reads
     private Map<Pair<Label, String>, ConceptId> newAttributes = new HashMap<>();
     // Track the removed attributes so that we can evict old attribute indexes from attributesCache in session
     // after commit
     private Set<String> removedAttributes = new HashSet<>();
+    private Set<String> modifiedKeyIndices = new HashSet<>();
 
     public TransactionCache(KeyspaceSchemaCache keyspaceSchemaCache) {
         this.keyspaceSchemaCache = keyspaceSchemaCache;
@@ -292,8 +295,16 @@ public class TransactionCache {
         newAttributes.put(new Pair<>(label, index), conceptId);
     }
 
+    public void addModifiedKeyIndex(String keyIndex){
+        modifiedKeyIndices.add(keyIndex);
+    }
+
     public Map<Pair<Label, String>, ConceptId> getNewAttributes() {
         return newAttributes;
+    }
+
+    public Map<Label, Long> getNewShards() {
+        return newShards;
     }
 
     //--------------------------------------- Concepts Needed For Validation -------------------------------------------
@@ -308,6 +319,8 @@ public class TransactionCache {
     public Set<RelationType> getModifiedRelationTypes() {
         return modifiedRelationTypes;
     }
+
+    public Set<String> getModifiedKeyIndices(){ return modifiedKeyIndices;}
 
     public Set<Rule> getModifiedRules() {
         return modifiedRules;

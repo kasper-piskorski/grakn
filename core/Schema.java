@@ -342,6 +342,11 @@ public final class Schema {
             //return the Label without the `@has-`or '@key-' prefix
             return Label.of(implicitType.getValue().substring(5, endIndex));
         }
+
+        @CheckReturnValue
+        public static boolean isKey(Label implicitType) {
+            return implicitType.getValue().startsWith("@key");
+        }
     }
 
     /**
@@ -351,6 +356,7 @@ public final class Schema {
      */
     @CheckReturnValue
     public static String generateAttributeIndex(Label label, String value) {
+        //TODO trim it down in the future
         return Schema.BaseType.ATTRIBUTE.name() + "-" + label + "-" + value;
     }
 }
