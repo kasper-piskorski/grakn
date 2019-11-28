@@ -19,8 +19,6 @@
 
 package grakn.core.kb.server;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.cache.Cache;
 import grakn.core.kb.concept.api.Label;
 import java.util.Set;
 
@@ -39,16 +37,8 @@ import java.util.Set;
  */
 public interface ShardManager {
 
-    void ackShardRequest(Label type, String txId);
     void ackCommit(Set<Label> labels, String txId);
-    boolean requiresLock(String txId);
 
     Long getEphemeralShardCount(Label type);
     void updateEphemeralShardCount(Label type, Long count);
-
-    @VisibleForTesting
-    boolean lockCandidatesPresent();
-
-    @VisibleForTesting
-    boolean shardRequestsPresent();
 }

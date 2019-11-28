@@ -40,19 +40,10 @@ public class ShardManagerImpl implements ShardManager {
                 .build();
     }
 
-
     public Long getEphemeralShardCount(Label type){ return shardsEphemeral.getIfPresent(type);}
     public void updateEphemeralShardCount(Label type, Long count){ shardsEphemeral.put(type, count);}
 
     private void ackShardCommit(Label type, String txId) {
-        //transaction of txId signals that it commited a shard for a specific label:
-        // - we remove this txId from shard requests
-        // - if the removal leads to emptying the entry of the shard requests, we remove the entry
-        shardRequests.merge(type, ConcurrentHashMap.newKeySet(), (existingValue, newValue) -> {
-            existingValue.remove(txId);
-            if (existingValue.size() == 0) return null;
-            return existingValue;
-        });
     }
 
     @Override
