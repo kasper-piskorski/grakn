@@ -19,6 +19,8 @@
 package grakn.core.graql.reasoner.benchmark;
 
 
+import grakn.client.GraknClient;
+import grakn.client.answer.Explanation;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.graph.DiagonalGraph;
 import grakn.core.graql.reasoner.graph.LinearTransitivityMatrixGraph;
@@ -33,21 +35,68 @@ import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.server.Session;
 import grakn.core.kb.server.Transaction;
 import grakn.core.rule.GraknTestServer;
+import grakn.core.util.GraqlTestUtil;
 import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings({"CheckReturnValue", "Duplicates"})
 public class BenchmarkSmallIT {
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
+
+    private static String resourcePath = "test-integration/graql/reasoner/stubs/";
+
+    @Test
+    public void test(){
+        String queryString = "match $bnk isa bank; \n" +
+                "$rsk isa risk-score, has risk-level \"high\"; \n" +
+                "$r (risk-value: $rsk, risk-subject: $bnk) isa risk-exposure; get;";
+        Session localSession = server.sessionWithNewKeyspace();
+        GraknClient graknClient = new GraknClient(server.grpcUri());
+        GraknClient.Session session = graknClient.session(localSession.keyspace().name());
+        String file = "finance.gql";
+
+        try(GraknClient.Transaction tx = session.transaction().write()) {
+            try {
+                System.out.println("Loading... " + resourcePath + file);
+                InputStream inputStream = GraqlTestUtil.class.getClassLoader().getResourceAsStream(resourcePath + file);
+                String s = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+                Graql.parseList(s).forEach(tx::execute);
+            } catch (Exception e) {
+                System.err.println(e);
+                throw new RuntimeException(e);
+            }
+            tx.commit();
+        }
+        for(int i = 0 ; i < 500; i++) {
+            try (GraknClient.Transaction tx = session.transaction().write()) {
+                List<grakn.client.answer.ConceptMap> execute = tx.execute(Graql.parse(queryString).asGet());
+                List<grakn.client.answer.ConceptMap> answers = execute.stream()
+                        .map(grakn.client.answer.ConceptMap::explanation)
+                        .flatMap(ans -> ans.getAnswers().stream())
+                        .filter(ans -> ans.map().keySet().contains(new Variable("r")))
+                        .collect(Collectors.toList());
+                assertTrue(answers.stream().allMatch(grakn.client.answer.ConceptMap::hasExplanation));
+
+                System.out.println();
+            }
+        }
+
+        session.close();
+    }
 
     /**
      * Executes a scalability test defined in terms of the number of rules in the system. Creates a simple rule chain:
