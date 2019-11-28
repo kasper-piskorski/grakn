@@ -183,6 +183,8 @@ public abstract class Binary extends Atom {
                      return UnifierImpl.nonExistent();
         }
 
+        //TODO check substitution roleplayer connectedness
+
         Multimap<Variable, Variable> varMappings = HashMultimap.create();
 
         if (parentVarName.isReturned()) {

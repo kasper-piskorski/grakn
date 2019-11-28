@@ -55,6 +55,7 @@ import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.concept.api.SchemaConcept;
 import grakn.core.kb.concept.api.Thing;
+import grakn.core.kb.concept.api.Type;
 import grakn.core.kb.concept.structure.GraknElementException;
 import grakn.core.kb.concept.structure.PropertyNotUniqueException;
 import grakn.core.kb.concept.structure.VertexElement;
@@ -286,10 +287,8 @@ public class TransactionOLTP implements Transaction {
                     Long softCheckPoint = session.shardManager().getEphemeralShardCount(label);
                     long instanceCount = session.keyspaceStatistics().count(this, label) + uncomittedStatisticsDelta.delta(label);
                     if (softCheckPoint == null || instanceCount - softCheckPoint >= typeShardThreshold) {
-                        session.shardManager().updateEphemeralShardCount(label, instanceCount);
                         LOG.trace(txId + " creates a shard for type: " + label + ", instance count: " + instanceCount + " ,");
-                        shard(getType(label).id());
-                        setShardCheckpoint(label, instanceCount);
+                        createShard(label, instanceCount);
                     }
         });
     }
@@ -1133,20 +1132,18 @@ public class TransactionOLTP implements Transaction {
     }
 
     /**
-     * Creates a new shard for the concept - only used in tests
+     * Creates a new shard for the concept
      *
-     * @param conceptId the id of the concept to shard
+     * @param label the label of the type to shard
      */
-    public void shard(ConceptId conceptId) {
-        Concept type = getConcept(conceptId);
+    public void createShard(Label label, long countCheckPoint) {
+        session.shardManager().updateEphemeralShardCount(label, countCheckPoint);
+        grakn.core.kb.concept.api.Type type = getType(label);
         if (type == null) {
-            throw new RuntimeException("Cannot shard concept [" + conceptId + "] due to it not existing in the graph");
+            throw new RuntimeException("Cannot build shard for type [" + label + "] due to it not existing in the graph");
         }
-        if (type.isType()) {
-            type.asType().createShard();
-        } else {
-            throw GraknConceptException.cannotShard(type);
-        }
+        type.createShard();
+        setShardCheckpoint(label, countCheckPoint);
     }
 
     /**
@@ -1165,7 +1162,7 @@ public class TransactionOLTP implements Transaction {
     /**
      * Get the checkpoint in which type shard was last created
      *
-     * @param label
+     * @param label for which we want to return the shard checkpoint for
      * @return the checkpoint for the given label. if the label does not exist, return 0
      */
     private Long getShardCheckpoint(Label label) {
