@@ -44,6 +44,7 @@ public class ShardImpl implements Shard {
     public ShardImpl(VertexElement ownerVertex, VertexElement newShardVertex) {
         this(newShardVertex);
         owner(ownerVertex);
+        timestamp(System.currentTimeMillis());
     }
 
     public ShardImpl(VertexElement vertexElement) {
@@ -68,6 +69,13 @@ public class ShardImpl implements Shard {
      */
     private void owner(VertexElement ownerVertex) {
         vertex().putEdge(ownerVertex, Schema.EdgeLabel.SHARD);
+    }
+
+    private void timestamp(Long timestamp){ vertex().property(Schema.VertexProperty.SHARD_TIMESTAMP, timestamp);}
+
+    @Override
+    public long timestamp() {
+        return vertex().property(Schema.VertexProperty.SHARD_TIMESTAMP);
     }
 
     /**

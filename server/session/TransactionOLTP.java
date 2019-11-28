@@ -177,7 +177,7 @@ public class TransactionOLTP implements Transaction {
     boolean commitLockRequired(){
         String txId = this.janusTransaction.toString();
         boolean attributeLockRequired = session.attributeManager().requiresLock(txId);
-        boolean shardLockRequired = session.shardManager().requiresLock(txId);
+        boolean shardLockRequired = false;
         boolean keyLockRequired = false;
         Set<String> modifiedKeyIndices = cache().getModifiedKeyIndices();
         if (!modifiedKeyIndices.isEmpty()){
@@ -227,7 +227,6 @@ public class TransactionOLTP implements Transaction {
 
     private void ackCommit(Set<String> deduplicatedIndices){
         String txId = this.janusTransaction.toString();
-        session.shardManager().ackCommit(cache().getNewShards().keySet(), txId);
         //this should ack all inserts so that insert requests are cleared
         Set<String> newIndices = cache().getNewAttributes().keySet().stream().map(Pair::second).collect(Collectors.toSet());
         session.attributeManager().ackCommit(newIndices, txId);
@@ -262,33 +261,21 @@ public class TransactionOLTP implements Transaction {
         return deduplicatesIndices;
     }
 
-    @VisibleForTesting
-    void computeShardCandidates() {
+    private void createNewTypeShardsWhenThresholdReached() {
         String txId = this.janusTransaction.toString();
         uncomittedStatisticsDelta.instanceDeltas().entrySet().stream()
                 .filter(e -> !Schema.MetaSchema.isMetaLabel(e.getKey()))
                 .forEach(e -> {
-            Label label = e.getKey();
-            Long uncommittedCount = e.getValue();
-            long instanceCount = session.keyspaceStatistics().count(this, label) + uncommittedCount;
-            long hardCheckpoint = getShardCheckpoint(label);
-            if (instanceCount - hardCheckpoint >= typeShardThreshold) {
-                session().shardManager().ackShardRequest(label, txId);
-                //update cache to signal fulfillment of shard request later at commit time
-                cache().getNewShards().put(label, instanceCount);
-            }
-        });
-    }
-
-    private void createNewTypeShardsWhenThresholdReached() {
-        String txId = this.janusTransaction.toString();
-        cache().getNewShards()
-                .forEach((label, count) -> {
-                    Long softCheckPoint = session.shardManager().getEphemeralShardCount(label);
-                    long instanceCount = session.keyspaceStatistics().count(this, label) + uncomittedStatisticsDelta.delta(label);
-                    if (softCheckPoint == null || instanceCount - softCheckPoint >= typeShardThreshold) {
-                        LOG.trace(txId + " creates a shard for type: " + label + ", instance count: " + instanceCount + " ,");
-                        createShard(label, instanceCount);
+                    Label label = e.getKey();
+                    Long uncommittedCount = e.getValue();
+                    long localInstanceCount = session.keyspaceStatistics().count(this, label) + uncommittedCount;
+                    long hardCheckpoint = getShardCheckpoint(label);
+                    if (localInstanceCount - hardCheckpoint >= typeShardThreshold) {
+                        Long softCheckPoint = session.shardManager().getEphemeralShardCount(label);
+                        if (softCheckPoint == null || localInstanceCount - softCheckPoint >= typeShardThreshold) {
+                            LOG.trace(txId + " creates a shard for type: " + label + ", instance count: " + localInstanceCount + " ,");
+                            createShard(label, localInstanceCount);
+                        }
                     }
         });
     }
@@ -1098,7 +1085,6 @@ public class TransactionOLTP implements Transaction {
         try {
             checkMutationAllowed();
             removeInferredConcepts();
-            computeShardCandidates();
 
             // lock on the keyspace cache shared between concurrent tx's to the same keyspace
             // force serialized updates, keeping Janus and our KeyspaceCache in sync
@@ -1185,6 +1171,10 @@ public class TransactionOLTP implements Transaction {
      */
     public long getShardCount(grakn.core.kb.concept.api.Type concept) {
         return TypeImpl.from(concept).shardCount();
+    }
+
+    public List<Long> getShardLoad(grakn.core.kb.concept.api.Type concept) {
+        return TypeImpl.from(concept).shards().map(sh -> sh.links().count()).collect(Collectors.toList());
     }
 
     @Override

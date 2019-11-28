@@ -39,6 +39,8 @@ public interface Shard {
      */
     void link(VertexElement conceptVertex);
 
+    long timestamp();
+
     /**
      * @return All the concept linked to this shard
      */

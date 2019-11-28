@@ -51,7 +51,7 @@ public abstract class ConceptImpl implements Concept, ConceptVertex {
         this.vertexElement = vertexElement;
         this.conceptManager = conceptManager;
         this.conceptObserver = conceptObserver;
-        this.currentShard = new ConceptCache<>(() -> conceptManager.getShardWithLock(vertex().element().id().toString()));
+        this.currentShard = new ConceptCache<>(() -> conceptManager.getShard(vertex().element().id().toString()));
         this.shardCount = new ConceptCache<>(() -> shards().count());
         this.conceptId = new ConceptCache<>(() -> Schema.conceptId(vertex().element()));
     }

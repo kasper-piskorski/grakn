@@ -204,6 +204,9 @@ public final class Schema {
         // Relation properties
         IS_IMPLICIT(Boolean.class),
 
+        // Shard properties
+        SHARD_TIMESTAMP(Long.class),
+
         //Supported Data Types
         VALUE_STRING(String.class), VALUE_LONG(Long.class),
         VALUE_DOUBLE(Double.class), VALUE_BOOLEAN(Boolean.class),

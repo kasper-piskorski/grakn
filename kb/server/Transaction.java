@@ -385,6 +385,8 @@ public interface Transaction extends AutoCloseable {
         return 1L;
     }
 
+    List<Long> getShardLoad(grakn.core.kb.concept.api.Type concept);
+
     // TODO determine if this should be exposed via Tx or in other ways
     TraversalPlanFactory traversalPlanFactory();
 

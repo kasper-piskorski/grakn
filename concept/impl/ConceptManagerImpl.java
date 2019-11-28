@@ -45,6 +45,7 @@ import grakn.core.kb.server.cache.TransactionCache;
 import grakn.core.kb.server.exception.TemporaryWriteException;
 import graql.lang.Graql;
 import graql.lang.pattern.Pattern;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Optional;
@@ -499,17 +500,20 @@ public class ConceptManagerImpl implements ConceptManager {
      * This is used when assigning a type to a concept - we check the current shard.
      * The read vertex property contains the current shard vertex id.
      */
-    Shard getShardWithLock(String typeId) {
+    Shard getShard(String typeId) {
         Object currentShardId = elementFactory.getVertexWithId(typeId).property(Schema.VertexProperty.CURRENT_SHARD.name()).value();
 
         //Try to fetch the current shard vertex, because janus commits are not atomic, property might exists but the corresponding
         //vertex might not yet be created. Consequently the fetch might return null.
         Vertex shardVertex = elementFactory.getVertexWithId(currentShardId.toString());
+
         if (shardVertex != null) return elementFactory.getShard(shardVertex);
 
         //If current shard fetch fails. We pick any of the existing shards.
         Vertex typeVertex = elementFactory.getVertexWithId(typeId);
-        return elementFactory.buildVertexElement(typeVertex).shards().findFirst().orElse(null);
+        return elementFactory.buildVertexElement(typeVertex).shards()
+                .sorted(Comparator.comparing(Shard::timestamp))
+                .findFirst().orElse(null);
     }
 
     public Rule getRule(String label) {
