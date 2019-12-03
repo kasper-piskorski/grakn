@@ -296,6 +296,15 @@ public enum UnifierType implements UnifierComparison, EquivalenceCoupling {
                     || child != null && child.subsumes(parent);
         }
 
+
+        @Override
+        public boolean idCompatibility(Set<Atomic> parent, Set<Atomic> child){
+            return parent.isEmpty()
+                    || isEquivalentCollection(parent, child, this::idCompatibility);
+        }
+
+
+
         @Override
         public boolean valueCompatibility(Atomic parent, Atomic child) {
             return parent == null

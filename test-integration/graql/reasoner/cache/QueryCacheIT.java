@@ -28,12 +28,15 @@ import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.explanation.RuleExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueries;
+import grakn.core.graql.reasoner.query.ReasonerQueryEquivalence;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.kb.concept.api.Concept;
 import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.Entity;
 import grakn.core.kb.concept.api.Relation;
 import grakn.core.kb.graql.reasoner.cache.CacheEntry;
+import grakn.core.kb.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.kb.server.Session;
 import grakn.core.kb.server.Transaction;
 import grakn.core.rule.GraknTestServer;
@@ -244,9 +247,10 @@ public class QueryCacheIT {
             Set<ConceptMap> anotherChildAnswers = cache.getAnswers(anotherGroundChildQuery);
             assertFalse(anotherChildAnswers.isEmpty());
             assertEquals(tx.stream(anotherGroundChildQuery.getQuery(), false).collect(toSet()), anotherChildAnswers);
+
+            anotherChildAnswers.forEach(ans -> assertTrue(ans.explanation().isLookupExplanation()));
             //should be false cause there is no parent and we do not ack it explicitly
             assertFalse(cache.isDBComplete(anotherGroundChildQuery));
-            anotherChildAnswers.forEach(ans -> assertTrue(ans.explanation().isLookupExplanation()));
         }
     }
 
@@ -299,6 +303,7 @@ public class QueryCacheIT {
                     tx);
 
             Set<ConceptMap> anotherChildAnswers = cache.getAnswers(groundChildQuery);
+
             assertFalse(anotherChildAnswers.isEmpty());
             assertEquals(tx.stream(groundChildQuery.getQuery(), false).collect(toSet()), anotherChildAnswers);
             assertNull(cache.getEntry(groundChildQuery));
@@ -494,6 +499,73 @@ public class QueryCacheIT {
             assertEquals(tx.stream(groundChildQuery.getQuery()).collect(toSet()), cacheAnswers);
             assertTrue(cache.answersQuery(groundChildQuery));
             assertTrue(cacheAnswers.contains(specificAnswer));
+        }
+    }
+
+    @Test
+    public void whenGettingAndMatchExists_queryGround_queryDBComplete_answerNotFound_answersFetchedFromDbAndCache(){
+        try(Transaction tx = genericSchemaSession.readTransaction()) {
+            MultilevelSemanticCache cache = new MultilevelSemanticCache();
+
+            Concept mConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 'm';get;")).iterator().next().get("x");
+            Concept sConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 's';get;")).iterator().next().get("x");
+            Concept fConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 'f';get;")).iterator().next().get("x");
+
+            ReasonerAtomicQuery genericQuery = ReasonerQueries.atomic(conjunction("{(subRole1: $x, subRole2: $y) isa binary;};"), tx);
+            ReasonerAtomicQuery parentQuery = ReasonerQueries.atomic(conjunction(
+                    "{" +
+                            "(subRole1: $x, subRole2: $y) isa binary;" +
+                            "$y id " + sConcept.id().getValue() + ";" +
+                            "};"),
+                    tx);
+
+            tx.stream(genericQuery.getQuery(), false)
+                    .filter(ans -> ans.get("y").equals(sConcept))
+                    .map(ans -> ans.explain(new LookupExplanation(), parentQuery.getPattern()))
+                    .forEach(ans -> cache.record(parentQuery, ans));
+
+            //mock a rule explained answer
+            ConceptMap inferredAnswer = new ConceptMap(
+                    ImmutableMap.of(
+                            Graql.var("x").var(), mConcept,
+                            Graql.var("y").var(), fConcept
+                    ),
+                    new RuleExplanation(tx.getMetaRule().id()),
+                    parentQuery.getPattern()
+                    );
+            cache.record(parentQuery, inferredAnswer);
+
+            ReasonerAtomicQuery initialChildQuery = ReasonerQueries.atomic(conjunction(
+                    "{" +
+                            "(subRole1: $x1, subRole2: $y1) isa binary;" +
+                            "$x1 id " + mConcept.id().getValue() + ";" +
+                            "$y1 id " + sConcept.id().getValue() + ";" +
+                            "};"),
+                    tx);
+            ReasonerAtomicQuery childQuery = ReasonerQueries.atomic(conjunction(
+                    "{" +
+                            "(subRole1: $x2, subRole2: $y2) isa binary;" +
+                            "$x2 id " + mConcept.id().getValue() + ";" +
+                            "$y2 id " + fConcept.id().getValue() + ";" +
+                            "};"),
+                    tx);
+
+            tx.stream(initialChildQuery.getQuery(), false)
+                    .map(ans -> ans.explain(new LookupExplanation(), initialChildQuery.getPattern()))
+                    .forEach(ans -> cache.record(initialChildQuery, ans));
+
+            cache.ackDBCompleteness(initialChildQuery);
+            cache.ackDBCompleteness(childQuery);
+
+            boolean firstChildSubsumesParent = initialChildQuery.subsumes(parentQuery);
+            boolean secondChildSubsumesParent = childQuery.subsumes(parentQuery);
+            boolean childSubsumesAnotherChild = initialChildQuery.subsumes(childQuery);
+            boolean childrenEquivalent = ReasonerQueryEquivalence.StructuralEquivalence.equivalent(initialChildQuery, childQuery);
+            //initialChildQuery.isEquivalent(childQuery);
+
+            Set<ConceptMap> answers = cache.getAnswers(childQuery);
+            MultiUnifier childToParentUnifier = childQuery.getMultiUnifier(parentQuery, UnifierType.SUBSUMPTIVE);
+            assertTrue(answers.stream().flatMap(childToParentUnifier::apply).anyMatch(ans -> ans.equals(inferredAnswer)));
         }
     }
 

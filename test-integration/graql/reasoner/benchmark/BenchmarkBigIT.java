@@ -23,6 +23,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import grakn.client.GraknClient;
 import grakn.client.answer.ConceptMap;
+import grakn.client.answer.Explanation;
 import grakn.client.concept.AttributeType;
 import grakn.client.concept.Concept;
 import grakn.client.concept.ConceptId;
@@ -382,17 +383,24 @@ public class BenchmarkBigIT {
         GraknClient graknClient = new GraknClient(server.grpcUri());
         GraknClient.Session remoteSessh = graknClient.session(session.keyspace().name());
         GraknClient.Transaction readTx = remoteSessh.transaction().read();
-        List<ConceptMap> answers = readTx.execute(Graql.parse("match $bnk isa bank; $rsk isa risk-score, has risk-level \"high\"; $r (risk-value: $rsk, risk-subject: $bnk); get;").asGet());
+        List<ConceptMap> answers = readTx.execute(Graql.parse(
+                "match $bnk isa bank; $rsk isa risk-score, has risk-level \"high\"; $r (risk-value: $rsk, risk-subject: $bnk); get;").asGet()
+        );
+
         ConceptMap target = answers.get(2);
-        ConceptMap targetExplAnswer = target.explanation().getAnswers().get(0);
+        Explanation targetExplanation = target.explanation();
+        Variable relationVariable = new Variable("r");
+        ConceptMap targetExplAnswer = targetExplanation.getAnswers().stream()
+                .filter(ans -> ans.map().containsKey(relationVariable))
+                .findFirst().orElse(null);
         System.out.println("banana");
         Concept inferredRelation = targetExplAnswer.map().get(new Variable("r"));
         System.out.println("banana2");
         if (inferredRelation == null) {
             throw new RuntimeException("TRUST NO ONE");
         }
-        boolean b = targetExplAnswer.hasExplanation();
-        System.out.println("This should be true -> "+b);
+        boolean hasExplanation = targetExplAnswer.hasExplanation();
+        System.out.println("This should be true -> " + hasExplanation);
         // NB: for some reason assertTrue(targetExplAnswer.hasExplanation()) STALLS the whole test
         readTx.close();
         remoteSessh.close();

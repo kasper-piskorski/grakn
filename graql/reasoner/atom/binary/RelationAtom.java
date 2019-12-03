@@ -927,9 +927,8 @@ public class RelationAtom extends IsaAtomBase {
         parentAtom.getRelationPlayers()
                 .forEach(prp -> {
                     Statement parentRolePattern = prp.getRole().orElse(null);
-                    if (parentRolePattern == null) {
-                        throw ReasonerException.rolePatternAbsent(parentAtom);
-                    }
+                    if (parentRolePattern == null) throw ReasonerException.rolePatternAbsent(parentAtom);
+
                     String parentRoleLabel = parentRolePattern.getType().isPresent() ? parentRolePattern.getType().get() : null;
                     Role parentRole = parentRoleLabel != null ? tx().getRole(parentRoleLabel) : null;
                     Variable parentRolePlayer = prp.getPlayer().var();
@@ -940,9 +939,8 @@ public class RelationAtom extends IsaAtomBase {
                             //check for role compatibility
                             .filter(crp -> {
                                 Statement childRolePattern = crp.getRole().orElse(null);
-                                if (childRolePattern == null) {
-                                    throw ReasonerException.rolePatternAbsent(this);
-                                }
+                                if (childRolePattern == null) throw ReasonerException.rolePatternAbsent(this);
+
                                 String childRoleLabel = childRolePattern.getType().isPresent() ? childRolePattern.getType().get() : null;
                                 Role childRole = childRoleLabel != null ? tx().getRole(childRoleLabel) : null;
 

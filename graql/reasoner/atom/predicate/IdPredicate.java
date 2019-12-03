@@ -121,6 +121,11 @@ public class IdPredicate extends Predicate<ConceptId> {
     @Override
     public String getPredicateValue() { return getPredicate().getValue();}
 
+    @Override
+    public boolean subsumes(Atomic atom){
+        return true;
+    }
+
     /**
      * @return corresponding value predicate if transformation exists (id corresponds to an attribute concept)
      */

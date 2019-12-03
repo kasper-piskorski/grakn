@@ -212,13 +212,14 @@ public abstract class SemanticCache<
         getParents(target)
                 .forEach(parent -> {
                     boolean parentDbComplete = isDBComplete(keyToQuery(parent));
+                    //TODO might be worth trying to relax the completeness check here
                     if (parentDbComplete || childGround){
                         boolean parentComplete = isComplete(keyToQuery(parent));
                         CacheEntry<ReasonerAtomicQuery, SE> parentMatch = getEntry(keyToQuery(parent));
 
                         boolean propagateInferred = fetchInferred || parentComplete || child.getAtom().getVarName().isReturned();
                         boolean newAnswers = propagateAnswers(parentMatch, childMatch, propagateInferred);
-                        newAnswersFound[0] = newAnswers;
+                        newAnswersFound[0] = newAnswersFound[0] || newAnswers;
                         if (parentDbComplete || newAnswers) ackDBCompleteness(target);
                         if (parentComplete) ackCompleteness(target);
                     }
@@ -274,6 +275,7 @@ public abstract class SemanticCache<
             boolean queryDBComplete = isDBComplete(query);
             if (queryGround) {
                 propagateAnswersToQuery(query, match, true);
+                //since ids in the parent entries are only placeholders, even if new answers are propagated they may not answer the query
                 answersToGroundQuery = answersQuery(query);
             }
 
@@ -302,14 +304,10 @@ public abstract class SemanticCache<
         if (fetchFromParent){
             LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
             CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
+            //TODO might need to check if answer is contained in the cache and pull in db answers if not
             return new Pair<>(entryToAnswerStreamWithUnifier(query, newEntry).first(), MultiUnifierImpl.trivial());
         }
         return getDBAnswerStreamWithUnifier(query);
-    }
-
-    @Override
-    public Stream<ConceptMap> getAnswerStream(ReasonerAtomicQuery query) {
-        return getAnswerStreamWithUnifier(query).first();
     }
 
     @Override
