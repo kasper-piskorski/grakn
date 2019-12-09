@@ -94,6 +94,8 @@ public class SemanticDifference {
         //check for role compatibility
         Iterator<Map.Entry<Variable, Set<Role>>> reqIterator = roleRequirements.entrySet().iterator();
         Set<Relation> relations;
+
+        //TODO this doesn't take into account inferred relations
         if (reqIterator.hasNext()) {
             Map.Entry<Variable, Set<Role>> req = reqIterator.next();
             relations = rolesToRels(req.getKey(), req.getValue(), answer);

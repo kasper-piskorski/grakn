@@ -41,6 +41,7 @@ import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
 import org.junit.Before;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.BufferedReader;
@@ -337,6 +338,7 @@ public class BenchmarkBigIT {
         }
     }
 
+    @Ignore
     @Test
     public void runMeAFewTimes_AndSeeMeStalling() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
@@ -366,6 +368,7 @@ public class BenchmarkBigIT {
         graknClient.close();
     }
 
+    @Ignore
     @Test
     public void IAmConfused_About_Explanations() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
