@@ -249,8 +249,7 @@ public class QueryCacheIT {
             assertEquals(tx.stream(anotherGroundChildQuery.getQuery(), false).collect(toSet()), anotherChildAnswers);
 
             anotherChildAnswers.forEach(ans -> assertTrue(ans.explanation().isLookupExplanation()));
-            //should be false cause there is no parent and we do not ack it explicitly
-            assertFalse(cache.isDBComplete(anotherGroundChildQuery));
+            assertTrue(cache.isDBComplete(anotherGroundChildQuery));
         }
     }
 
@@ -302,12 +301,12 @@ public class QueryCacheIT {
                             "};"),
                     tx);
 
-            Set<ConceptMap> anotherChildAnswers = cache.getAnswers(groundChildQuery);
+            Set<ConceptMap> groundChildAnswers = cache.getAnswers(groundChildQuery);
 
-            assertFalse(anotherChildAnswers.isEmpty());
-            assertEquals(tx.stream(groundChildQuery.getQuery(), false).collect(toSet()), anotherChildAnswers);
-            assertNull(cache.getEntry(groundChildQuery));
-            assertFalse(cache.isDBComplete(groundChildQuery));
+            assertFalse(groundChildAnswers.isEmpty());
+            assertEquals(tx.stream(groundChildQuery.getQuery(), false).collect(toSet()), groundChildAnswers);
+            assertNotNull(cache.getEntry(groundChildQuery));
+            assertTrue(cache.isDBComplete(groundChildQuery));
         }
     }
 
@@ -577,7 +576,6 @@ public class QueryCacheIT {
             Concept sConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 's';get;")).iterator().next().get("x");
             Concept fConcept = tx.stream(Graql.<GraqlGet>parse("match $x has resource 'f';get;")).iterator().next().get("x");
 
-            //retrieve child
             ReasonerAtomicQuery childQuery = ReasonerQueries.atomic(conjunction(
                     "{" +
                             "(subRole1: $x, subRole2: $y) isa binary;" +
@@ -622,14 +620,14 @@ public class QueryCacheIT {
 
             cache.record(childQuery, inferredAnswer);
 
-            Set<ConceptMap> cacheAnswers = cache.getAnswers(childQuery);
+            Set<ConceptMap> childCacheAnswers = cache.getAnswers(childQuery);
             assertEquals(
                     Stream.concat(
                             tx.stream(childQuery.getQuery()),
                             Stream.of(inferredAnswer)
                     ).collect(toSet()),
-                    cacheAnswers);
-            assertTrue(cacheAnswers.contains(specificAnswer));
+                    childCacheAnswers);
+            assertTrue(childCacheAnswers.contains(specificAnswer));
         }
     }
 
@@ -744,9 +742,9 @@ public class QueryCacheIT {
             assertFalse(cache.isComplete(query));
             assertFalse(cache.isDBComplete(query));
 
-            ConceptMap answer = new ConceptMap(ImmutableMap.of(Graql.var("x").var(), entity, Graql.var("y").var(), entity));
+            ConceptMap newAnswer = new ConceptMap(ImmutableMap.of(Graql.var("x").var(), entity, Graql.var("y").var(), entity));
             List<ConceptMap> requeriedAnswers = tx.execute(query.getQuery());
-            assertTrue(requeriedAnswers.contains(answer));
+            assertTrue(requeriedAnswers.contains(newAnswer));
         }
     }
 

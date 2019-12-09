@@ -258,35 +258,39 @@ public abstract class SemanticCache<
         return addEntry(createEntry(query, Sets.newHashSet(answer)));
     }
 
-    private Pair<Stream<ConceptMap>, MultiUnifier> getDBAnswerStreamWithUnifier(ReasonerAtomicQuery query){
-        return new Pair<>(
-                structuralCache().get(query),
-                MultiUnifierImpl.trivial()
-        );
-    }
-
     @Override
     public Pair<Stream<ConceptMap>, MultiUnifier> getAnswerStreamWithUnifier(ReasonerAtomicQuery query) {
         CacheEntry<ReasonerAtomicQuery, SE> match = getEntry(query);
         boolean queryGround = query.isGround();
+        boolean queryDBComplete = isDBComplete(query);
 
+        Pair<Stream<ConceptMap>, MultiUnifier> cachePair;
         if (match != null) {
-            boolean answersToGroundQuery = false;
-            boolean queryDBComplete = isDBComplete(query);
-            if (queryGround) {
-                propagateAnswersToQuery(query, match, true);
-                //since ids in the parent entries are only placeholders, even if new answers are propagated they may not answer the query
-                answersToGroundQuery = answersQuery(query);
-            }
+            propagateAnswersToQuery(query, match, true);
+            cachePair = entryToAnswerStreamWithUnifier(query, match);
+        } else {
+            //if no match but db-complete parent exists, use parent to create entry
+            Set<QE> parents = getParents(query);
+            boolean fetchFromParent = parents.stream().anyMatch(p ->
+                    queryGround || isDBComplete(keyToQuery(p))
+            );
 
-            //extra check is a quasi-completeness check if there's no parent present we have no guarantees about completeness with respect to the db.
-            Pair<Stream<ConceptMap>, MultiUnifier> cachePair = entryToAnswerStreamWithUnifier(query, match);
+            if (!fetchFromParent) return getDBAnswerStreamWithUnifier(query);
 
-            //if db complete or we found answers to ground query via propagation we don't need to hit the database
-            if (queryDBComplete || answersToGroundQuery) return cachePair;
+            LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
+            CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
+            cachePair = entryToAnswerStreamWithUnifier(query, newEntry);
+        }
 
-            //otherwise lookup and add inferred answers on top
-            return new Pair<>(
+        //since ids in the parent entries are only placeholders, even if new answers are propagated they may not answer the query
+        //NB: this does a GET at the moment
+        boolean answersToGroundQuery = queryGround && answersQuery(query);
+
+        //if db complete or we found answers to ground query via propagation we don't need to hit the database
+        if (queryDBComplete || answersToGroundQuery) return cachePair;
+
+        //otherwise lookup and add inferred answers on top
+        return new Pair<>(
                     //NB: concat retains the order between elements from different streams so cache entries will come first
                     //and any duplicates from the DB will be removed by the .distinct step
                             Stream.concat(
@@ -294,20 +298,13 @@ public abstract class SemanticCache<
                                     getDBAnswerStreamWithUnifier(query).first()
                             ).distinct(),
                             cachePair.second());
-        }
+    }
 
-        //if no match but db-complete parent exists, use parent to create entry
-        Set<QE> parents = getParents(query);
-        boolean fetchFromParent = parents.stream().anyMatch(p ->
-                queryGround || isDBComplete(keyToQuery(p))
+    private Pair<Stream<ConceptMap>, MultiUnifier> getDBAnswerStreamWithUnifier(ReasonerAtomicQuery query){
+        return new Pair<>(
+                structuralCache().get(query),
+                MultiUnifierImpl.trivial()
         );
-        if (fetchFromParent){
-            LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
-            CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
-            //TODO might need to check if answer is contained in the cache and pull in db answers if not
-            return new Pair<>(entryToAnswerStreamWithUnifier(query, newEntry).first(), MultiUnifierImpl.trivial());
-        }
-        return getDBAnswerStreamWithUnifier(query);
     }
 
     @Override
