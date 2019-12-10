@@ -356,7 +356,9 @@ public class BenchmarkBigIT {
         GraknClient graknClient = new GraknClient(server.grpcUri());
         GraknClient.Session remoteSessh = graknClient.session(session.keyspace().name());
         GraknClient.Transaction readTx = remoteSessh.transaction().read();
-        List<ConceptMap> answers = readTx.execute(Graql.parse("match $bnk isa bank; $rsk isa risk-score, has risk-level \"high\"; $r (risk-value: $rsk, risk-subject: $bnk); get;").asGet());
+        List<ConceptMap> answers = readTx.execute(Graql.parse(
+                "match $bnk isa bank; $rsk isa risk-score, has risk-level \"high\"; $r (risk-value: $rsk, risk-subject: $bnk); get;").asGet()
+        );
         ConceptMap target = answers.get(2);
         ConceptMap targetExplAnswer = target.explanation().getAnswers().get(0);
         Concept inferredRelation = targetExplAnswer.map().get(new Variable("r"));
@@ -368,7 +370,7 @@ public class BenchmarkBigIT {
         graknClient.close();
     }
 
-    //@Ignore
+    @Ignore
     @Test
     public void IAmConfused_About_Explanations() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
