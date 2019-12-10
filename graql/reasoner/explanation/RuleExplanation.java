@@ -22,8 +22,6 @@ package grakn.core.graql.reasoner.explanation;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.answer.Explanation;
 import grakn.core.kb.concept.api.ConceptId;
-import grakn.core.kb.graql.reasoner.unifier.Unifier;
-import graql.lang.pattern.Pattern;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,20 +32,13 @@ import java.util.List;
 public class RuleExplanation extends Explanation {
 
     private final ConceptId ruleId;
-    private final Unifier unifier;
-    private final Pattern ruleHeadPattern;
 
-    public RuleExplanation(ConceptId ruleId, Unifier u, Pattern headPattern){
+    public RuleExplanation(ConceptId ruleId){
         this.ruleId = ruleId;
-        this.unifier = u;
-        this.ruleHeadPattern = headPattern;
     }
-
-    private RuleExplanation(List<ConceptMap> answers, ConceptId ruleId, Unifier u, Pattern headPattern){
+    private RuleExplanation(List<ConceptMap> answers, ConceptId ruleId){
         super(answers);
         this.ruleId = ruleId;
-        this.unifier = u;
-        this.ruleHeadPattern = headPattern;
     }
 
     @Override
@@ -59,13 +50,11 @@ public class RuleExplanation extends Explanation {
                         Collections.singletonList(ans) :
                         explanation.getAnswers()
         );
-        return new RuleExplanation(answerList, getRuleId(), getUnifier(), ruleHeadPattern());
+        return new RuleExplanation(answerList, getRuleId());
     }
 
     @Override
     public boolean isRuleExplanation(){ return true;}
 
     public ConceptId getRuleId(){ return ruleId;}
-    public Unifier getUnifier(){ return unifier;}
-    public Pattern ruleHeadPattern(){ return ruleHeadPattern;}
 }
