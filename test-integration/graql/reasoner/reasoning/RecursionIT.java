@@ -130,8 +130,9 @@ public class RecursionIT {
         try (Session session = server.sessionWithNewKeyspace()) {
             GraqlTestUtil.loadFromFileAndCommit(resourcePath, "ancestor-friend.gql", session);
             try (Transaction tx = session.writeTransaction()) {
-                String ancestorVariant = "match (ancestor: $X, ancestor-friend: $Y) isa Ancestor-friend;$X has name 'a'; $Y has name $name; get $Y;";
+
                 String explicitAncestorQuery = "match $Y has name $name;{$name == 'd';} or {$name == 'g';}; get $Y;";
+                String ancestorVariant = "match (ancestor: $X, ancestor-friend: $Y) isa Ancestor-friend;$X has name 'a'; $Y has name $name; get $Y;";
                 GraqlTestUtil.assertCollectionsNonTriviallyEqual(
                         tx.execute(Graql.parse(explicitAncestorQuery).asGet(), false),
                         tx.execute(Graql.parse(ancestorVariant).asGet()));
@@ -152,6 +153,8 @@ public class RecursionIT {
                 GraqlTestUtil.assertCollectionsNonTriviallyEqual(
                         tx.execute(Graql.parse(explicitAncestorFriendQuery).asGet(), false),
                         tx.execute(Graql.parse(noRoleAncestorFriendQuery).asGet()));
+
+
             }
         }
     }

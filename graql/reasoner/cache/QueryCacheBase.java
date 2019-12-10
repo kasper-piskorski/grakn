@@ -53,12 +53,10 @@ public abstract class QueryCacheBase<
     private final Map<QE, CacheEntry<Q, SE>> cache = new HashMap<>();
     private final StructuralCache<Q> sCache = new StructuralCache<>();
 
-    QueryCacheBase() { }
+    QueryCacheBase(){}
 
     abstract UnifierType unifierType();
-
     abstract QE queryToKey(Q query);
-
     abstract Q keyToQuery(QE key);
 
     @Override

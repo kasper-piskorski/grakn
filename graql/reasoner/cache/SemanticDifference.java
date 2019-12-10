@@ -19,8 +19,17 @@
 
 package grakn.core.graql.reasoner.cache;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import grakn.core.concept.answer.Explanation;
+import grakn.core.graql.reasoner.atom.Atom;
+import grakn.core.graql.reasoner.atom.binary.RelationAtom;
+import grakn.core.graql.reasoner.explanation.RuleExplanation;
+import grakn.core.graql.reasoner.query.ReasonerQueries;
 import grakn.core.kb.concept.api.Concept;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.kb.concept.api.Relation;
@@ -31,8 +40,11 @@ import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.kb.concept.util.ConceptUtils;
+import grakn.core.kb.server.Transaction;
+import graql.lang.Graql;
 import graql.lang.statement.Variable;
 
+import java.util.Collection;
 import javax.annotation.CheckReturnValue;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -84,14 +96,29 @@ public class SemanticDifference {
                 .collect(Collectors.toSet());
     }
 
-    private boolean satisfiedBy(ConceptMap answer) {
-        if (isEmpty()) return true;
-
+    private boolean roleRequirementsSatisfied(ConceptMap answer, Transaction tx){
         Map<Variable, Set<Role>> roleRequirements = this.definition.stream()
                 .filter(vd -> !vd.playedRoles().isEmpty())
                 .collect(Collectors.toMap(VariableDefinition::var, VariableDefinition::playedRoles));
 
-        //check for role compatibility
+        if (roleRequirements.isEmpty()) return true;
+
+        Explanation explanation = answer.explanation();
+        if (explanation.isRuleExplanation()){
+            RuleExplanation ruleExplanation = (RuleExplanation) explanation;
+            Unifier unifier = ruleExplanation.getUnifier().inverse();
+            RelationAtom ruleAtom = ReasonerQueries.atomic(Graql.and(ruleExplanation.ruleHeadPattern().statements()), tx).getAtom().toRelationAtom();
+            HashMultimap<Variable, Role> varRoleMap = HashMultimap.create();
+            Multimaps.invertFrom(ruleAtom.getRoleVarMap(), varRoleMap);
+
+            boolean rolesCompatible = roleRequirements.entrySet().stream().allMatch(e -> {
+                Collection<Variable> variables = unifier.get(e.getKey());
+                Set<Role> roles = e.getValue();
+                return variables.stream().allMatch(v -> varRoleMap.get(v).equals(roles));
+            });
+            return rolesCompatible;
+        }
+
         Iterator<Map.Entry<Variable, Set<Role>>> reqIterator = roleRequirements.entrySet().iterator();
         Set<Relation> relations;
 
@@ -106,7 +133,12 @@ public class SemanticDifference {
             Map.Entry<Variable, Set<Role>> req = reqIterator.next();
             relations = Sets.intersection(relations, rolesToRels(req.getKey(), req.getValue(), answer));
         }
-        if (relations.isEmpty() && !roleRequirements.isEmpty()) return false;
+        return !relations.isEmpty();
+    }
+
+    private boolean satisfiedBy(ConceptMap answer, Transaction tx) {
+        if (isEmpty()) return true;
+        if (!roleRequirementsSatisfied(answer, tx)) return false;
 
         return definition.stream().allMatch(vd -> {
             Variable var = vd.var();
@@ -143,8 +175,8 @@ public class SemanticDifference {
      * @return propagated answer to child query or empty answer if semantic difference not satisfied
      */
     @CheckReturnValue
-    public ConceptMap propagateAnswer(ConceptMap answer, ConceptMap childSub, Set<Variable> childVars, Unifier unifier) {
-        if (!this.satisfiedBy(answer)) return new ConceptMap();
+    public ConceptMap propagateAnswer(ConceptMap answer, ConceptMap childSub, Set<Variable> childVars, Unifier unifier, Transaction tx) {
+        if (!this.satisfiedBy(answer, tx)) return new ConceptMap();
         ConceptMap unified = unifier.apply(answer);
         if (unified.isEmpty()) return unified;
         Set<Variable> varsToRetain = Sets.difference(unified.vars(), childSub.vars());

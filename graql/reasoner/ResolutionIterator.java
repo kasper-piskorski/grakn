@@ -64,7 +64,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         while(!states.isEmpty()) {
             ResolutionState state = states.pop();
 
-            LOG.trace("state: {}", state);
+            LOG.info("state: {}", state);
 
             if (state.isAnswerState() && state.isTopState()) {
                 return state.getSubstitution();
@@ -75,7 +75,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
                 if (!state.isAnswerState()) states.push(state);
                 states.push(newState);
             } else {
-                LOG.trace("new state: NULL");
+                LOG.info("new state: NULL");
             }
         }
         return null;
@@ -113,7 +113,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         if (reiterate()) {
             long dAns = answers.size() - oldAns;
             if (dAns != 0 || iter == 0) {
-                LOG.debug("iter: {} answers: {} dAns = {}", iter, answers.size(), dAns);
+                LOG.info("iter: {} answers: {} dAns = {}", iter, answers.size(), dAns);
                 iter++;
                 states.push(query.resolutionState(new ConceptMap(), new UnifierImpl(), null, new HashSet<>()));
                 oldAns = answers.size();
@@ -122,7 +122,6 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         }
 
         MultilevelSemanticCache queryCache = CacheCasting.queryCacheCast(query.tx().queryCache());
-
         subGoals.forEach(queryCache::ackCompleteness);
         queryCache.propagateAnswers();
 

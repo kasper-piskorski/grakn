@@ -368,7 +368,7 @@ public class BenchmarkBigIT {
         graknClient.close();
     }
 
-    @Ignore
+    //@Ignore
     @Test
     public void IAmConfused_About_Explanations() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
@@ -404,7 +404,7 @@ public class BenchmarkBigIT {
         }
         boolean hasExplanation = targetExplAnswer.hasExplanation();
         System.out.println("This should be true -> " + hasExplanation);
-        // NB: for some reason assertTrue(targetExplAnswer.hasExplanation()) STALLS the whole test
+        // NB: for some raeason assertTrue(targetExplAnswer.hasExplanation()) STALLS the whole test
         readTx.close();
         remoteSessh.close();
         graknClient.close();

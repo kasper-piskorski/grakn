@@ -26,6 +26,7 @@ import com.google.common.collect.Sets;
 import grakn.common.util.Pair;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.CacheCasting;
+import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.AtomicFactory;
 import grakn.core.graql.reasoner.atom.binary.TypeAtom;
@@ -55,6 +56,8 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base reasoner atomic query. An atomic query is a query constrained to having at most one rule-resolvable atom
@@ -121,7 +124,20 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      * @return true if this query subsumes the provided query
      */
     public boolean subsumes(ReasonerAtomicQuery parent){
-        MultiUnifier multiUnifier = this.getMultiUnifier(parent, UnifierType.SUBSUMPTIVE);
+        return subsumes(parent, UnifierType.SUBSUMPTIVE);
+    }
+
+    /**
+     * TODO
+     * @param parent
+     * @return
+     */
+    public boolean subsumesStructurally(ReasonerAtomicQuery parent){
+        return subsumes(parent, UnifierType.STRUCTURAL_SUBSUMPTIVE);
+    }
+
+    private boolean subsumes(ReasonerAtomicQuery parent, UnifierType unifierType){
+        MultiUnifier multiUnifier = this.getMultiUnifier(parent, unifierType);
         if (multiUnifier.isEmpty()) return false;
         MultiUnifier inverse = multiUnifier.inverse();
 
@@ -129,8 +145,8 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         boolean propagatedAnswersComplete = !inverse.isEmpty() &&
                 inverse.stream().allMatch(u -> u.values().containsAll(this.getVarNames()));
         return propagatedAnswersComplete
-                        && !parent.getAtoms(VariablePredicate.class).findFirst().isPresent()
-                        && !this.getAtoms(VariablePredicate.class).findFirst().isPresent();
+                && !parent.getAtoms(VariablePredicate.class).findFirst().isPresent()
+                && !this.getAtoms(VariablePredicate.class).findFirst().isPresent();
     }
 
     /**
@@ -175,7 +191,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      * @return pair of: a parent->child unifier and a parent->child semantic difference between
      */
     public Set<Pair<Unifier, SemanticDifference>> getMultiUnifierWithSemanticDiff(ReasonerAtomicQuery child){
-        MultiUnifier unifier = child.getMultiUnifier(this, UnifierType.SUBSUMPTIVE);
+        MultiUnifier unifier = child.getMultiUnifier(this, UnifierType.STRUCTURAL_SUBSUMPTIVE);
         return unifier.stream()
                 .map(childParentUnifier -> {
                     Unifier inverse = childParentUnifier.inverse();
@@ -209,6 +225,8 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         return getAtom().atomOptions(sub).stream().map(ReasonerAtomicQuery::new);
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(ReasonerAtomicQuery.class);
+
     @Override
     public Iterator<ResolutionState> innerStateIterator(AnswerPropagatorState parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
         Pair<Stream<ConceptMap>, MultiUnifier> cacheEntry = CacheCasting.queryCacheCast(tx().queryCache()).getAnswerStreamWithUnifier(this);
@@ -225,6 +243,10 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         boolean doNotResolveFurther = visited
                 || CacheCasting.queryCacheCast(tx().queryCache()).isComplete(this)
                 || (this.isGround() && dbIterator.hasNext());
+        if (doNotResolveFurther){
+            LOG.info("Query {} won't be resolved further: visited({}), complete({})", this, visited, CacheCasting.queryCacheCast(tx().queryCache()).isComplete(this));
+        }
+
         Iterator<ResolutionState> subGoalIterator = !doNotResolveFurther?
                 ruleStateIterator(parent, visitedSubGoals) :
                 Collections.emptyIterator();

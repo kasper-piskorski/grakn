@@ -25,6 +25,8 @@ import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 
 import java.util.HashSet;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -51,6 +53,8 @@ public abstract class AtomicQueryCacheBase<
     final private Set<ReasonerAtomicQuery> completeQueries = new HashSet<>();
     final private Set<QE> completeEntries = new HashSet<>();
 
+    private static final Logger LOG = LoggerFactory.getLogger(AtomicQueryCacheBase.class);
+
     public boolean isDBComplete(ReasonerAtomicQuery query){
         return dbCompleteEntries.contains(queryToKey(query))
                 || dbCompleteQueries.contains(query);
@@ -65,8 +69,10 @@ public abstract class AtomicQueryCacheBase<
         ackDBCompleteness(query);
         if (query.getAtom().getPredicates(IdPredicate.class).findFirst().isPresent()) {
             completeQueries.add(query);
+            LOG.trace("Query {} ACKED complete", query);
         } else {
             completeEntries.add(queryToKey(query));
+            LOG.trace("Query entry {} ACKED complete", query);
         }
     }
 

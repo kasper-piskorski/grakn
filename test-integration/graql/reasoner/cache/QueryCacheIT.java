@@ -212,7 +212,7 @@ public class QueryCacheIT {
 
             //record parent, mark the answers to be explained by a rule so that we can distinguish them
             tx.execute(parentQuery.getQuery(), false).stream()
-                    .map(ans -> ans.explain(new RuleExplanation(ConceptId.of("someRule")), parentQuery.getPattern()))
+                    .map(ans -> ans.explain(new RuleExplanation(tx.getMetaRule().id(), null, null), parentQuery.getPattern()))
                     .forEach(ans -> cache.record(parentQuery, ans));
 
             //NB: WE ACK COMPLETENESS
@@ -249,7 +249,7 @@ public class QueryCacheIT {
             assertEquals(tx.stream(anotherGroundChildQuery.getQuery(), false).collect(toSet()), anotherChildAnswers);
 
             anotherChildAnswers.forEach(ans -> assertTrue(ans.explanation().isLookupExplanation()));
-            assertTrue(cache.isDBComplete(anotherGroundChildQuery));
+            assertFalse(cache.isDBComplete(anotherGroundChildQuery));
         }
     }
 
@@ -276,7 +276,7 @@ public class QueryCacheIT {
             cache.ackDBCompleteness(parentQuery);
 
             //fetch a query that subsumes parent
-            ReasonerAtomicQuery childQuery = ReasonerQueries.atomic(conjunction(
+            ReasonerAtomicQuery directChildQuery = ReasonerQueries.atomic(conjunction(
                     "{" +
                             "(baseRole1: $x, baseRole2: $y, baseRole3: $z) isa ternary;" +
                             "$x id " + fConcept.getValue() + ";" +
@@ -284,15 +284,15 @@ public class QueryCacheIT {
                             "};"),
                     tx);
 
-            Set<ConceptMap> childAnswers = cache.getAnswers(childQuery);
-            assertEquals(tx.stream(childQuery.getQuery(), false).collect(toSet()), childAnswers);
+            Set<ConceptMap> childAnswers = cache.getAnswers(directChildQuery);
+            assertEquals(tx.stream(directChildQuery.getQuery(), false).collect(toSet()), childAnswers);
 
-            assertNotNull(cache.getEntry(childQuery));
-            assertTrue(cache.isDBComplete(childQuery));
+            assertNotNull(cache.getEntry(directChildQuery));
+            assertTrue(cache.isDBComplete(directChildQuery));
 
             //fetch a different query that is not structurally equivalent to the child query,
             //consequently the query should have no parents in the cache so the answer needs to be fetched from the db
-            ReasonerAtomicQuery groundChildQuery = ReasonerQueries.atomic(conjunction(
+            ReasonerAtomicQuery groundIndirectChildQuery = ReasonerQueries.atomic(conjunction(
                     "{" +
                             "(baseRole1: $x, baseRole2: $y, baseRole3: $z) isa ternary;" +
                             "$x id " + mConcept.getValue() + ";" +
@@ -301,12 +301,12 @@ public class QueryCacheIT {
                             "};"),
                     tx);
 
-            Set<ConceptMap> groundChildAnswers = cache.getAnswers(groundChildQuery);
+            Set<ConceptMap> groundChildAnswers = cache.getAnswers(groundIndirectChildQuery);
 
             assertFalse(groundChildAnswers.isEmpty());
-            assertEquals(tx.stream(groundChildQuery.getQuery(), false).collect(toSet()), groundChildAnswers);
-            assertNotNull(cache.getEntry(groundChildQuery));
-            assertTrue(cache.isDBComplete(groundChildQuery));
+            assertEquals(tx.stream(groundIndirectChildQuery.getQuery(), false).collect(toSet()), groundChildAnswers);
+            assertNotNull(cache.getEntry(groundIndirectChildQuery));
+            assertTrue(cache.isDBComplete(groundIndirectChildQuery));
         }
     }
 
@@ -403,7 +403,7 @@ public class QueryCacheIT {
             ConceptMap inferredAnswer = new ConceptMap(ImmutableMap.of(
                     Graql.var("x").var(), tx.getEntityType("entity").instances().iterator().next(),
                     Graql.var("y").var(), tx.getEntityType("entity").instances().iterator().next()),
-                    new RuleExplanation(tx.getMetaRule().id()),
+                    new RuleExplanation(tx.getMetaRule().id(), null, null),
                     query.getPattern()
             );
             cache.record(query, inferredAnswer);
@@ -441,7 +441,7 @@ public class QueryCacheIT {
                     .forEach(ans -> cache.record(query, ans));
 
             //mock a rule explained answer that is equal to a dbAnswer
-            ConceptMap inferredAnswer = dbAnswer.explain(new RuleExplanation(tx.getMetaRule().id()), query.getPattern());
+            ConceptMap inferredAnswer = dbAnswer.explain(new RuleExplanation(tx.getMetaRule().id(), null, null), query.getPattern());
             cache.record(query, inferredAnswer);
 
             //retrieve
@@ -529,7 +529,7 @@ public class QueryCacheIT {
                             Graql.var("x").var(), mConcept,
                             Graql.var("y").var(), fConcept
                     ),
-                    new RuleExplanation(tx.getMetaRule().id()),
+                    new RuleExplanation(tx.getMetaRule().id(), null, null),
                     parentQuery.getPattern()
                     );
             cache.record(parentQuery, inferredAnswer);
@@ -563,7 +563,7 @@ public class QueryCacheIT {
             //initialChildQuery.isEquivalent(childQuery);
 
             Set<ConceptMap> answers = cache.getAnswers(childQuery);
-            MultiUnifier childToParentUnifier = childQuery.getMultiUnifier(parentQuery, UnifierType.SUBSUMPTIVE);
+            MultiUnifier childToParentUnifier = childQuery.getMultiUnifier(parentQuery, UnifierType.STRUCTURAL_SUBSUMPTIVE);
             assertTrue(answers.stream().flatMap(childToParentUnifier::apply).anyMatch(ans -> ans.equals(inferredAnswer)));
         }
     }
@@ -594,7 +594,7 @@ public class QueryCacheIT {
             ConceptMap inferredAnswer = new ConceptMap(ImmutableMap.of(
                     Graql.var("x").var(), mConcept,
                     Graql.var("y").var(), tx.getEntityType("entity").instances().iterator().next()),
-                    new RuleExplanation(tx.getMetaRule().id()),
+                    new RuleExplanation(tx.getMetaRule().id(), null, null),
                     childQuery.getPattern()
             );
 

@@ -46,7 +46,6 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
     //TODO: remove it once we introduce multi answer states
     private MultiUnifier ruleUnifier = null;
-
     private MultiUnifier cacheUnifier = null;
     private CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> cacheEntry = null;
     final private HashMultimap<ConceptId, ConceptMap> materialised = HashMultimap.create();
@@ -130,15 +129,15 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
         return ConceptUtils.joinAnswers(answer, query.getSubstitution())
                 .project(query.getVarNames())
-                .explain(new RuleExplanation(rule.getRule().id()), query.getPattern());
+                .explain(new RuleExplanation(rule.getRule().id(), unifier, rule.getHead().getPattern()), query.getPattern());
     }
 
     private ConceptMap materialisedAnswer(ConceptMap baseAnswer, InferenceRule rule, Unifier unifier) {
         ReasonerAtomicQuery query = getQuery();
         ReasonerAtomicQuery ruleHead = ReasonerQueries.atomic(rule.getHead(), baseAnswer);
         ConceptMap sub = ruleHead.getSubstitution();
-        if(materialised.get(rule.getRule().id()).contains(sub)
-            && getRuleUnifier(rule).isUnique()){
+        MultiUnifier ruleUnifier = getRuleUnifier(rule);
+        if(materialised.get(rule.getRule().id()).contains(sub) && ruleUnifier.isUnique()){
             return new ConceptMap();
         }
         materialised.put(rule.getRule().id(), sub);
@@ -151,7 +150,7 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         ConceptMap materialisedSub = ruleHead.materialise(baseAnswer).findFirst().orElse(null);
         ConceptMap answer = baseAnswer;
         if (materialisedSub != null) {
-            RuleExplanation ruleExplanation = new RuleExplanation(rule.getRule().id());
+            RuleExplanation ruleExplanation = new RuleExplanation(rule.getRule().id(), unifier, rule.getHead().getPattern());
             ConceptMap ruleAnswer = materialisedSub.explain(ruleExplanation, query.getPattern());
             getQuery().tx().queryCache().record(ruleHead, ruleAnswer);
             Atom ruleAtom = ruleHead.getAtom();
@@ -167,6 +166,6 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         return ConceptUtils
                 .joinAnswers(answer, query.getSubstitution())
                 .project(query.getVarNames())
-                .explain(new RuleExplanation(rule.getRule().id()), query.getPattern());
+                .explain(new RuleExplanation(rule.getRule().id(), unifier, rule.getHead().getPattern()), query.getPattern());
     }
 }

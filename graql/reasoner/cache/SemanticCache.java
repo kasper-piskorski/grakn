@@ -80,8 +80,10 @@ public abstract class SemanticCache<
 
     @Override
     public boolean isComplete(ReasonerAtomicQuery query){
-        return super.isComplete(query)
-                || getParents(query).stream().anyMatch(q -> super.isComplete(keyToQuery(q)));
+        if (super.isComplete(query)) return true;
+        return getParents(query).stream()
+                .filter(q -> query.subsumes(keyToQuery(q)))
+                .anyMatch(q -> super.isComplete(keyToQuery(q)));
     }
 
     @Override
@@ -139,12 +141,12 @@ public abstract class SemanticCache<
      */
     public void propagateAnswers(){
         queries().stream()
-                .filter(this::isComplete)
-                .forEach(child-> {
+                .filter(q -> !getParents(q).isEmpty())
+                .forEach(child -> {
                     CacheEntry<ReasonerAtomicQuery, SE> childEntry = getEntry(child);
                     if (childEntry != null) {
                         propagateAnswersToQuery(child, childEntry, true);
-                        ackCompleteness(child);
+                        //ackCompleteness(child);
                     }
                 });
     }
@@ -152,9 +154,12 @@ public abstract class SemanticCache<
     public Set<QE> getParents(ReasonerAtomicQuery child){
         Set<QE> parents = this.parents.get(queryToKey(child));
         if (parents.isEmpty()) parents = computeParents(child);
+        return parents;
+        /*
         return parents.stream()
                 .filter(parent -> child.subsumes(keyToQuery(parent)))
                 .collect(toSet());
+         */
     }
 
     public Set<QE> getFamily(SchemaConcept type){
@@ -191,7 +196,7 @@ public abstract class SemanticCache<
         Set<QE> computedParents = new HashSet<>();
         getFamily(child)
                 .map(this::keyToQuery)
-                .filter(child::subsumes)
+                .filter(child::subsumesStructurally)
                 .map(this::queryToKey)
                 .peek(computedParents::add)
                 .forEach(parent -> parents.put(queryToKey(child), parent));
@@ -220,8 +225,13 @@ public abstract class SemanticCache<
                         boolean propagateInferred = fetchInferred || parentComplete || child.getAtom().getVarName().isReturned();
                         boolean newAnswers = propagateAnswers(parentMatch, childMatch, propagateInferred);
                         newAnswersFound[0] = newAnswersFound[0] || newAnswers;
-                        if (parentDbComplete || newAnswers) ackDBCompleteness(target);
-                        if (parentComplete) ackCompleteness(target);
+
+                        if(childGround && newAnswers) ackCompleteness(target);
+
+                        if (target.subsumes(keyToQuery(parent))) {
+                            ackDBCompleteness(target);
+                            if (parentComplete) ackCompleteness(target);
+                        }
                     }
                 });
         return newAnswersFound[0];
@@ -266,7 +276,8 @@ public abstract class SemanticCache<
 
         Pair<Stream<ConceptMap>, MultiUnifier> cachePair;
         if (match != null) {
-            propagateAnswersToQuery(query, match, true);
+            boolean newAnswers = propagateAnswersToQuery(query, match, true);
+            LOG.info("Query Cache hit: {} with new answers propagated: {}", query, newAnswers);
             cachePair = entryToAnswerStreamWithUnifier(query, match);
         } else {
             //if no match but db-complete parent exists, use parent to create entry
@@ -275,9 +286,12 @@ public abstract class SemanticCache<
                     queryGround || isDBComplete(keyToQuery(p))
             );
 
-            if (!fetchFromParent) return getDBAnswerStreamWithUnifier(query);
+            if (!fetchFromParent){
+                LOG.info("Query Cache miss: {} with fetch from DB", query);
+                return getDBAnswerStreamWithUnifier(query);
+            }
 
-            LOG.trace("Query Cache miss: {} with fetch from parents {}", query, parents);
+            LOG.info("Query Cache miss: {} with fetch from parents:\n{}", query, parents);
             CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
             cachePair = entryToAnswerStreamWithUnifier(query, newEntry);
         }
@@ -287,8 +301,12 @@ public abstract class SemanticCache<
         boolean answersToGroundQuery = queryGround && answersQuery(query);
 
         //if db complete or we found answers to ground query via propagation we don't need to hit the database
-        if (queryDBComplete || answersToGroundQuery) return cachePair;
+        if (queryDBComplete || answersToGroundQuery){
+            LOG.info("Complete cache fetch: {}", query);
+            return cachePair;
+        }
 
+        LOG.info("Incomplete cache fetch: {}", query);
         //otherwise lookup and add inferred answers on top
         return new Pair<>(
                     //NB: concat retains the order between elements from different streams so cache entries will come first
