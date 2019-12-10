@@ -91,7 +91,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
                 .flatMap(parentAns -> parentToChildUnifierDelta.stream()
                         .map(unifierDelta ->
                                 unifierDelta.second()
-                                        .propagateAnswer(parentAns, childPartialSub, childVars, unifierDelta.first(), child.tx()))
+                                        .propagateAnswer(parentAns, childPartialSub, childVars, unifierDelta.first()))
                 )
                 .filter(ans -> !ans.isEmpty())
                 .peek(ans -> validateAnswer(ans, child, childVars))
