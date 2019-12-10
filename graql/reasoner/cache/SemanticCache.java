@@ -277,7 +277,7 @@ public abstract class SemanticCache<
         Pair<Stream<ConceptMap>, MultiUnifier> cachePair;
         if (match != null) {
             boolean newAnswers = propagateAnswersToQuery(query, match, true);
-            LOG.info("Query Cache hit: {} with new answers propagated: {}", query, newAnswers);
+            LOG.trace("Query Cache hit: {} with new answers propagated: {}", query, newAnswers);
             cachePair = entryToAnswerStreamWithUnifier(query, match);
         } else {
             //if no match but db-complete parent exists, use parent to create entry
@@ -287,11 +287,11 @@ public abstract class SemanticCache<
             );
 
             if (!fetchFromParent){
-                LOG.info("Query Cache miss: {} with fetch from DB", query);
+                LOG.trace("Query Cache miss: {} with fetch from DB", query);
                 return getDBAnswerStreamWithUnifier(query);
             }
 
-            LOG.info("Query Cache miss: {} with fetch from parents:\n{}", query, parents);
+            LOG.trace("Query Cache miss: {} with fetch from parents:\n{}", query, parents);
             CacheEntry<ReasonerAtomicQuery, SE> newEntry = addEntry(createEntry(query, new HashSet<>()));
             cachePair = entryToAnswerStreamWithUnifier(query, newEntry);
         }
@@ -302,11 +302,11 @@ public abstract class SemanticCache<
 
         //if db complete or we found answers to ground query via propagation we don't need to hit the database
         if (queryDBComplete || answersToGroundQuery){
-            LOG.info("Complete cache fetch: {}", query);
+            LOG.trace("Complete cache fetch: {}", query);
             return cachePair;
         }
 
-        LOG.info("Incomplete cache fetch: {}", query);
+        LOG.trace("Incomplete cache fetch: {}", query);
         //otherwise lookup and add inferred answers on top
         return new Pair<>(
                     //NB: concat retains the order between elements from different streams so cache entries will come first
