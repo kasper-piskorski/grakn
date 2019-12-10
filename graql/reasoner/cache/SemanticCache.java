@@ -226,11 +226,13 @@ public abstract class SemanticCache<
                         boolean newAnswers = propagateAnswers(parentMatch, childMatch, propagateInferred);
                         newAnswersFound[0] = newAnswersFound[0] || newAnswers;
 
-                        //freshly propagated answer might not necessarily answer the target query as we compare structurally
-                        //hence this check
+
+                        boolean targetSubsumesParent = target.subsumes(keyToQuery(parent));
+                        //since we compare queriesstructurally, freshly propagated answer might not necessarily answer
+                        //the target query - hence this check
                         if(childGround && newAnswers && answersQuery(target)) ackCompleteness(target);
 
-                        if (target.subsumes(keyToQuery(parent))) {
+                        if (targetSubsumesParent) {
                             ackDBCompleteness(target);
                             if (parentComplete) ackCompleteness(target);
                         }

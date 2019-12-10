@@ -306,7 +306,7 @@ public class QueryCacheIT {
             assertFalse(groundChildAnswers.isEmpty());
             assertEquals(tx.stream(groundIndirectChildQuery.getQuery(), false).collect(toSet()), groundChildAnswers);
             assertNotNull(cache.getEntry(groundIndirectChildQuery));
-            assertTrue(cache.isDBComplete(groundIndirectChildQuery));
+            assertFalse(cache.isDBComplete(groundIndirectChildQuery));
         }
     }
 
