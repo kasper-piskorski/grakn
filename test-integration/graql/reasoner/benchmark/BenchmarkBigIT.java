@@ -380,7 +380,7 @@ public class BenchmarkBigIT {
         graknClient.close();
     }
 
-    //@Ignore
+    @Ignore
     @Test
     public void runMeAFewTimes_AndSeeMeStalling() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
@@ -412,7 +412,7 @@ public class BenchmarkBigIT {
         graknClient.close();
     }
 
-    //@Ignore
+    @Ignore
     @Test
     public void IAmConfused_About_Explanations() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
