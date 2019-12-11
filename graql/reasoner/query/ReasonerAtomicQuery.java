@@ -243,9 +243,6 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
         boolean doNotResolveFurther = visited
                 || CacheCasting.queryCacheCast(tx().queryCache()).isComplete(this)
                 || (this.isGround() && dbIterator.hasNext());
-        if (doNotResolveFurther){
-            LOG.info("Query {} won't be resolved further: visited({}), complete({})", this, visited, CacheCasting.queryCacheCast(tx().queryCache()).isComplete(this));
-        }
 
         Iterator<ResolutionState> subGoalIterator = !doNotResolveFurther?
                 ruleStateIterator(parent, visitedSubGoals) :
