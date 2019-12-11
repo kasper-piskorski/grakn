@@ -1134,13 +1134,7 @@ public class RelationAtom extends IsaAtomBase {
             relation = substitution.get(getVarName()).asRelation();
         } else {
             Relation foundRelation = findRelation(substitution);
-            if (foundRelation == null) {
-                Relation insertedRelation = relationType.addRelationInferred();
-                relation = insertedRelation;
-            } else {
-                relation = foundRelation;
-            }
-
+            relation = foundRelation != null? foundRelation : relationType.addRelationInferred();
         }
 
         //NB: this will potentially reify existing implicit relationships
@@ -1189,12 +1183,13 @@ public class RelationAtom extends IsaAtomBase {
      * @return new relation atom with user defined name if necessary or this
      */
     private RelationAtom rewriteWithRelationVariable(Atom parentAtom) {
-        if (this.getVarName().isReturned() || !parentAtom.getVarName().isReturned()) return this;
+        if (!parentAtom.getVarName().isReturned()) return this;
         return rewriteWithRelationVariable();
     }
 
     @Override
     public RelationAtom rewriteWithRelationVariable() {
+        if (this.getVarName().isReturned()) return this;
         StatementInstance newVar = new StatementThing(new Variable().asReturnedVar());
         Statement relVar = getPattern().getProperty(IsaProperty.class)
                 .map(prop -> newVar.isa(prop.type()))

@@ -340,6 +340,48 @@ public class BenchmarkBigIT {
 
     @Ignore
     @Test
+    public void bondQuery() {
+        String resourcePath = "test-integration/graql/reasoner/stubs/";
+
+        Session session = server.sessionWithNewKeyspace();
+        Transaction transaction = session.writeTransaction();
+        GraqlTestUtil.loadFromFile(resourcePath, "lastTestSchema.gql", transaction);
+        transaction.commit();
+        transaction = session.writeTransaction();
+        GraqlTestUtil.loadFromFile(resourcePath, "lastTest.gql", transaction);
+        transaction.commit();
+        session.close();
+
+        GraknClient graknClient = new GraknClient(server.grpcUri());
+        GraknClient.Session remoteSessh = graknClient.session(session.keyspace().name());
+        GraknClient.Transaction tx = remoteSessh.transaction().write();
+        List<ConceptMap> answers = tx.execute(Graql.parse(
+                "match " +
+                        "$b isa bond, has isin 'NI3672572011';" +
+                        "$sjv isa securities-joint-venture, has name 'Huaying Securities Co., Ltd.';" +
+                        "$io ($b, $sjv) isa indirect-owns;" +
+                        "get;"
+                ).asGet()
+        );
+        ConceptMap target = Iterables.getOnlyElement(answers);
+        Explanation targetExplanation = target.explanation();
+
+        ConceptMap ioAnswer = targetExplanation.getAnswers().stream()
+                .filter(ans -> ans.map().containsKey(new Variable("io")))
+                .findFirst().orElse(null);
+        Explanation ioExplanation = ioAnswer.explanation();
+        ConceptMap cAnswer = ioExplanation.getAnswers().stream()
+                .filter(ans -> ans.map().containsKey(new Variable("c")))
+                .findFirst().orElse(null);
+
+        System.out.println();
+        tx.close();
+        remoteSessh.close();
+        graknClient.close();
+    }
+
+    //@Ignore
+    @Test
     public void runMeAFewTimes_AndSeeMeStalling() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
 
@@ -370,7 +412,7 @@ public class BenchmarkBigIT {
         graknClient.close();
     }
 
-    @Ignore
+    //@Ignore
     @Test
     public void IAmConfused_About_Explanations() {
         String resourcePath = "test-integration/graql/reasoner/stubs/";
@@ -405,6 +447,7 @@ public class BenchmarkBigIT {
             throw new RuntimeException("TRUST NO ONE");
         }
         boolean hasExplanation = targetExplAnswer.hasExplanation();
+        assertTrue(targetExplAnswer.hasExplanation());
         System.out.println("This should be true -> " + hasExplanation);
         // NB: for some raeason assertTrue(targetExplAnswer.hasExplanation()) STALLS the whole test
         readTx.close();
