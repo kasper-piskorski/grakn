@@ -203,6 +203,7 @@ public class BenchmarkSmallIT {
 
         String queryString = "match (Q-from: $x, Q-to: $y) isa Q; get;";
         GraqlGet query = Graql.parse(queryString).asGet();
+        assertEquals(executeQuery(query, tx, "full").size(), answers);
 
         String queryString2 = "match (Q-from: $x, Q-to: $y) isa Q;$x has index 'a'; get;";
         GraqlGet query2 = Graql.parse(queryString2).asGet();
@@ -212,6 +213,7 @@ public class BenchmarkSmallIT {
 
         executeQuery(query.match().get().limit(limit), tx, "limit " + limit);
         executeQuery(query2.match().get().limit(limit), tx, "limit " + limit);
+
         tx.close();
         session.close();
     }

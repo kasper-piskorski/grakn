@@ -425,8 +425,7 @@ public class BenchmarkBigIT {
     @Test
     public void testJoinRuleChain() {
         final int N = 200;
-        System.out.println(new Object() {
-        }.getClass().getEnclosingMethod().getName());
+        System.out.println(new Object() {}.getClass().getEnclosingMethod().getName());
         loadRuleChainData(N);
 
         try (GraknClient.Session session = new GraknClient(server.grpcUri()).session(keyspace)) {
@@ -444,6 +443,7 @@ public class BenchmarkBigIT {
                 String limitedQueryString = "match " + queryPattern +
                         "get; limit 1;";
                 assertEquals(1, executeQuery(queryString, tx, "full").size());
+
                 assertEquals(1, executeQuery(subbedQueryString, tx, "first argument bound").size());
                 assertEquals(1, executeQuery(subbedQueryString2, tx, "second argument bound").size());
                 assertEquals(1, executeQuery(limitedQueryString, tx, "limit ").size());

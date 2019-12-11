@@ -211,6 +211,7 @@ public abstract class SemanticCache<
      * @param fetchInferred true if inferred answers should be propagated
      */
     private boolean propagateAnswersToQuery(ReasonerAtomicQuery target, CacheEntry<ReasonerAtomicQuery, SE> childMatch, boolean fetchInferred){
+        long start = System.currentTimeMillis();
         ReasonerAtomicQuery child = childMatch.query();
         boolean[] newAnswersFound = {false};
         boolean childGround = child.isGround();
@@ -228,7 +229,7 @@ public abstract class SemanticCache<
 
 
                         boolean targetSubsumesParent = target.subsumes(keyToQuery(parent));
-                        //since we compare queriesstructurally, freshly propagated answer might not necessarily answer
+                        //since we compare queries structurally, freshly propagated answer might not necessarily answer
                         //the target query - hence this check
                         if(childGround && newAnswers && answersQuery(target)) ackCompleteness(target);
 
@@ -238,6 +239,7 @@ public abstract class SemanticCache<
                         }
                     }
                 });
+        target.tx().profiler().updateTime("SemanticCache::propagateAnswersToQuery", start);
         return newAnswersFound[0];
     }
 
@@ -247,7 +249,7 @@ public abstract class SemanticCache<
             ConceptMap answer,
             @Nullable CacheEntry<ReasonerAtomicQuery, SE> entry,
             @Nullable MultiUnifier unifier) {
-
+        long start = System.currentTimeMillis();
         validateAnswer(answer, query, query.getVarNames());
         if (query.hasUniqueAnswer()) ackCompleteness(query);
 
@@ -267,20 +269,23 @@ public abstract class SemanticCache<
                     .apply(answer)
                     .peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
                     .forEach(answerSet::add);
+            query.tx().profiler().updateTime("SemanticCache::record",start);
             return match;
         }
+        query.tx().profiler().updateTime("SemanticCache::record",start);
         return addEntry(createEntry(query, Sets.newHashSet(answer)));
     }
 
     @Override
     public Pair<Stream<ConceptMap>, MultiUnifier> getAnswerStreamWithUnifier(ReasonerAtomicQuery query) {
+        long start = System.currentTimeMillis();
         CacheEntry<ReasonerAtomicQuery, SE> match = getEntry(query);
         boolean queryGround = query.isGround();
         boolean queryDBComplete = isDBComplete(query);
 
         Pair<Stream<ConceptMap>, MultiUnifier> cachePair;
         if (match != null) {
-            boolean newAnswers = propagateAnswersToQuery(query, match, true);
+            boolean newAnswers = propagateAnswersToQuery(query, match, queryGround);
             LOG.trace("Query Cache hit: {} with new answers propagated: {}", query, newAnswers);
             cachePair = entryToAnswerStreamWithUnifier(query, match);
         } else {
@@ -292,6 +297,7 @@ public abstract class SemanticCache<
 
             if (!fetchFromParent){
                 LOG.trace("Query Cache miss: {} with fetch from DB", query);
+                //Profiler.create().updateTime("SemanticCache::get",start);
                 return getDBAnswerStreamWithUnifier(query);
             }
 
@@ -307,19 +313,22 @@ public abstract class SemanticCache<
         //if db complete or we found answers to ground query via propagation we don't need to hit the database
         if (queryDBComplete || answersToGroundQuery){
             LOG.trace("Complete cache fetch: {}", query);
+            //Profiler.create().updateTime("SemanticCache::get",start);
             return cachePair;
         }
 
-        LOG.trace("Incomplete cache fetch: {}", query);
+        //LOG.trace("Incomplete cache fetch: {}", query);
         //otherwise lookup and add inferred answers on top
-        return new Pair<>(
-                    //NB: concat retains the order between elements from different streams so cache entries will come first
-                    //and any duplicates from the DB will be removed by the .distinct step
-                            Stream.concat(
-                                    cachePair.first().filter(ans -> ans.explanation().isRuleExplanation()),
-                                    getDBAnswerStreamWithUnifier(query).first()
-                            ).distinct(),
-                            cachePair.second());
+        Pair<Stream<ConceptMap>, MultiUnifier> streamMultiUnifierPair = new Pair<>(
+                //NB: concat retains the order between elements from different streams so cache entries will come first
+                //and any duplicates from the DB will be removed by the .distinct step
+                Stream.concat(
+                        cachePair.first().filter(ans -> ans.explanation().isRuleExplanation()),
+                        getDBAnswerStreamWithUnifier(query).first()
+                ).distinct(),
+                cachePair.second());
+        //Profiler.create().updateTime("SemanticCache::get",start);
+        return streamMultiUnifierPair;
     }
 
     private Pair<Stream<ConceptMap>, MultiUnifier> getDBAnswerStreamWithUnifier(ReasonerAtomicQuery query){

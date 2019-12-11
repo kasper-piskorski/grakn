@@ -25,15 +25,14 @@ import grakn.common.util.Pair;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueryEquivalence;
+import grakn.core.graql.reasoner.unifier.UnifierType;
+import grakn.core.kb.graql.reasoner.cache.CacheEntry;
 import grakn.core.kb.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
-import grakn.core.graql.reasoner.unifier.UnifierType;
 import graql.lang.statement.Variable;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import grakn.core.kb.graql.reasoner.cache.CacheEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,6 +122,7 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
 
     @Override
     public boolean answersQuery(ReasonerAtomicQuery query) {
+        long start = System.currentTimeMillis();
         CacheEntry<ReasonerAtomicQuery, IndexedAnswerSet> entry = getEntry(query);
         if (entry == null) return false;
         ReasonerAtomicQuery cacheQuery = entry.query();
@@ -130,10 +130,12 @@ public class MultilevelSemanticCache extends SemanticCache<Equivalence.Wrapper<R
         Set<Variable> cacheIndex = cacheQuery.getAnswerIndex().vars();
         MultiUnifier queryToCacheUnifier = query.getMultiUnifier(cacheQuery, unifierType());
 
-        return queryToCacheUnifier.apply(query.getAnswerIndex())
+        boolean answers = queryToCacheUnifier.apply(query.getAnswerIndex())
                 .anyMatch(sub ->
                         answerSet.get(sub.project(cacheIndex)).stream()
                                 .anyMatch(ans -> ans.containsAll(sub)));
+        //Profiler.create().updateTime("MultilevelSemanticCache::answersQuery", start);
+        return answers;
     }
 }
 

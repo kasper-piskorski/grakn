@@ -69,10 +69,10 @@ public abstract class AtomicQueryCacheBase<
         ackDBCompleteness(query);
         if (query.getAtom().getPredicates(IdPredicate.class).findFirst().isPresent()) {
             completeQueries.add(query);
-            LOG.trace("Query {} ACKED complete", query);
+            //LOG.trace("Query {} ACKED complete", query);
         } else {
             completeEntries.add(queryToKey(query));
-            LOG.trace("Query entry {} ACKED complete", query);
+            //LOG.trace("Query entry {} ACKED complete", query);
         }
     }
 
