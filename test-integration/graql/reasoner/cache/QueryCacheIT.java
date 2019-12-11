@@ -29,6 +29,7 @@ import grakn.core.graql.reasoner.explanation.LookupExplanation;
 import grakn.core.graql.reasoner.explanation.RuleExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.kb.concept.api.Concept;
 import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.Entity;
@@ -221,7 +222,7 @@ public class QueryCacheIT {
 
             //record parent, mark the answers to be explained by a rule so that we can distinguish them
             tx.execute(parentQuery.getQuery(), false).stream()
-                    .map(ans -> ans.explain(new RuleExplanation(ConceptId.of("someRule")), parentQuery.getPattern()))
+                    .map(ans -> ans.explain(new RuleExplanation(ConceptId.of("someRule"), new UnifierImpl(), null), parentQuery.getPattern()))
                     .forEach(ans -> cache.record(parentQuery, ans));
 
             //NB: WE ACK COMPLETENESS
@@ -413,7 +414,7 @@ public class QueryCacheIT {
             ConceptMap inferredAnswer = new ConceptMap(ImmutableMap.of(
                     Graql.var("x").var(), tx.getEntityType("entity").instances().iterator().next(),
                     Graql.var("y").var(), tx.getEntityType("entity").instances().iterator().next()),
-                    new RuleExplanation(tx.getMetaRule().id()),
+                    new RuleExplanation(tx.getMetaRule().id(), new UnifierImpl(), null),
                     query.getPattern()
             );
             cache.record(query, inferredAnswer);
@@ -452,7 +453,7 @@ public class QueryCacheIT {
                     .forEach(ans -> cache.record(query, ans));
 
             //mock a rule explained answer that is equal to a dbAnswer
-            ConceptMap inferredAnswer = dbAnswer.explain(new RuleExplanation(tx.getMetaRule().id()), query.getPattern());
+            ConceptMap inferredAnswer = dbAnswer.explain(new RuleExplanation(tx.getMetaRule().id(), new UnifierImpl(), null), query.getPattern());
             cache.record(query, inferredAnswer);
 
             //retrieve
@@ -512,6 +513,32 @@ public class QueryCacheIT {
     }
 
     @Test
+    public void whenGettingAndMatchExists_querySpecialisesParent_allAnswersInferred_allAnswersFetchedFromCache(){
+        try(Transaction tx = genericSchemaSession.readTransaction()) {
+            TestTransactionProvider.TestTransaction testTx = ((TestTransactionProvider.TestTransaction)tx);
+            MultilevelSemanticCache cache = new MultilevelSemanticCache(testTx.executorFactory(), testTx.traversalPlanFactory());
+
+            ReasonerAtomicQuery parentQuery = testTx.reasonerQueryFactory().atomic(conjunction(
+                    "(role: $x, role: $y, role: $z) isa ternary-inferred;"));
+
+            ReasonerAtomicQuery childQuery = testTx.reasonerQueryFactory().atomic(conjunction(
+                    "(baseRole1: $x, baseRole2: $y, baseRole3: $z) isa ternary-inferred;"));
+
+
+            List<ConceptMap> childAnswers = tx.execute(childQuery.getQuery());
+            List<ConceptMap> parentAnswers = tx.execute(parentQuery.getQuery());
+
+            //record parent
+            parentAnswers.forEach(ans -> cache.record(parentQuery, ans));
+            cache.ackCompleteness(parentQuery);
+
+            //retrieve child
+            Set<ConceptMap> childCacheAnswers = cache.getAnswers(childQuery);
+            assertCollectionsNonTriviallyEqual(childAnswers, childCacheAnswers);
+        }
+    }
+
+    @Test
     public void whenGettingAndMatchExists_queryGround_queryNotDBComplete_answerNotFound_answersFetchedFromDbAndCache(){
         try(Transaction tx = genericSchemaSession.readTransaction()) {
             TestTransactionProvider.TestTransaction testTx = ((TestTransactionProvider.TestTransaction)tx);
@@ -539,7 +566,7 @@ public class QueryCacheIT {
             ConceptMap inferredAnswer = new ConceptMap(ImmutableMap.of(
                     Graql.var("x").var(), mConcept,
                     Graql.var("y").var(), tx.getEntityType("entity").instances().iterator().next()),
-                    new RuleExplanation(tx.getMetaRule().id()),
+                    new RuleExplanation(tx.getMetaRule().id(), new UnifierImpl(), null),
                     childQuery.getPattern()
             );
 

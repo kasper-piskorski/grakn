@@ -19,11 +19,16 @@
 
 package grakn.core.graql.reasoner.cache;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.concept.answer.Explanation;
 import grakn.core.graql.executor.property.value.ValueOperation;
+import grakn.core.graql.reasoner.atom.binary.RelationAtom;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
+import grakn.core.graql.reasoner.explanation.RuleExplanation;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.graql.reasoner.utils.AnswerUtil;
 import grakn.core.kb.concept.api.Concept;
@@ -31,8 +36,10 @@ import grakn.core.kb.concept.api.Relation;
 import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.concept.api.Type;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
+import graql.lang.Graql;
 import graql.lang.statement.Variable;
 
+import java.util.Collection;
 import javax.annotation.CheckReturnValue;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -84,16 +91,35 @@ public class SemanticDifference {
                 .collect(Collectors.toSet());
     }
 
-    private boolean satisfiedBy(ConceptMap answer) {
-        if (isEmpty()) return true;
-
+    private boolean roleRequirementsSatisfied(ConceptMap answer){
         Map<Variable, Set<Role>> roleRequirements = this.definition.stream()
                 .filter(vd -> !vd.playedRoles().isEmpty())
                 .collect(Collectors.toMap(VariableDefinition::var, VariableDefinition::playedRoles));
 
-        //check for role compatibility
+        if (roleRequirements.isEmpty()) return true;
+
+        Explanation explanation = answer.explanation();
+
+        if (explanation.isRuleExplanation()){
+            RuleExplanation ruleExplanation = (RuleExplanation) explanation;
+            Unifier unifier = ruleExplanation.getUnifier().inverse();
+            RelationAtom ruleAtom = ruleExplanation.getRuleAtom().toRelationAtom();
+            HashMultimap<Variable, Role> varRoleMap = HashMultimap.create();
+            Multimaps.invertFrom(ruleAtom.getRoleVarMap(), varRoleMap);
+
+            boolean rolesCompatible = roleRequirements.entrySet().stream().allMatch(e -> {
+                Collection<Variable> variables = unifier.get(e.getKey());
+                Set<Role> roles = e.getValue();
+                return variables.stream().allMatch(v -> varRoleMap.get(v).equals(roles));
+            });
+            return rolesCompatible;
+        }
+
+
         Iterator<Map.Entry<Variable, Set<Role>>> reqIterator = roleRequirements.entrySet().iterator();
         Set<Relation> relations;
+
+        //TODO this doesn't take into account inferred relations
         if (reqIterator.hasNext()) {
             Map.Entry<Variable, Set<Role>> req = reqIterator.next();
             relations = rolesToRels(req.getKey(), req.getValue(), answer);
@@ -104,7 +130,12 @@ public class SemanticDifference {
             Map.Entry<Variable, Set<Role>> req = reqIterator.next();
             relations = Sets.intersection(relations, rolesToRels(req.getKey(), req.getValue(), answer));
         }
-        if (relations.isEmpty() && !roleRequirements.isEmpty()) return false;
+        return !relations.isEmpty();
+    }
+
+    private boolean satisfiedBy(ConceptMap answer) {
+        if (isEmpty()) return true;
+        if (!roleRequirementsSatisfied(answer)) return false;
 
         return definition.stream().allMatch(vd -> {
             Variable var = vd.var();
@@ -122,6 +153,7 @@ public class SemanticDifference {
                     ));
         });
     }
+
 
     public SemanticDifference merge(SemanticDifference diff) {
         Map<Variable, VariableDefinition> mergedDefinition = definition.stream().collect(Collectors.toMap(VariableDefinition::var, vd -> vd));

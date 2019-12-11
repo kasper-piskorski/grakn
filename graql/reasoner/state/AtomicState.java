@@ -137,7 +137,7 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
         return AnswerUtil.joinAnswers(answer, query.getSubstitution())
                 .project(query.getVarNames())
-                .explain(new RuleExplanation(rule.getRule().id()), query.getPattern());
+                .explain(new RuleExplanation(rule.getRule().id(), unifier, rule.getHead().getAtom()), query.getPattern());
     }
 
     private ConceptMap materialisedAnswer(ConceptMap baseAnswer, InferenceRule rule, Unifier unifier) {
@@ -158,7 +158,7 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
         ConceptMap materialisedSub = ruleHead.materialise(baseAnswer).findFirst().orElse(null);
         ConceptMap answer = baseAnswer;
         if (materialisedSub != null) {
-            RuleExplanation ruleExplanation = new RuleExplanation(rule.getRule().id());
+            RuleExplanation ruleExplanation = new RuleExplanation(rule.getRule().id(), unifier, rule.getHead().getAtom());
             ConceptMap ruleAnswer = materialisedSub.explain(ruleExplanation, query.getPattern());
             queryCache.record(ruleHead, ruleAnswer);
             Atom ruleAtom = ruleHead.getAtom();
@@ -173,6 +173,6 @@ public class AtomicState extends AnswerPropagatorState<ReasonerAtomicQuery> {
 
         return AnswerUtil.joinAnswers(answer, query.getSubstitution())
                 .project(query.getVarNames())
-                .explain(new RuleExplanation(rule.getRule().id()), query.getPattern());
+                .explain(new RuleExplanation(rule.getRule().id(), unifier, rule.getHead().getAtom()), query.getPattern());
     }
 }

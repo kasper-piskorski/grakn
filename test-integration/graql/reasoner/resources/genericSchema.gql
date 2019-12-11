@@ -87,6 +87,11 @@ ternary sub baseRelation,
     relates subSubRole2,
     relates subSubRole3;
 
+ternary-inferred sub baseRelation,
+    relates baseRole1,
+    relates baseRole2,
+    relates baseRole3;
+
 #Resources
 
 resource sub attribute, datatype string,
@@ -117,6 +122,15 @@ when {
 },
 then {
     (symmetricRole: $y, symmetricRole: $z) isa binary-trans;
+};
+
+ternaryInferred sub rule,
+when {
+    (symmetricRole: $x, symmetricRole: $y) isa binary-trans;
+    (symmetricRole: $y, symmetricRole: $z) isa binary-trans;
+},
+then {
+    (baseRole1: $x, baseRole2: $y, baseRole3: $z) isa ternary-inferred;
 };
 
 insert
