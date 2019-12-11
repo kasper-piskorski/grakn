@@ -239,7 +239,7 @@ public abstract class SemanticCache<
                         }
                     }
                 });
-        target.tx().profiler().updateTime("SemanticCache::propagateAnswersToQuery", start);
+        //Profiler.create().updateTime("SemanticCache::propagateAnswersToQuery", start);
         return newAnswersFound[0];
     }
 
@@ -269,10 +269,10 @@ public abstract class SemanticCache<
                     .apply(answer)
                     .peek(ans -> validateAnswer(ans, equivalentQuery, cacheVars))
                     .forEach(answerSet::add);
-            query.tx().profiler().updateTime("SemanticCache::record",start);
+            //Profiler.create().updateTime("SemanticCache::record",start);
             return match;
         }
-        query.tx().profiler().updateTime("SemanticCache::record",start);
+        //Profiler.create().updateTime("SemanticCache::record",start);
         return addEntry(createEntry(query, Sets.newHashSet(answer)));
     }
 
