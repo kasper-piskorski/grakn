@@ -1,0 +1,96 @@
+define
+
+
+number sub entity,
+    plays pos1, plays pos2, plays pos3,
+    has value;
+
+value sub attribute, datatype long;
+
+row sub relation,
+    relates pos1, relates pos2, relates pos3,
+    has is-invalid;
+
+column sub relation,
+    relates pos1, relates pos2, relates pos3,
+    has is-invalid;
+
+is-invalid sub attribute, datatype boolean;
+
+solution sub relation,
+    relates pos11, relates pos12, relates pos13,
+    relates pos21, relates pos22, relates pos23,
+    relates pos31, relates pos32, relates pos33;
+
+row-rule sub rule,
+when {
+    $x isa number, has value $v1;
+    $y isa number, has value $v2;
+    $z isa number, has value $v3;
+    $v1 != $v2;
+    $v2 != $v3;
+    $v3 != $v1;
+}, then {
+    (pos1: $x, pos2: $y, pos3: $z) isa row;
+};
+
+invalid-row-rule sub rule,
+when {
+    $r ($x, $y) isa row;
+    $x has value $v;
+    $y has value $v;
+    $x != $y;
+}, then {
+    $r has is-invalid true;
+};
+
+column-rule sub rule,
+when {
+    $x isa number, has value $v1;
+    $y isa number, has value $v2;
+    $z isa number, has value $v3;
+    $v1 != $v2;
+    $v2 != $v3;
+    $v3 != $v1;
+}, then {
+    (pos1: $x, pos2: $y, pos3: $z) isa column;
+};
+
+invalid-column-rule sub rule,
+when {
+    $r ($x, $y) isa column;
+    $x has value $v;
+    $y has value $v;
+    $x != $y;
+}, then {
+    $r has is-invalid true;
+};
+
+solution-rule sub rule,
+when {
+    $r1 (pos1: $x1, pos2: $y1, pos3: $z1) isa row;
+    $r2 (pos1: $x2, pos2: $y2, pos3: $z2) isa row;
+    $r3 (pos1: $x3, pos2: $y3, pos3: $z3) isa row;
+
+    $c1 (pos1: $x1, pos2: $x2, pos3: $x3) isa column;
+    $c2 (pos1: $y1, pos2: $y2, pos3: $y3) isa column;
+    $c3 (pos1: $z1, pos2: $z2, pos3: $z3) isa column;
+    not{ $r1 has is-invalid true; };
+    not{ $r2 has is-invalid true; };
+    not{ $r3 has is-invalid true; };
+    not{ $c1 has is-invalid true; };
+    not{ $c2 has is-invalid true; };
+    not{ $c3 has is-invalid true; };
+}, then {
+    (
+    pos11: $x1, pos12: $y1, pos13: $z1,
+    pos21: $x2, pos22: $y2, pos23: $z2,
+    pos31: $x3, pos32: $y3, pos33: $z3
+    ) isa solution;
+};
+
+
+insert
+$x1 isa number, has value 1;
+$y1 isa number, has value 2;
+$z1 isa number, has value 3;

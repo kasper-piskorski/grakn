@@ -1,0 +1,64 @@
+define
+
+pos sub role;
+pos1 sub pos;
+pos2 sub pos;
+pos3 sub pos;
+number sub entity,
+    plays pos,
+    plays pos1, plays pos2, plays pos3,
+    has value;
+
+value sub attribute, datatype long;
+
+row sub relation,
+    relates pos,
+    relates pos1, relates pos2, relates pos3,
+    has is-invalid;
+
+column sub relation,
+    relates pos1, relates pos2, relates pos3,
+    has is-invalid;
+
+is-invalid sub attribute, datatype boolean;
+
+solution sub relation,
+    relates pos11, relates pos12, relates pos13,
+    relates pos21, relates pos22, relates pos23,
+    relates pos31, relates pos32, relates pos33;
+
+#convenient to define recursively, however with stratified semantics it might not be possible
+row-rule sub rule,
+when {
+    $r ($role: $x) isa row;
+    $x isa number, has value $v1;
+    $y isa number, has value $v2;
+    $role2 sub pos;
+
+    $v1 != $v2;
+    $role != $role2;
+
+    ##not {$r has is-invalid true;};
+    not {$role2 type pos;};
+}, then {
+    $r ($role2: $y) isa row;
+};
+
+invalid-row-rule sub rule,
+when {
+    $r ($x, $y) isa row;
+    $x has value $v;
+    $y has value $v;
+}, then {
+    $r has is-invalid true;
+};
+
+
+
+insert
+$x1 isa number, has value 1;
+$y1 isa number, has value 2;
+$z1 isa number, has value 3;
+
+(pos1: $x1) isa row;
+

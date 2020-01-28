@@ -25,12 +25,20 @@ import grakn.core.kb.concept.api.Attribute;
 import grakn.core.kb.concept.api.AttributeType;
 import grakn.core.kb.concept.api.Concept;
 import grakn.core.kb.concept.api.RelationType;
+import grakn.core.kb.concept.api.Role;
+import grakn.core.kb.concept.api.Thing;
 import grakn.core.kb.server.Session;
 import grakn.core.kb.server.Transaction;
 import grakn.core.rule.GraknTestServer;
 import graql.lang.Graql;
+import graql.lang.pattern.Pattern;
 import graql.lang.query.GraqlGet;
+import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -68,6 +76,182 @@ public class ReasoningIT {
     //as specified in the respective comments below.
 
     @Test
+    public void sudoku_v2(){
+        try(Session session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "sudoku-v2.gql", session);
+            try (Transaction tx = session.writeTransaction()) {
+                long start = System.currentTimeMillis();
+
+                List<ConceptMap> answers = tx.execute(Graql.parse(
+                        "match " +
+                                "$r (pos1: $x) isa row;" +
+                                "$r (pos2: $y) isa row;" +
+                                "$r (pos3: $z) isa row;" +
+                                "$x has value $v1;" +
+                                "$y has value $v2;" +
+                                "$z has value $v3;" +
+                                "get;" +
+                                "limit 20;")
+                        .asGet());
+                System.out.println();
+            }
+        }
+    }
+
+    void solveSudoku(Session session, int[][] sudoku){
+
+        try (Transaction tx = session.writeTransaction()) {
+            long start = System.currentTimeMillis();
+            Pattern specificPattern = new Solution().query(tx, sudoku);
+            specificPattern.statements().forEach(System.out::println);
+
+            tx.stream(Graql.match(specificPattern).get().limit(1))
+                    .map(ans -> ans.get("r"))
+                    //.peek(System.out::println)
+                    .map(Solution::new)
+                    .peek(sol -> System.out.println("Elapsed time: " + (System.currentTimeMillis() - start)))
+                    .forEach(Solution::print);
+        }
+
+    }
+
+    @Test
+    public void solve6x6sudoku(){
+        try(Session session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "sudoku-6x6.gql", session);
+            int[][] sudoku1 = new int[][]{
+                    {0, 0, 3, 6, 0, 0},
+                    {0, 2, 0, 0, 0, 4},
+                    {5, 0, 0, 0, 6, 0},
+                    {0, 3, 0, 0, 0, 5},
+                    {3, 0, 0, 0, 1, 0},
+                    {0, 0, 1, 4, 0, 0}
+            };
+            int[][] sudoku2 = new int[][]{
+                    {0, 0, 6, 0, 0, 0},
+                    {0, 0, 0, 1, 0, 0},
+                    {0, 0, 2, 0, 4, 1},
+                    {0, 5, 0, 0, 6, 0},
+                    {6, 4, 0, 0, 0, 0},
+                    {0, 0, 1, 0, 0, 0}
+            };
+            int[][] sudoku3 = new int[][]{
+                    {0, 0, 3, 0, 1, 0},
+                    {5, 6, 0, 3, 2, 0},
+                    {0, 5, 4, 2, 0, 3},
+                    {2, 0, 6, 4, 5, 0},
+                    {0, 1, 2, 0, 4, 5},
+                    {0, 4, 0, 1, 0, 0}
+            };
+
+            solveSudoku(session, sudoku1);
+            solveSudoku(session, sudoku2);
+            solveSudoku(session, sudoku3);
+
+
+                /*
+                tx.stream(Graql.parse(
+                        "match " +
+                                "$r isa solution;" +
+                                "get;" +
+                                "limit 20;")
+                        .asGet())
+                        .map(ans -> ans.get("r"))
+                        //.peek(System.out::println)
+                        .map(Solution::new)
+                        .peek(sol -> System.out.println("Elapsed time: " + (System.currentTimeMillis() - start)))
+                        .forEach(Solution::print);
+
+                 */
+        }
+    }
+
+    @Test
+    public void sudoku3x3(){
+        try(Session session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "sudoku-3x3.gql", session);
+            try (Transaction tx = session.writeTransaction()) {
+                long start = System.currentTimeMillis();
+                tx.stream(Graql.parse(
+                        "match " +
+                                "$r isa solution;" +
+                                "get;" +
+                                "limit 20;")
+                        .asGet())
+                        .map(ans -> ans.get("r"))
+                        //.peek(System.out::println)
+                        .map(Solution::new)
+                        .peek(sol -> System.out.println("Elapsed time: " + (System.currentTimeMillis() - start)))
+                        .forEach(Solution::print);
+
+
+            }
+        }
+    }
+
+    class Solution {
+        private final Map<String, Object> mappings = new HashMap<>();
+        private final int size;
+
+        Solution(){ size = 0;}
+        Solution(Concept solution) {
+            size = (int) Math.sqrt(solution.asRelation().type().roles().count());
+            solution.asRelation().rolePlayersMap().entrySet().forEach(e -> {
+                Role role = e.getKey();
+                Thing rp = e.getValue().iterator().next();
+                Attribute<?> attr = rp.attributes().findFirst().orElse(null);
+                mappings.put(role.label().getValue(), attr.value());
+            });
+        }
+
+        private void print() {
+            System.out.println("Found solution:");
+            for(int i = 1; i <= size ; i++){
+                for(int j = 1; j <= size ; j++){
+                    String role = "pos" + (i) + (j);
+                    System.out.print(mappings.get(role) + " ");
+                }
+                System.out.println();
+            }
+            System.out.println();
+        }
+
+        public Pattern query(Transaction tx, int[][] values){
+            System.out.println("Solving the following configuration:");
+            int sz = values.length;
+            for(int i = 0; i < sz; i++) {
+                for (int j = 0; j < sz; j++) {
+                    int val = values[i][j];
+                    System.out.print((val != 0? val : ".") + " ");
+                }
+                System.out.println();
+            }
+            System.out.println();
+
+
+            Statement mainPattern = Graql.var("r");
+            int size = values.length;
+            Set<Statement> statements = new HashSet<>();
+
+            for(int i = 0; i < size; i++){
+                for(int j = 0; j < size; j++){
+                    String role = "pos" + (i+1) + (j+1);
+                    int val = values[i][j];
+                    Statement rp = Graql.var(role);
+                    mainPattern = mainPattern.rel(role, rp);
+                    if (val != 0 ) {
+                        String id = tx.getAttributeType("value").attribute(val).owners().iterator().next().id().getValue();
+                        statements.add(rp.id(id));
+                        //statements.add(rp.has("value", val));
+                    }
+                }
+            }
+            statements.add(mainPattern.isa("solution"));
+            return Graql.and(statements);
+        }
+    }
+
+    @Test
     public void whenMaterialising_duplicatesAreNotCreated(){
         try(Session session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "duplicateMaterialisation.gql", session);
@@ -78,6 +262,7 @@ public class ReasoningIT {
                                 "get;")
                         .asGet());
                 assertEquals(25, answers.size());
+
             }
         }
     }

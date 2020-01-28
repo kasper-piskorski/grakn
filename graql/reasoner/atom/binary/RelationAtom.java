@@ -492,11 +492,13 @@ public class RelationAtom extends IsaAtomBase {
         getRelationPlayers().forEach(rp -> {
             Statement role = rp.getRole().orElse(null);
             if (role == null) {
+
                 errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_RELATION_WITH_AMBIGUOUS_ROLE.getMessage(rule.then(), rule.label()));
             } else {
                 String roleLabel = role.getType().orElse(null);
                 if (roleLabel == null) {
-                    errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_RELATION_WITH_AMBIGUOUS_ROLE.getMessage(rule.then(), rule.label()));
+                    //TODO check if var role bound to anything so that is ok
+                    //errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_RELATION_WITH_AMBIGUOUS_ROLE.getMessage(rule.then(), rule.label()));
                 } else {
                     if (Schema.MetaSchema.isMetaLabel(Label.of(roleLabel))) {
                         errors.add(ErrorMessage.VALIDATION_RULE_ILLEGAL_HEAD_RELATION_WITH_AMBIGUOUS_ROLE.getMessage(rule.then(), rule.label()));
