@@ -1,7 +1,6 @@
 define
 
 number sub entity,
-    plays pos1, plays pos2, plays pos3, plays pos4, plays pos5, plays pos6,
     plays pos11, plays pos12, plays pos13, plays pos14, plays pos15, plays pos16,
     plays pos21, plays pos22, plays pos23, plays pos24, plays pos25, plays pos26,
     plays pos31, plays pos32, plays pos33, plays pos34, plays pos35, plays pos36,
@@ -12,11 +11,7 @@ number sub entity,
 
 value sub attribute, datatype long;
 
-row sub relation,
-    relates pos1, relates pos2, relates pos3, relates pos4, relates pos5, relates pos6;
-
-column sub relation,
-    relates pos1, relates pos2, relates pos3, relates pos4, relates pos5, relates pos6;
+is-invalid sub attribute, datatype boolean;
 
 solution sub relation,
     relates pos11, relates pos12, relates pos13, relates pos14, relates pos15, relates pos16,
@@ -25,40 +20,6 @@ solution sub relation,
     relates pos41, relates pos42, relates pos43, relates pos44, relates pos45, relates pos46,
     relates pos51, relates pos52, relates pos53, relates pos54, relates pos55, relates pos56,
     relates pos61, relates pos62, relates pos63, relates pos64, relates pos65, relates pos66;
-
-row-rule sub rule,
-when {
-    $x isa number, has value $v1;
-    $y isa number, has value $v2;
-    $z isa number, has value $v3;
-    $u isa number, has value $v4;
-    $v isa number, has value $v5;
-    $q isa number, has value $v6;
-    $v1 != $v2; $v1 != $v3; $v1 != $v4; $v1 != $v5; $v1 != $v6;
-    $v2 != $v3; $v2 != $v4; $v2 != $v5; $v2 != $v6;
-    $v3 != $v4; $v3 != $v5; $v3 != $v6;
-    $v4 != $v5; $v4 != $v6;
-    $v5 != $v6;
-}, then {
-    (pos1: $x, pos2: $y, pos3: $z, pos4: $u, pos5: $v, pos6: $q) isa row;
-};
-
-column-rule sub rule,
-when {
-    $x isa number, has value $v1;
-    $y isa number, has value $v2;
-    $z isa number, has value $v3;
-    $u isa number, has value $v4;
-    $v isa number, has value $v5;
-    $q isa number, has value $v6;
-    $v1 != $v2; $v1 != $v3; $v1 != $v4; $v1 != $v5; $v1 != $v6;
-    $v2 != $v3; $v2 != $v4; $v2 != $v5; $v2 != $v6;
-    $v3 != $v4; $v3 != $v5; $v3 != $v6;
-    $v4 != $v5; $v4 != $v6;
-    $v5 != $v6;
-}, then {
-    (pos1: $x, pos2: $y, pos3: $z, pos4: $u, pos5: $v, pos6: $q) isa column;
-};
 
 unique-mapping sub relation, relates pos;
 number sub entity, plays pos;
@@ -81,31 +42,33 @@ when {
 
 solution-rule sub rule,
 when {
-    (pos1: $x1, pos2: $y1, pos3: $z1, pos4: $u1, pos5: $v1, pos6: $q1) isa row;
-    (pos1: $x2, pos2: $y2, pos3: $z2, pos4: $u2, pos5: $v2, pos6: $q2) isa row;
-    ($x1, $y1, $z1,
-    $x2, $y2, $z2) isa unique-mapping;
-    ($u1, $v1, $q1,
-    $u2, $v2, $q2) isa unique-mapping;
+    ($x1, $y1, $z1, $u1, $v1, $q1) isa unique-mapping;
+        ($x2, $y2, $z2, $u2, $v2, $q2) isa unique-mapping;
+        ($x1, $y1, $z1,
+        $x2, $y2, $z2) isa unique-mapping;
+        ($u1, $v1, $q1,
+        $u2, $v2, $q2) isa unique-mapping;
 
-    (pos1: $x3, pos2: $y3, pos3: $z3, pos4: $u3, pos5: $v3, pos6: $q3) isa row;
-    (pos1: $x4, pos2: $y4, pos3: $z4, pos4: $u4, pos5: $v4, pos6: $q4) isa row;
+    ($x3, $y3, $z3, $u3, $v3, $q3) isa unique-mapping;
+    ($x4, $y4, $z4, $u4, $v4, $q4) isa unique-mapping;
     ($x3, $y3, $z3,
     $x4, $y4, $z4) isa unique-mapping;
     ($u3, $v3, $q3,
     $u4, $v4, $q4) isa unique-mapping;
 
-    (pos1: $x5, pos2: $y5, pos3: $z5, pos4: $u5, pos5: $v5, pos6: $q5) isa row;
-    (pos1: $x6, pos2: $y6, pos3: $z6, pos4: $u6, pos5: $v6, pos6: $q6) isa row;
-    ($x5, $y5, $z5, $x6, $y6, $z6) isa unique-mapping;
-    ($u5, $v5, $q5, $u6, $v6, $q6) isa unique-mapping;
+    ($x5, $y5, $z5, $u5, $v5, $q5) isa unique-mapping;
+    ($x6, $y6, $z6, $u6, $v6, $q6) isa unique-mapping;
+    ($x5, $y5, $z5,
+    $x6, $y6, $z6) isa unique-mapping;
+    ($u5, $v5, $q5,
+    $u6, $v6, $q6) isa unique-mapping;
 
-    (pos1: $x1, pos2: $x2, pos3: $x3, pos4: $x4, pos5: $x5, pos6: $x6) isa column;
-    (pos1: $y1, pos2: $y2, pos3: $y3, pos4: $y4, pos5: $y5, pos6: $y6) isa column;
-    (pos1: $z1, pos2: $z2, pos3: $z3, pos4: $z4, pos5: $z5, pos6: $z6) isa column;
-    (pos1: $u1, pos2: $u2, pos3: $u3, pos4: $u4, pos5: $u5, pos6: $u6) isa column;
-    (pos1: $v1, pos2: $v2, pos3: $v3, pos4: $v4, pos5: $v5, pos6: $v6) isa column;
-    (pos1: $q1, pos2: $q2, pos3: $q3, pos4: $q4, pos5: $q5, pos6: $q6) isa column;
+    ($x1, $x2, $x3, $x4, $x5, $x6) isa unique-mapping;
+    ($y1, $y2, $y3, $y4, $y5, $y6) isa unique-mapping;
+    ($z1, $z2, $z3, $z4, $z5, $z6) isa unique-mapping;
+    ($u1, $u2, $u3, $u4, $u5, $u6) isa unique-mapping;
+    ($v1, $v2, $v3, $v4, $v5, $v6) isa unique-mapping;
+    ($q1, $q2, $q3, $q4, $q5, $q6) isa unique-mapping;
 }, then {
     (
     pos11: $x1, pos12: $y1, pos13: $z1, pos14: $u1, pos15: $v1, pos16: $q1,

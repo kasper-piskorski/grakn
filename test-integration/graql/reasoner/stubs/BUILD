@@ -38,6 +38,7 @@ filegroup(
         "resourcesAsRolePlayers.gql",
         "sudoku-3x3.gql",
         "sudoku-6x6.gql",
+        "sudoku-6x6v2.gql",
         "sudoku-v2.gql",
         "testSet10.gql",
         "testSet11.gql",

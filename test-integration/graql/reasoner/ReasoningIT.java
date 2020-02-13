@@ -39,6 +39,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -98,12 +102,12 @@ public class ReasoningIT {
         }
     }
 
-    void solveSudoku(Session session, int[][] sudoku){
+    private void solveSudoku(Session session, int[][] sudoku){
 
         try (Transaction tx = session.writeTransaction()) {
             long start = System.currentTimeMillis();
             Pattern specificPattern = new Solution().query(tx, sudoku);
-            specificPattern.statements().forEach(System.out::println);
+            //specificPattern.statements().forEach(System.out::println);
 
             tx.stream(Graql.match(specificPattern).get().limit(1))
                     .map(ans -> ans.get("r"))
@@ -144,25 +148,44 @@ public class ReasoningIT {
                     {0, 4, 0, 1, 0, 0}
             };
 
-            solveSudoku(session, sudoku1);
-            solveSudoku(session, sudoku2);
-            solveSudoku(session, sudoku3);
+            //solveSudoku(session, sudoku1);
+            //solveSudoku(session, sudoku2);
+            //solveSudoku(session, sudoku3);
 
+            /*
+            try(Transaction tx = session.writeTransaction()) {
+                List<ConceptMap> answers = tx.execute(Graql.parse("match " +
+                        "($x1, $y1, $z1, $u1, $v1, $q1) isa unique-mapping;" +
+                        "($x2, $y2, $z2, $u2, $v2, $q2) isa unique-mapping;" +
+                        "($x1, $y1, $z1, $x2, $y2, $z2) isa unique-mapping;" +
+                        "($u1, $v1, $q1, $u2, $v2, $q2) isa unique-mapping;" +
+                        "get;limit 5;").asGet());
+                System.out.println();
+            }
 
-                /*
-                tx.stream(Graql.parse(
-                        "match " +
-                                "$r isa solution;" +
-                                "get;" +
-                                "limit 20;")
-                        .asGet())
-                        .map(ans -> ans.get("r"))
-                        //.peek(System.out::println)
-                        .map(Solution::new)
-                        .peek(sol -> System.out.println("Elapsed time: " + (System.currentTimeMillis() - start)))
-                        .forEach(Solution::print);
+             */
+            int[][] sudokuToSolve = sudoku2;
 
-                 */
+            ExecutorService executorService = Executors.newFixedThreadPool(6);
+            List<Future> futures = new ArrayList<>();
+            futures.add(executorService.submit(() -> solveSudoku(session, sudokuToSolve)));
+            futures.add(executorService.submit(() -> solveSudoku(session, sudokuToSolve)));
+            futures.add(executorService.submit(() -> solveSudoku(session, sudokuToSolve)));
+            futures.add(executorService.submit(() -> solveSudoku(session, sudokuToSolve)));
+            futures.add(executorService.submit(() -> solveSudoku(session, sudokuToSolve)));
+            futures.add(executorService.submit(() -> solveSudoku(session, sudokuToSolve)));
+            for(Future f : futures) {
+                try {
+                    f.get();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            executorService.shutdown();
+
         }
     }
 
