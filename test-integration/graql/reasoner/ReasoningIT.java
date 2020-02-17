@@ -68,6 +68,30 @@ public class ReasoningIT {
     //as specified in the respective comments below.
 
     @Test
+    public void test(){
+        for(int i = 0 ; i < 50 ; i++) {
+        try(Session session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "tno-main-schema.gql", session);
+            loadFromFileAndCommit(resourcePath, "tno-categories.gql", session);
+            loadFromFileAndCommit(resourcePath, "tno-dataset.gql", session);
+            int oldRes = 0;
+
+                try (Transaction tx = session.writeTransaction()) {
+                    List<ConceptMap> answers = tx.execute(
+                            Graql.parse("match " +
+                                    "$x isa vehicle-category, has name 'land';" +
+                                    "(object: $veh, category: $x) isa is-classified-as;" +
+                                    "get;"
+                            ).asGet()
+                    );
+                    assertEquals(10, answers.size());
+                    System.out.println();
+                }
+            }
+        }
+    }
+
+    @Test
     public void whenMaterialising_duplicatesAreNotCreated(){
         try(Session session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "duplicateMaterialisation.gql", session);
