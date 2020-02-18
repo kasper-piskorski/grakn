@@ -512,7 +512,7 @@ public class RelationAtom extends IsaAtomBase {
     }
 
     @Override
-    public Set<String> validateAsRuleBody(Label ruleLabel) {
+    public Set<String> validateOntologically(Label ruleLabel) {
         Set<String> errors = new HashSet<>();
         SchemaConcept type = getSchemaConcept();
         if (type != null && !type.isRelationType()) {
@@ -534,9 +534,10 @@ public class RelationAtom extends IsaAtomBase {
                 for (Variable player : e.getValue()) {
                     varTypeMap.get(player).stream()
                             .filter(playerType -> playerType.playing().noneMatch(plays -> plays.equals(role)))
-                            .forEach(playerType ->
-                                    errors.add(ErrorMessage.VALIDATION_RULE_TYPE_CANNOT_PLAY_ROLE.getMessage(ruleLabel, playerType.label(), role.label(), type == null ? "" : type.label()))
-                            );
+                            .forEach(playerType -> {
+                                        String typeLabel = type == null ? "" : type.label().getValue();
+                                        errors.add(ErrorMessage.VALIDATION_RULE_TYPE_CANNOT_PLAY_ROLE.getMessage(ruleLabel, playerType.label(), role.label(), typeLabel));
+                                    });
                 }
             }
         }

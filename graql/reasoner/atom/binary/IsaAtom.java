@@ -187,6 +187,8 @@ public class IsaAtom extends IsaAtomBase {
                 .map(Concept::asType)
                 .collect(Collectors.toSet());
 
+        //TODO determine types from attribute atoms
+
         Set<Type> types = typesFromTypes.isEmpty()?
                 typesFromRoles :
                 typesFromRoles.isEmpty()? typesFromTypes: Sets.intersection(typesFromRoles, typesFromTypes);

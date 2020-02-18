@@ -28,10 +28,8 @@ import grakn.core.kb.concept.api.Thing;
 import grakn.core.kb.concept.manager.ConceptManager;
 import grakn.core.kb.concept.structure.Casting;
 import grakn.core.kb.server.cache.TransactionCache;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Ensures each concept undergoes the correct type of validation.
@@ -94,7 +92,7 @@ public class Validator {
      * @param rule  the rule which needs to be validated
      */
     private void validateRule(Rule rule) {
-        errorsFound.addAll(ValidateGlobalRules.validateRule(conceptManager, reasonerQueryFactory, rule));
+        errorsFound.addAll(RuleValidator.validateRule(conceptManager, reasonerQueryFactory, rule));
     }
 
     /**

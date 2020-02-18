@@ -29,7 +29,6 @@ import com.google.common.collect.Sets;
 import grakn.common.util.Pair;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.util.ConceptUtils;
-import grakn.core.core.Schema;
 import grakn.core.graql.reasoner.CacheCasting;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.AtomicBase;
@@ -59,7 +58,6 @@ import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.kb.concept.api.Concept;
 import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.Label;
-import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.concept.api.Type;
 import grakn.core.kb.concept.manager.ConceptManager;
 import grakn.core.kb.graql.executor.ExecutorFactory;
@@ -287,7 +285,7 @@ public class ReasonerQueryImpl extends ResolvableQuery {
     @Override
     public Set<String> validateOntologically(Label ruleLabel) {
         return getAtoms().stream()
-                .flatMap(at -> at.validateAsRuleBody(ruleLabel).stream())
+                .flatMap(at -> at.validateOntologically(ruleLabel).stream())
                 .collect(Collectors.toSet());
     }
 
@@ -364,53 +362,77 @@ public class ReasonerQueryImpl extends ResolvableQuery {
         throw ReasonerException.getUnifierOfNonAtomicQuery();
     }
 
-    private Stream<IsaAtom> inferEntityTypes(ConceptMap sub) {
-        Set<Variable> typedVars = getAtoms(IsaAtomBase.class).map(AtomicBase::getVarName).collect(Collectors.toSet());
+    private Stream<Pair<Variable, Type>> idsToTypes(ConceptMap sub){
         return Stream.concat(
                 getAtoms(IdPredicate.class),
-                AtomicUtil.answerToPredicates(conceptManager, sub, this).stream()
-                .map(IdPredicate.class::cast))
-                .filter(p -> !typedVars.contains(p.getVarName()))
-                .map(p -> new Pair<>(p, conceptManager.<Concept>getConcept(p.getPredicate())))
+                AtomicUtil.answerToPredicates(conceptManager, sub, this).stream().map(IdPredicate.class::cast)
+        )
+                .map(p -> new Pair<>(p.getVarName(), conceptManager.<Concept>getConcept(p.getPredicate())))
                 .filter(p -> Objects.nonNull(p.second()))
                 .filter(p -> p.second().isEntity())
-                .map(p -> IsaAtom.create(conceptManager, ruleCache, p.first().getVarName(), new Variable(),
-                        p.second().asEntity().type(), false,this));
+                .map(p -> new Pair<>(p.first(), p.second().asEntity().type()));
     }
 
-    private Multimap<Variable, Type> getVarTypeMap(Stream<IsaAtomBase> isas){
+    /**
+     * Infers types solely based on provided substitution.
+     * @param sub
+     * @return
+     */
+    private Stream<Pair<Variable, Type>> inferEntityTypes(ConceptMap sub) {
+        Set<Variable> typedVars = getAtoms(IsaAtomBase.class).map(AtomicBase::getVarName).collect(Collectors.toSet());
+
+        //TODO
+        //for each attribute look for isa
+        /*
+        new IsaAtom(conceptManager, ruleCache, Graql.var("x").var(), Graql.var("x").isa(Graql.var("type")), this.getParentQuery(), null, Graql.var("type").var()).getPossibleTypes()
+
+         */
+        return idsToTypes(sub).filter(p -> !typedVars.contains(p.first()));
+    }
+
+    private Multimap<Variable, Type> getVarTypeMap(Stream<Pair<Variable, Type>> typeDefs){
         HashMultimap<Variable, Type> map = HashMultimap.create();
-        isas
-                .map(at -> new Pair<>(at.getVarName(), at.getSchemaConcept()))
-                .filter(p -> Objects.nonNull(p.second()))
-                .filter(p -> p.second().isType())
-                .forEach(p -> {
-                    Variable var = p.first();
-                    Type newType = p.second().asType();
-                    Set<Type> types = map.get(var);
+        typeDefs.forEach(p -> {
+            Variable var = p.first();
+            Type newType = p.second();
+            Set<Type> types = map.get(var);
+            if (types.isEmpty()) map.put(var, newType);
+            else {
+                boolean isSubType = newType.sups().anyMatch(types::contains);
+                boolean isSuperType = newType.subs().anyMatch(types::contains);
 
-                    if (types.isEmpty()) map.put(var, newType);
-                    else {
-                        boolean isSubType = newType.sups().anyMatch(types::contains);
-                        boolean isSuperType = newType.subs().anyMatch(types::contains);
-
-                        //if it's a supertype of existing type, put most specific type
-                        if (isSubType){
-                            map.removeAll(var);
-                            ConceptUtils
-                                    .bottom(Sets.union(types, Sets.newHashSet(newType)))
-                                    .forEach( t -> map.put(var, t));
-                        }
-                        if (!isSubType && !isSuperType) map.put(var, newType);
-                    }
-                });
+                //if it's a supertype of existing type, put most specific type
+                if (isSubType){
+                    map.removeAll(var);
+                    ConceptUtils
+                            .bottom(Sets.union(types, Sets.newHashSet(newType)))
+                            .forEach( t -> map.put(var, t));
+                }
+                if (!isSubType && !isSuperType) map.put(var, newType);
+            }
+        });
         return map;
     }
 
     @Override
     public ImmutableSetMultimap<Variable, Type> getVarTypeMap(boolean inferTypes) {
-        if (!inferTypes) return ImmutableSetMultimap.copyOf(getVarTypeMap(getAtoms(IsaAtomBase.class)));
+        if (!inferTypes){
+            Stream<Pair<Variable, Type>> typeDefs = getAtoms(IsaAtomBase.class)
+                    .filter(at -> Objects.nonNull(at.getSchemaConcept()))
+                    .map(at -> new Pair<>(at.getVarName(), at.getSchemaConcept().asType()));
+            return ImmutableSetMultimap.copyOf(getVarTypeMap(typeDefs));
+        }
         return getVarTypeMap();
+    }
+
+    @Override
+    public ImmutableSetMultimap<Variable, Type> getVarTypeMap(ConceptMap sub) {
+        Stream<Pair<Variable, Type>> typeDefs = getAtoms(IsaAtomBase.class)
+                .filter(at -> Objects.nonNull(at.getSchemaConcept()))
+                .map(at -> new Pair<>(at.getVarName(), at.getSchemaConcept().asType()));
+        return ImmutableSetMultimap.copyOf(
+                getVarTypeMap(Stream.concat(typeDefs, inferEntityTypes(sub)))
+        );
     }
 
     @Override
@@ -419,18 +441,6 @@ public class ReasonerQueryImpl extends ResolvableQuery {
             this.varTypeMap = getVarTypeMap(new ConceptMap());
         }
         return varTypeMap;
-    }
-
-    @Override
-    public ImmutableSetMultimap<Variable, Type> getVarTypeMap(ConceptMap sub) {
-        return ImmutableSetMultimap.copyOf(
-                getVarTypeMap(
-                        Stream.concat(
-                                getAtoms(IsaAtomBase.class),
-                                inferEntityTypes(sub)
-                        )
-                )
-        );
     }
 
     @Override

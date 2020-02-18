@@ -483,7 +483,7 @@ public class RuleValidationIT {
     @Test
     public void whenAddingRuleWithOntologicallyInvalidHead_rolePlayersCannotBePlayed_Throw() throws InvalidKBException {
         validateOntologicallyIllegalRule(
-                Graql.parsePattern("$x has someAttribute 123;"),
+                Graql.parsePattern("$x has typeUniqueAttribute 123;"),
                 Graql.parsePattern("(someRole: $x) isa someRelation;"),
                 ErrorMessage.VALIDATION_RULE_ROLE_CANNOT_BE_PLAYED,
                 "someRole", "anotherRelation"
@@ -934,6 +934,7 @@ public class RuleValidationIT {
         AttributeType<Integer> someAttribute = tx.putAttributeType("someAttribute", AttributeType.DataType.INTEGER);
         AttributeType<Integer> anotherAttribute = tx.putAttributeType("anotherAttribute", AttributeType.DataType.INTEGER);
         AttributeType<String> stringAttribute = tx.putAttributeType("stringAttribute", AttributeType.DataType.STRING);
+        AttributeType<String> typeUniqueAttribute = tx.putAttributeType("typeUniqueAttribute", AttributeType.DataType.STRING);
         Role someRole = tx.putRole("someRole");
         Role anotherRole = tx.putRole("anotherRole");
         Role singleRole = tx.putRole("singleRole");
@@ -945,7 +946,7 @@ public class RuleValidationIT {
                 .plays(someRole)
                 .plays(anotherRole);
         tx.putEntityType("anotherEntity")
-                .has(someAttribute);
+                .has(typeUniqueAttribute);
 
         tx.putRelationType("someRelation")
                 .relates(someRole)
