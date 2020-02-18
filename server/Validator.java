@@ -90,21 +90,11 @@ public class Validator {
 
     /**
      * Validation rules exclusive to rules
-     * the precedence of validation is: labelValidation -> ontologicalValidation -> clauseValidation
-     * each of the validation happens only if the preceding validation yields no errors
      *
      * @param rule  the rule which needs to be validated
      */
     private void validateRule(Rule rule) {
-        Set<String> labelErrors = ValidateGlobalRules.validateRuleSchemaConceptExist(conceptManager, rule);
-        errorsFound.addAll(labelErrors);
-        if (labelErrors.isEmpty()) {
-            Set<String> ontologicalErrors = ValidateGlobalRules.validateRuleOntologically(reasonerQueryFactory, rule);
-            errorsFound.addAll(ontologicalErrors);
-            if (ontologicalErrors.isEmpty()) {
-                errorsFound.addAll(ValidateGlobalRules.validateRuleIsValidClause(reasonerQueryFactory, rule));
-            }
-        }
+        errorsFound.addAll(ValidateGlobalRules.validateRule(conceptManager, reasonerQueryFactory, rule));
     }
 
     /**

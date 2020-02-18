@@ -277,6 +277,18 @@ public class ValidateGlobalRules {
     }
 
     /**
+     * Checks if a Relation has at least one role player.
+     *
+     * @param relation The Relation to check
+     */
+    public static Optional<String> validateRelationHasRolePlayers(Relation relation) {
+        if (!relation.rolePlayers().findAny().isPresent()) {
+            return Optional.of(ErrorMessage.VALIDATION_RELATION_WITH_NO_ROLE_PLAYERS.getMessage(relation.id(), relation.type().label()));
+        }
+        return Optional.empty();
+    }
+
+    /**
      * @return Error messages if the rules in the db are not stratifiable (cycles with negation are present)
      */
     public static Set<String> validateRuleStratifiability(ConceptManager conceptManager){
@@ -289,6 +301,52 @@ public class ValidateGlobalRules {
     }
 
     /**
+     * The precedence of validation is: labelValidation -> ontologicalValidation -> clauseValidation
+     * Each of the validation happens only if the preceding validation yields no errors
+     * @param rule to be validated
+     * @return Error messages if rule violates any validation constraints
+     */
+    public static Set<String> validateRule(ConceptManager conceptManager, ReasonerQueryFactory reasonerQueryFactory, Rule rule) {
+        Set<String> errors = ValidateGlobalRules.validateRuleSchemaConceptExist(conceptManager, rule);
+        if (errors.isEmpty()) {
+            Set<String> ontologicalErrors = ValidateGlobalRules.validateRuleOntologically(reasonerQueryFactory, rule);
+            errors.addAll(ontologicalErrors);
+            if (ontologicalErrors.isEmpty()) {
+                errors.addAll(ValidateGlobalRules.validateRuleIsValidClause(reasonerQueryFactory, rule));
+            }
+        }
+        return errors;
+    }
+
+    /**
+     * @param rule The rule to be validated
+     * @return Error messages if the when or then of a rule refers to a non existent type
+     */
+    public static Set<String> validateRuleSchemaConceptExist(ConceptManager conceptManager, Rule rule) {
+        Set<String> errors = new HashSet<>();
+        errors.addAll(checkRuleSideInvalid(conceptManager, rule, Schema.VertexProperty.RULE_WHEN, rule.when()));
+        errors.addAll(checkRuleSideInvalid(conceptManager, rule, Schema.VertexProperty.RULE_THEN, rule.then()));
+        return errors;
+    }
+
+    /**
+     * @param rule  the rule to be validated ontologically
+     * @return Error messages if the rule has ontological inconsistencies
+     */
+    public static Set<String> validateRuleOntologically(ReasonerQueryFactory reasonerQueryFactory, Rule rule) {
+        Set<String> errors = new HashSet<>();
+
+        //both body and head refer to the same graph and have to be valid with respect to the schema that governs it
+        //as a result the rule can be ontologically validated by combining them into a conjunction
+        //this additionally allows to cross check body-head references
+        ReasonerQuery combinedQuery = combinedRuleQuery(reasonerQueryFactory, rule);
+        errors.addAll(combinedQuery.validateOntologically(rule.label()));
+        return errors;
+    }
+
+    /**
+     * NB: this only gets checked if the rule obeys the Horn clause form
+     *
      * @param rule the rule to be validated
      * @return Error messages if the rule is not a valid clause (in implication form, conjunction in the body, single-atom conjunction in the head)
      */
@@ -315,23 +373,6 @@ public class ValidateGlobalRules {
         ReasonerQuery bodyQuery = reasonerQueryFactory.create(Graql.and(rule.when().getDisjunctiveNormalForm().getPatterns().stream().flatMap(conj -> conj.getPatterns().stream()).collect(Collectors.toSet())));
         ReasonerQuery headQuery = reasonerQueryFactory.create(Graql.and(rule.then().getDisjunctiveNormalForm().getPatterns().stream().flatMap(conj -> conj.getPatterns().stream()).collect(Collectors.toSet())));
         return headQuery.conjunction(bodyQuery);
-    }
-
-    /**
-     * NB: this only gets checked if the rule obeys the Horn clause form
-     *
-     * @param rule  the rule to be validated ontologically
-     * @return Error messages if the rule has ontological inconsistencies
-     */
-    public static Set<String> validateRuleOntologically(ReasonerQueryFactory reasonerQueryFactory, Rule rule) {
-        Set<String> errors = new HashSet<>();
-
-        //both body and head refer to the same graph and have to be valid with respect to the schema that governs it
-        //as a result the rule can be ontologically validated by combining them into a conjunction
-        //this additionally allows to cross check body-head references
-        ReasonerQuery combinedQuery = combinedRuleQuery(reasonerQueryFactory, rule);
-        errors.addAll(combinedQuery.validateOntologically(rule.label()));
-        return errors;
     }
 
     /**
@@ -364,17 +405,6 @@ public class ValidateGlobalRules {
                 errors.add(ErrorMessage.VALIDATION_RULE_HEAD_NON_ATOMIC.getMessage(rule.label()));
             }
         }
-        return errors;
-    }
-
-    /**
-     * @param rule The rule to be validated
-     * @return Error messages if the when or then of a rule refers to a non existent type
-     */
-    public static Set<String> validateRuleSchemaConceptExist(ConceptManager conceptManager, Rule rule) {
-        Set<String> errors = new HashSet<>();
-        errors.addAll(checkRuleSideInvalid(conceptManager, rule, Schema.VertexProperty.RULE_WHEN, rule.when()));
-        errors.addAll(checkRuleSideInvalid(conceptManager, rule, Schema.VertexProperty.RULE_THEN, rule.then()));
         return errors;
     }
 
@@ -415,17 +445,5 @@ public class ValidateGlobalRules {
                             }
                         }));
         return errors;
-    }
-
-    /**
-     * Checks if a Relation has at least one role player.
-     *
-     * @param relation The Relation to check
-     */
-    public static Optional<String> validateRelationHasRolePlayers(Relation relation) {
-        if (!relation.rolePlayers().findAny().isPresent()) {
-            return Optional.of(ErrorMessage.VALIDATION_RELATION_WITH_NO_ROLE_PLAYERS.getMessage(relation.id(), relation.type().label()));
-        }
-        return Optional.empty();
     }
 }

@@ -481,6 +481,16 @@ public class RuleValidationIT {
     }
 
     @Test
+    public void whenAddingRuleWithOntologicallyInvalidHead_rolePlayersCannotBePlayed_Throw() throws InvalidKBException {
+        validateOntologicallyIllegalRule(
+                Graql.parsePattern("$x has someAttribute 123;"),
+                Graql.parsePattern("(someRole: $x) isa someRelation;"),
+                ErrorMessage.VALIDATION_RULE_ROLE_CANNOT_BE_PLAYED,
+                "someRole", "anotherRelation"
+        );
+    }
+
+    @Test
     public void whenAddingASimpleRuleWithNegationCycle_Throw() throws InvalidKBException {
         try (Transaction tx = session.writeTransaction()) {
             Pattern when = Graql.parsePattern(
@@ -934,6 +944,8 @@ public class RuleValidationIT {
                 .has(stringAttribute)
                 .plays(someRole)
                 .plays(anotherRole);
+        tx.putEntityType("anotherEntity")
+                .has(someAttribute);
 
         tx.putRelationType("someRelation")
                 .relates(someRole)
@@ -941,6 +953,7 @@ public class RuleValidationIT {
                 .relates(singleRole)
                 .plays(someRole)
                 .plays(anotherRole);
+
         tx.putRelationType("anotherRelation")
                 .relates(singleRole);
     }
