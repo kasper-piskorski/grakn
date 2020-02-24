@@ -241,8 +241,8 @@ public class GenerativeOperationalIT {
                 for (int i = 0 ; i < N ;i++) {
                     Pattern p = fuzzedPatterns.get(i);
                     fuzzedPatterns.subList(i, N).forEach(p2 -> {
-                        ReasonerQueryImpl pQuery = reasonerQueryFactory.create(conjunction(p));
-                        ReasonerQueryImpl cQuery = reasonerQueryFactory.create(conjunction(p2));
+                        ReasonerQueryImpl pQuery = reasonerQueryFactory.withoutRoleInference(conjunction(p));
+                        ReasonerQueryImpl cQuery = reasonerQueryFactory.withoutRoleInference(conjunction(p2));
 
                         if (pQuery.isAtomic() && cQuery.isAtomic()) {
                             ReasonerAtomicQuery queryA = (ReasonerAtomicQuery) pQuery;
@@ -274,12 +274,12 @@ public class GenerativeOperationalIT {
                     ReasonerQueryFactory reasonerQueryFactory = ((TestTransactionProvider.TestTransaction) tx).reasonerQueryFactory();
 
                     for (Pair<Pattern, Pattern> pair : subList) {
-                        ReasonerQueryImpl pQuery = reasonerQueryFactory.create(conjunction(pair.first()));
-                        ReasonerQueryImpl cQuery = reasonerQueryFactory.create(conjunction(pair.second()));
+                        ReasonerQueryImpl pQuery = reasonerQueryFactory.withoutRoleInference(conjunction(pair.first()));
+                        ReasonerQueryImpl cQuery = reasonerQueryFactory.withoutRoleInference(conjunction(pair.second()));
 
                         if (pQuery.isAtomic() && cQuery.isAtomic()) {
-                            ReasonerAtomicQuery parent = (ReasonerAtomicQuery) pQuery;
-                            ReasonerAtomicQuery child = (ReasonerAtomicQuery) cQuery;
+                            ReasonerAtomicQuery parent = reasonerQueryFactory.atomic(pQuery.selectAtoms().findFirst().orElse(null));
+                            ReasonerAtomicQuery child = reasonerQueryFactory.atomic(cQuery.selectAtoms().findFirst().orElse(null));
 
                             QueryTestUtil.unification(parent, child, true, UnifierType.RULE);
                             QueryTestUtil.unification(parent, child, true, UnifierType.SUBSUMPTIVE);
