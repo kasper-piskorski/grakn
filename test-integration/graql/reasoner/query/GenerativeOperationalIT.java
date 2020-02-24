@@ -245,8 +245,8 @@ public class GenerativeOperationalIT {
                         ReasonerQueryImpl cQuery = reasonerQueryFactory.withoutRoleInference(conjunction(p2));
 
                         if (pQuery.isAtomic() && cQuery.isAtomic()) {
-                            ReasonerAtomicQuery queryA = (ReasonerAtomicQuery) pQuery;
-                            ReasonerAtomicQuery queryB = (ReasonerAtomicQuery) cQuery;
+                            ReasonerAtomicQuery queryA = reasonerQueryFactory.atomic(pQuery.selectAtoms().findFirst().orElse(null));
+                            ReasonerAtomicQuery queryB = reasonerQueryFactory.atomic(cQuery.selectAtoms().findFirst().orElse(null));
                             QueryTestUtil.unification(queryA, queryB,true, UnifierType.EXACT);
                         }
                     });
