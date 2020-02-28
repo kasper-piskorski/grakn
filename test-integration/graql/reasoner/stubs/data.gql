@@ -1,0 +1,421 @@
+insert $InternalElement isa vessel, has ID "Vessel1", has Position "S01P2:1.30", has NominalVolume 0.157, has NominalFilllevel "S01P2:0.50", has ZeroLevel 0.0, has RestVolume 0.0, has TotalVolume 0.157, has Form "S01F2:(0.0;0.0);(0.05;0.01869);(0.10;0.05204);(0.15;0.09406);(0.20;0.14238);(0.25;0.19550);(0.30;0.25232);(0.35;0.31192);(0.40;0.37353);(0.45;0.43644);(0.50;0.50000);(0.55;0.56356);(0.60;0.62647);(0.65;0.68808);(0.70;0.74768);(0.75;0.80450);(0.80;0.85762);(0.85;0.90594);(0.90;0.94796);(0.95;0.98131);(1.00;1.00000)";
+
+insert $InternalElement isa rPump, has ID "Pump13", has ID "N13", has Position "S01P2:0.40";
+
+insert $InternalElement isa rPump, has ID "Pump18", has ID "N18", has Position "S01P2:0.50";
+
+insert $InternalElement isa heatExchanger, has ID "Heater43", has Position "S01P2:1.55";
+
+insert $InternalElement isa valve, has ID "Valve16", has ID "Y16", has Position "S01P2:1.55", has SafeState "open";
+
+insert $InternalElement isa valve, has ID "Valve21", has ID "Y21", has Position "S01P2:1.55", has SafeState "open";
+
+insert $InternalElement isa valve, has ID "Valve24", has ID "Y24", has Position "S01P2:1.30", has SafeState "close";
+
+insert $InternalElement isa valve, has ID "Valve25", has ID "Y25", has Position "S01P2:1.30", has SafeState "close";
+
+insert $InternalElement isa pipe, has ID "pipe101", has DN 25, has Form "S01F1:(0.50;0.50);(0.10;0)";
+
+insert $InternalElement isa pipe, has ID "pipe111", has DN 50, has Form "S01F1:(0.80;-0.80);(0.20;0)";
+
+insert $InternalElement isa pipe, has ID "pipe112", has DN 25, has Form "S01F1:(0.35;0.35);(1.50;0);(0.55;0.40);(0.10;0)";
+
+insert $InternalElement isa pipe, has ID "pipe113", has DN 25, has Form "S01F1:(0.80;0)";
+
+insert $InternalElement isa pipe, has ID "pipe121", has DN 40, has Form "S01F1:(0.90;-0.90);(0.10;0)";
+
+insert $InternalElement isa pipe, has ID "pipe122", has DN 25, has Form "S01F1:(0.10;0);(0.25;0);(0.40;0);(0.55;0.55);(0.50;0);(0.60;0.60)";
+
+insert $InternalElement isa pipe, has ID "pipe123", has DN 25, has Form "S01F1:(0.30;0.-0.30);(0.40;0);(0.35;0.25);(0.40;0)";
+
+insert $InternalElement isa pipe, has ID "pipe124", has DN 25, has Form "S01F1:(0.55;0)";
+
+insert $InternalElement isa pipe, has ID "pipe131", has DN 25, has Form "S01F1:(0.80;0);(0.25;-0.25);(0.25;0)";
+
+insert $InternalElement isa pipe, has ID "pipe151", has DN 25, has Form "S01F1:(0.10;0);(0.15;0)";
+
+insert $InternalElement isa pipe, has ID "pipe152", has DN 25, has Form "S01F1:(0.15;0);(0.55;-0.50)";
+
+insert $InternalElement isa pipe, has ID "pipe161", has DN 25, has Form "S01F1:(0.10;0);(0.15;0)";
+
+insert $InternalElement isa pipe, has ID "pipe162", has DN 25, has Form "S01F1:(1.30;0);(0.55;-0.80)";
+
+insert $InternalElement isa pipe, has ID "jun100", has Position "S01P2:1.20";
+
+insert $InternalElement isa pipe, has ID "jun130", has Position "S01P2:1.55";
+
+insert $InternalElement isa pipe, has ID "jun140", has Position "S01P2:1.30";
+
+insert $InternalElement isa levelSensor, has ID "L10";
+
+insert $InternalElement isa qualitySensor, has ID "Q11";
+
+insert $InternalElement isa temperatureSensor, has ID "T12";
+
+insert $InternalElement isa pressureSensor, has ID "P14";
+
+insert $InternalElement isa temperatureSensor, has ID "T15";
+
+insert $InternalElement isa flowSensor, has ID "F17";
+
+insert $InternalElement isa pressureSensor, has ID "P19";
+
+insert $InternalElement isa temperatureSensor, has ID "T20";
+
+insert $InternalElement isa flowSensor, has ID "F22";
+
+insert $InternalElement isa temperatureSensor, has ID "T23";
+
+match $ie_a isa pipe, has ID "jun100"; $ie_b isa pipe, has ID "pipe101"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe101"; $ie_b isa vessel, has ID "Vessel1"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel1"; $ie_b isa sensor, has ID "L10"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel1"; $ie_b isa sensor, has ID "Q11"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel1"; $ie_b isa sensor, has ID "T12"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel1"; $ie_b isa pipe, has ID "pipe111"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel1"; $ie_b isa pipe, has ID "pipe121"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe111"; $ie_b isa rPump, has ID "Pump18"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa rPump, has ID "Pump18"; $ie_b isa pipe, has ID "pipe112"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe112"; $ie_b isa sensor, has ID "P19"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe112"; $ie_b isa sensor, has ID "T20"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe112"; $ie_b isa valve, has ID "Valve21"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve21"; $ie_b isa pipe, has ID "pipe113"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe113"; $ie_b isa sensor, has ID "F22"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe113"; $ie_b isa pipe, has ID "jun130"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe121"; $ie_b isa rPump, has ID "Pump13"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa rPump, has ID "Pump13"; $ie_b isa pipe, has ID "pipe122"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe122"; $ie_b isa heatExchanger, has ID "Heater43"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe122"; $ie_b isa sensor, has ID "P14"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa heatExchanger, has ID "Heater43"; $ie_b isa pipe, has ID "pipe123"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe123"; $ie_b isa sensor, has ID "T15"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe123"; $ie_b isa valve, has ID "Valve16"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve16"; $ie_b isa pipe, has ID "pipe124"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe124"; $ie_b isa sensor, has ID "F17"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe124"; $ie_b isa pipe, has ID "jun130"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun130"; $ie_b isa pipe, has ID "pipe131"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe131"; $ie_b isa sensor, has ID "T23"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe131"; $ie_b isa pipe, has ID "jun140"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun140"; $ie_b isa pipe, has ID "pipe151"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe151"; $ie_b isa valve, has ID "Valve24"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve24"; $ie_b isa pipe, has ID "pipe152"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun140"; $ie_b isa pipe, has ID "pipe161"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe161"; $ie_b isa valve, has ID "Valve25"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve25"; $ie_b isa pipe, has ID "pipe162"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+insert $InternalElement isa vessel, has ID "Vessel2", has Position "S01P2:0.58", has NominalVolume 0.057, has NominalFilllevel "S01P2:0.29", has ZeroLevel 0.0, has RestVolume 0.0, has TotalVolume 0.057, has Form "S01F2:(0.0;0.0);(1.0;1.0)";
+
+insert $InternalElement isa rPump, has ID "Pump29", has ID "N29", has Position "S01P2:0.28";
+
+insert $InternalElement isa checkValve, has ID "Valve44", has Position "S01P2:0.28";
+
+insert $InternalElement isa valve, has ID "Valve30", has ID "Y30", has Position "S01P2:0.38", has SafeState "open";
+
+insert $InternalElement isa pipe, has ID "pipe211", has DN 25, has Form "S01F1:(0.20;-0.20);(0.25;0.00);(0.45;-0.10);(0.25;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe212", has DN 25, has Form "S01F1:(0.05;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe213", has DN 25, has Form "S01F1:(0.12;0.00);(0.12;0.10);(0.12;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe214", has DN 25, has Form "S01F1:(2.70;0.00);(0.85;0.85)";
+
+insert $InternalElement isa levelSensor, has ID "L26";
+
+insert $InternalElement isa qualitySensor, has ID "Q28";
+
+insert $InternalElement isa temperatureSensor, has ID "T27";
+
+insert $InternalElement isa flowSensor, has ID "F31";
+
+match $ie_a isa vessel, has ID "Vessel2"; $ie_b isa sensor, has ID "L26"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel2"; $ie_b isa sensor, has ID "Q28"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel2"; $ie_b isa sensor, has ID "T27"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel2"; $ie_b isa pipe, has ID "pipe211"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe211"; $ie_b isa rPump, has ID "Pump29"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa rPump, has ID "Pump29"; $ie_b isa pipe, has ID "pipe212"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe212"; $ie_b isa checkValve, has ID "Valve44"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa checkValve, has ID "Valve44"; $ie_b isa pipe, has ID "pipe213"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe213"; $ie_b isa valve, has ID "Valve30"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve30"; $ie_b isa pipe, has ID "pipe214"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe214"; $ie_b isa sensor, has ID "F31"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+insert $InternalElement isa vessel, has ID "Vessel3", has Position "S01P2:0.58", has NominalVolume 0.057, has NominalFilllevel "S01P2:0.29", has ZeroLevel 0.0, has RestVolume 0.0, has TotalVolume 0.057, has Form "S01F2:(0.0;0.0);(1.0;1.0)";
+
+insert $InternalElement isa rPump, has ID "Pump36", has ID "N36", has Position "S01P2:0.27";
+
+insert $InternalElement isa rPump, has ID "Pump38", has ID "N38", has Position "S01P2:0.27";
+
+insert $InternalElement isa checkValve, has ID "Valve45", has Position "S01P2:0.27";
+
+insert $InternalElement isa checkValve, has ID "Valve46", has Position "S01P2:0.27";
+
+insert $InternalElement isa valve, has ID "Valve37", has ID "Y37", has Position "S01P2:0.37", has SafeState "none";
+
+insert $InternalElement isa valve, has ID "Valve39", has ID "Y39", has Position "S01P2:0.37", has SafeState "none";
+
+insert $InternalElement isa pipe, has ID "pipe311", has DN 25, has Form "S01F1:(0.15;0.15);(0.32;0.00);(0.25;0.00)";
+
+insert $InternalElement isa pipe, has ID "jun320", has Position "S01P2:0.43";
+
+insert $InternalElement isa pipe, has ID "pipe331", has DN 25, has Form "S01F1:(0.15;-0.15);(0.18;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe332", has DN 25, has Form "S01F1:(0.05;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe333", has DN 25, has Form "S01F1:(0.65;0.10)";
+
+insert $InternalElement isa pipe, has ID "pipe334", has DN 25, has Form "S01F1:(0.10;0.00);(0.10;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe341", has DN 40, has Form "S01F1:(0.25;0.00);(0.15;-0.15);(0.18;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe342", has DN 25, has Form "S01F1:(0.05;0.00)";
+
+insert $InternalElement isa pipe, has ID "pipe343", has DN 25, has Form "S01F1:(0.65;0.10)";
+
+insert $InternalElement isa pipe, has ID "pipe344", has DN 25, has Form "S01F1:(0.10;0.00);(0.10;0.00)";
+
+insert $InternalElement isa pipe, has ID "jun350", has Position "S01P2:0.37";
+
+insert $InternalElement isa pipe, has ID "pipe351", has DN 25, has Form "S01F1:(1.00;0.94);(0.13;0.00);(0.25;-0.15);(1.00;0.00);(0.10;0.07)";
+
+insert $InternalElement isa levelSensor, has ID "L32";
+
+insert $InternalElement isa levelSensor, has ID "L34";
+
+insert $InternalElement isa levelSensor, has ID "L35";
+
+insert $InternalElement isa temperatureSensor, has ID "T33";
+
+insert $InternalElement isa flowSensor, has ID "F40";
+
+match $ie_a isa vessel, has ID "Vessel3"; $ie_b isa sensor, has ID "L32"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel3"; $ie_b isa sensor, has ID "L34"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel3"; $ie_b isa sensor, has ID "L35"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel3"; $ie_b isa sensor, has ID "T33"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel3"; $ie_b isa pipe, has ID "pipe311"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe311"; $ie_b isa pipe, has ID "jun320"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun320"; $ie_b isa pipe, has ID "pipe331"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe331"; $ie_b isa rPump, has ID "Pump36"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa rPump, has ID "Pump36"; $ie_b isa pipe, has ID "pipe332"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe332"; $ie_b isa checkValve, has ID "Valve45"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa checkValve, has ID "Valve45"; $ie_b isa pipe, has ID "pipe333"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe333"; $ie_b isa valve, has ID "Valve37"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve37"; $ie_b isa pipe, has ID "pipe334"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe334"; $ie_b isa pipe, has ID "jun350"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun320"; $ie_b isa pipe, has ID "pipe341"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe341"; $ie_b isa rPump, has ID "Pump38"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa rPump, has ID "Pump38"; $ie_b isa pipe, has ID "pipe342"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe342"; $ie_b isa checkValve, has ID "Valve46"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa checkValve, has ID "Valve46"; $ie_b isa pipe, has ID "pipe343"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe343"; $ie_b isa valve, has ID "Valve39"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa valve, has ID "Valve39"; $ie_b isa pipe, has ID "pipe344"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe344"; $ie_b isa pipe, has ID "jun350"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun350"; $ie_b isa pipe, has ID "pipe351"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "pipe351"; $ie_b isa sensor, has ID "F40"; insert (measurementPlace: $ie_a, measurementDevice: $ie_b) isa measuring, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel2"; $ie_b isa pipe, has ID "pipe152"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa vessel, has ID "Vessel3"; $ie_b isa pipe, has ID "pipe162"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun100"; $ie_b isa pipe, has ID "pipe214"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $ie_a isa pipe, has ID "jun100"; $ie_b isa pipe, has ID "pipe351"; insert (source: $ie_a, target: $ie_b) isa primaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match
+     {$s isa pipe; $t isa pipe;} or
+     {$t isa checkValve; $s isa pipe;} or
+     {$s isa checkValve; $t isa pipe;} or
+     {$t isa heatExchanger; $s isa pipe;} or
+     {$s isa heatExchanger; $t isa pipe;} or
+     {$t isa vessel; $s isa pipe;} or
+     {$s isa vessel; $t isa pipe;};
+     $z(source:$s,target:$t) isa productConnection;
+insert $r_new (source:$s ,target:$t) isa primaryProductFlow, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+
+insert $e isa eductSource, has ID "compressedAirSupply";
+
+match $v isa valve; $e isa eductSource, has ID "compressedAirSupply"; insert (source: $e, target: $v) isa secondaryProductConnection, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (source: $e, target: $v) isa secondaryProductFlow, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+insert $ov isa computingNode, has ID "ESE";
+
+match  $act isa actuator, has ID "N13"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "N13_SCU" , has order "Pump", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "N18"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "N18_SCU" , has order "Pump", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "N29"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "N29_SCU" , has order "Pump", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "N36"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "N36_SCU" , has order "Pump", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "N38"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "N38_SCU" , has order "Pump", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "N44"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "N44_SCU" , has order "Pump", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y16"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y16_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y21"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y21_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y24"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y24_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y25"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y25_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y30"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y30_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y37"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y37_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match  $act isa actuator, has ID "Y39"; $ov isa computingNode, has ID "ESE"; insert $ESE isa singleControlUnit, has ID "Y39_SCU" , has order "Valve", has order "ABORT", has order "CLEAR", has order "RESET", has order "START", has order "HOLD", has order "UNHOLD", has order "STOP", has order "FREE", has order "OCCUPY", has order "PRIO", has order "AUTO", has order "MANUAL"; (controlComponent: $ESE, hardwareComponent: $act) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $ESE, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "F17"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "F17_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "F22"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "F22_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "F31"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "F31_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "F40"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "F40_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "L10"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "L10_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "L26"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "L26_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "L32"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "L32_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "L34"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "L34_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "L35"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "L35_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "P14"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "P14_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "P19"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "P19_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "T12"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "T12_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "T15"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "T15_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "T20"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "T20_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "T23"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "T23_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "T27"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "T27_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $sen isa sensor, has ID "T33"; $ov isa computingNode, has ID "ESE"; insert $SA isa sensorAbstraction, has ID "T33_SA"; (controlComponent: $SA, hardwareComponent: $sen) isa hwSwCoupling, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59; (resourceConsumer: $SA, resourceProvider: $ov) isa runsOn, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L10_SA"; $NodeB isa singleControlUnit, has ID "N29_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L10_SA"; $NodeB isa singleControlUnit, has ID "N36_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L10_SA"; $NodeB isa singleControlUnit, has ID "N38_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L10_SA"; $NodeB isa singleControlUnit, has ID "N18_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L10_SA"; $NodeB isa singleControlUnit, has ID "N13_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L26_SA"; $NodeB isa singleControlUnit, has ID "N18_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L26_SA"; $NodeB isa singleControlUnit, has ID "N13_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L26_SA"; $NodeB isa singleControlUnit, has ID "N29_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L34_SA"; $NodeB isa singleControlUnit, has ID "N18_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L34_SA"; $NodeB isa singleControlUnit, has ID "N13_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L34_SA"; $NodeB isa singleControlUnit, has ID "N36_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L34_SA"; $NodeB isa singleControlUnit, has ID "N38_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L35_SA"; $NodeB isa singleControlUnit, has ID "N18_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L35_SA"; $NodeB isa singleControlUnit, has ID "N13_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L35_SA"; $NodeB isa singleControlUnit, has ID "N36_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+match $NodeA isa sensorAbstraction, has ID "L35_SA"; $NodeB isa singleControlUnit, has ID "N38_SCU"; insert (measurementDevice: $NodeA, controller: $NodeB) isa controlDependency, has validFrom 2020-01-22T13:58:29, has validUntil 3000-12-31T23:59:59;
+
+
+#match $x isa baseEntity, has ID "Y16"; {$t has ID "Y16"; $s isa pipe;} or {$s has ID "Y16"; $t isa pipe;}; $z(source:$s,target:$t) isa productConnection; $t != $s;
+#insert $e isa valveOpen, has ID "3"; $r_new1 (source:$s1,target:$t1) isa primaryProductFlow, has validFrom 2020-01-22T14:12:27, has validUntil 3000-12-31T23:59:59; $r_new1(emergence:$e); $r_new2 (source:$s2,target:$t2) isa primaryProductFlow, has validFrom 2020-01-22T14:12:27, has validUntil 3000-12-31T23:59:59; $r_new2(emergence:$e);
+
+
+match $occupee has ID "Y16_SCU";insert $e isa occupied, has ID "3"; $occupier isa operator, has ID "CHRISTIAN"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:12:27, has validUntil 3000-12-31T23:59:59;
+
+
+match $occupier has ID "CHRISTIAN"; $occupee has ID "Y24_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:13:28, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "Y25_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:13:58, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "Y30_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:14:29, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "Y37_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:14:59, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "Y39_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:15:30, has validUntil 3000-12-31T23:59:59;
+
+match $occupier has ID "CHRISTIAN"; $occupee has ID "N13_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:16:00, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "N18_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:16:33, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "N18_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:16:33, has validUntil 3000-12-31T23:59:59;
+
+match $occupier has ID "CHRISTIAN"; $occupee has ID "N29_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:17:06, has validUntil 3000-12-31T23:59:59;
+
+match $occupier has ID "CHRISTIAN"; $occupee has ID "N36_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:17:38, has validUntil 3000-12-31T23:59:59;
+match $occupier has ID "CHRISTIAN"; $occupee has ID "N38_SCU";insert $e isa occupied, has ID "3"; $occupation (occupier: $occupier, occupee: $occupee, emergence: $e) isa occupation;$occupation has validFrom 2020-01-22T14:18:11, has validUntil 3000-12-31T23:59:59;
+
+match $t1 isa valve; $s1 isa pipe; $t2 isa pipe; $s1 != $t2; $r1($s1,$t1) isa primaryProductConnection; $r2($t1,$t2) isa primaryProductConnection;
+insert $e isa pumpOn, has ID "3"; $r_new1 (source:$s1,target:$t1) isa primaryProductFlow, has validFrom 2020-01-22T14:18:11, has validUntil 3000-12-31T23:59:59; $r_new1(emergence:$e); $r_new2 (source:$s1,target:$t2) isa primaryProductFlow, has validFrom 2020-01-22T14:18:11, has validUntil 3000-12-31T23:59:59; $r_new2(emergence:$e);

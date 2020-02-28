@@ -22,7 +22,10 @@ filegroup(
     name = "reasoning-stubs",
     srcs = [
         "appendingRPs.gql",
+        "data.gql",
         "duplicateMaterialisation.gql",
+        "effect_rules.gql",
+        "effect_rules2.gql",
         "explanations.gql",
         "freshEntityDerivation.gql",
         "freshEntityDerivationFromRelations.gql",
@@ -36,6 +39,7 @@ filegroup(
         "resourceHierarchy.gql",
         "resourceOwnership.gql",
         "resourcesAsRolePlayers.gql",
+        "schema.gql",
         "testSet10.gql",
         "testSet11.gql",
         "testSet12.gql",

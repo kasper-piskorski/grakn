@@ -1,0 +1,27 @@
+define
+
+actuator-effect-direction-3 sub rule,
+when {
+    $actuator isa actuator;
+    (source: $x, target: $actuator) isa secondaryProductFlow, has validFrom $vF1, has validUntil $vU1;
+}, then {
+    (origin: $x, end: $actuator) isa effect;
+};
+
+
+actuator-effect-direction-3a sub rule,
+when {
+    $actuator isa actuator;
+    ($x, $actuator) isa secondaryProductFlow, has validFrom $vF1, has validUntil $vU1;
+}, then {
+    (origin: $actuator, end: $x) isa effect;
+};
+
+actuator-effect-direction-3b sub rule,
+when {
+    $actuator isa actuator;
+    ($x, $actuator) isa secondaryProductFlow, has validFrom $vF1, has validUntil $vU1;
+}, then {
+    (origin: $x, end: $actuator) isa effect;
+};
+

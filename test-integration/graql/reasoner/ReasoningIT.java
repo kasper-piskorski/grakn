@@ -68,6 +68,95 @@ public class ReasoningIT {
     //as specified in the respective comments below.
 
     @Test
+    public void test(){
+        try(Session session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "schema.gql", session);
+            loadFromFileAndCommit(resourcePath, "effect_rules.gql", session);
+            loadFromFileAndCommit(resourcePath, "data.gql", session);
+            //match $x($e) isa effect;  not{$e isa event;}; get;
+            //match $x($e) isa effect; not{$e isa pumpOff;}; not{$e isa valveClose;}; not{$e isa valveOpen;}; not{$e isa pumpOn;};  get;
+
+            try (Transaction tx = session.writeTransaction()) {
+                long start = System.currentTimeMillis();
+                List<ConceptMap> answers = tx.execute(Graql.parse(
+                        "match " +
+                                "$x($e) isa effect;  not{$e isa event;};" +
+                                "get;")
+                        .asGet());
+                long time = System.currentTimeMillis() - start;
+                System.out.println("time : " + time);
+                System.out.println("answers: " + answers.size());
+                //assertEquals(25, answers.size());
+            }
+            try (Transaction tx = session.writeTransaction()) {
+                List<ConceptMap> answers = tx.execute(Graql.parse(
+                        "match " +
+                                "$x($e) isa effect;" +
+                                "not{$e isa pumpOff;}; not{$e isa valveClose;}; not{$e isa valveOpen;}; not{$e isa pumpOn;};" +
+                                "get;")
+                        .asGet());
+                System.out.println("answers: " + answers.size());
+                //assertEquals(25, answers.size());
+            }
+
+
+        }
+    }
+
+    @Test
+    public void test2(){
+        //pumpwerk1> match $e isa actuator, has ID $i; $o has ID $i1; $x(end:$e,origin:$o) isa effect; get $i, $i1;      -> no results
+        //pumpwerk1> match $e has ID $i; $o isa actuator, has ID $i1;  $x(end:$e,origin:$o) isa effect; get $i, $i1;     -> results
+        try(Session session = server.sessionWithNewKeyspace()) {
+            loadFromFileAndCommit(resourcePath, "schema.gql", session);
+            loadFromFileAndCommit(resourcePath, "effect_rules.gql", session);
+            loadFromFileAndCommit(resourcePath, "data.gql", session);
+            //match $x($e) isa effect;  not{$e isa event;}; get;
+            //match $x($e) isa effect; not{$e isa pumpOff;}; not{$e isa valveClose;}; not{$e isa valveOpen;}; not{$e isa pumpOn;};  get;
+
+            try (Transaction tx = session.writeTransaction()) {
+                long start = System.currentTimeMillis();
+
+                /**
+                 * actuator-effect-direction-3a sub rule,
+when {
+    $actuator isa actuator;
+    ($x, $actuator) isa secondaryProductFlow, has validFrom $vF1, has validUntil $vU1;
+}, then {
+    (origin: $actuator, end: $x) isa effect;
+};
+                 */
+                List<ConceptMap> answers = tx.execute(Graql.parse(
+                        "match " +
+                                "$e isa actuator, has ID $i; " +
+                                "$o has ID $i1;" +
+                                "$x(end:$e, origin:$o) isa effect;" +
+                                "get;")
+                        .asGet());
+                long time = System.currentTimeMillis() - start;
+                System.out.println("time : " + time);
+                System.out.println("answers: " + answers.size());
+                //assertEquals(25, answers.size());
+            }
+
+            try (Transaction tx = session.writeTransaction()) {
+                long start = System.currentTimeMillis();
+                List<ConceptMap> answers = tx.execute(Graql.parse(
+                        "match " +
+                                "$e has ID $i;" +
+                                "$o isa actuator, has ID $i1;" +
+                                "$x(end:$e, origin:$o) isa effect;" +
+                                "get;")
+                        .asGet());
+                long time = System.currentTimeMillis() - start;
+                System.out.println("time : " + time);
+                System.out.println("answers: " + answers.size());
+                //assertEquals(25, answers.size());
+            }
+        }
+    }
+
+    @Test
     public void whenMaterialising_duplicatesAreNotCreated(){
         try(Session session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "duplicateMaterialisation.gql", session);
