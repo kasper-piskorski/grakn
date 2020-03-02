@@ -26,6 +26,7 @@ import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.graql.reasoner.atom.Atomic;
+import grakn.core.kb.graql.reasoner.cache.RuleCache;
 import grakn.core.kb.graql.reasoner.query.ReasonerQuery;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
 import graql.lang.statement.Statement;
@@ -63,10 +64,10 @@ public abstract class OntologicalAtom extends TypeAtom {
     public boolean isSubsumedBy(Atomic atom) { return this.isAlphaEquivalent(atom); }
 
     @Override
-    public Stream<Rule> getPotentialRules(){ return Stream.empty();}
+    public Stream<Rule> getPotentialRules(RuleCache ruleCache){ return Stream.empty();}
 
     @Override
-    public Stream<InferenceRule> getApplicableRules() { return Stream.empty();}
+    public Stream<InferenceRule> getApplicableRules(RuleCache ruleCache) { return Stream.empty();}
 
     @Override
     public Set<String> validateAsRuleHead(Rule rule) {

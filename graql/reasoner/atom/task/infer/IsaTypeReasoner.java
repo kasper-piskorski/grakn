@@ -22,14 +22,19 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import grakn.core.concept.answer.ConceptMap;
 import grakn.core.concept.util.ConceptUtils;
-import grakn.core.graql.reasoner.atom.binary.Binary;
+import grakn.core.graql.reasoner.ReasoningContext;
+import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.binary.IsaAtom;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
 import grakn.core.kb.concept.api.Concept;
+import grakn.core.kb.concept.api.SchemaConcept;
 import grakn.core.kb.concept.api.Type;
 import grakn.core.kb.concept.manager.ConceptManager;
+import grakn.core.kb.graql.reasoner.cache.RuleCache;
 import graql.lang.statement.Variable;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -37,22 +42,19 @@ import java.util.stream.Collectors;
 
 public class IsaTypeReasoner implements TypeReasoner<IsaAtom> {
 
-    private final ConceptManager conceptManager;
-
-    public IsaTypeReasoner(ConceptManager conceptManager){
-        this.conceptManager = conceptManager;
-    }
 
     @Override
-    public IsaAtom inferTypes(IsaAtom atom, ConceptMap sub) {
+    public IsaAtom inferTypes(IsaAtom atom, ConceptMap sub, ReasoningContext ctx) {
         if (atom.getTypePredicate() != null) return atom;
         if (sub.containsVar(atom.getPredicateVariable())) return atom.addType(sub.get(atom.getPredicateVariable()).asType());
         return atom;
     }
 
     @Override
-    public ImmutableList<Type> inferPossibleTypes(IsaAtom atom, ConceptMap sub){
-        if (atom.getSchemaConcept() != null) return ImmutableList.of(atom.getSchemaConcept().asType());
+    public ImmutableList<Type> inferPossibleTypes(IsaAtom atom, ConceptMap sub, ReasoningContext ctx){
+        ConceptManager conceptManager = ctx.conceptManager();
+        SchemaConcept type = atom.getSchemaConcept(conceptManager);
+        if (type != null) return ImmutableList.of(type.asType());
         if (sub.containsVar(atom.getPredicateVariable())) return ImmutableList.of(sub.get(atom.getPredicateVariable()).asType());
 
         Variable varName = atom.getVarName();
@@ -69,7 +71,7 @@ public class IsaTypeReasoner implements TypeReasoner<IsaAtom> {
         Set<Type> typesFromTypes = atom.getParentQuery().getAtoms(IsaAtom.class)
                 .filter(at -> at.getVarNames().contains(varName))
                 .filter(at -> at != atom)
-                .map(Binary::getSchemaConcept)
+                .map(at -> at.getSchemaConcept(conceptManager))
                 .filter(Objects::nonNull)
                 .filter(Concept::isType)
                 .map(Concept::asType)
@@ -81,6 +83,15 @@ public class IsaTypeReasoner implements TypeReasoner<IsaAtom> {
 
         return !types.isEmpty()?
                 ImmutableList.copyOf(ConceptUtils.top(types)) :
-                conceptManager.getMetaConcept().subs().collect(ImmutableList.toImmutableList());
+                ctx.conceptManager().getMetaConcept().subs().collect(ImmutableList.toImmutableList());
+    }
+
+    @Override
+    public List<Atom> atomOptions(IsaAtom atom, ConceptMap sub, ReasoningContext ctx) {
+        RuleCache ruleCache = ctx.ruleCache();
+        return inferPossibleTypes(atom, sub, ctx).stream()
+                .map(atom::addType)
+                .sorted(Comparator.comparing(at -> at.isRuleResolvable(ruleCache)))
+                .collect(Collectors.toList());
     }
 }

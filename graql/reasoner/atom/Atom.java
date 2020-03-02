@@ -42,6 +42,7 @@ import grakn.core.kb.concept.api.Label;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.concept.api.SchemaConcept;
 import grakn.core.kb.concept.api.Type;
+import grakn.core.kb.concept.manager.ConceptManager;
 import grakn.core.kb.graql.reasoner.ReasonerException;
 import grakn.core.kb.graql.reasoner.atom.Atomic;
 import grakn.core.kb.graql.reasoner.cache.RuleCache;
@@ -66,15 +67,13 @@ import static java.util.stream.Collectors.toSet;
  */
 public abstract class Atom extends AtomicBase {
 
-    private final ReasoningContext ctx;
     private final AtomValidator<Atom> validator = new BasicAtomValidator();
     private Set<InferenceRule> applicableRules = null;
 
     private final ConceptId typeId;
 
-    public Atom(ReasonerQuery reasonerQuery, Variable varName, Statement pattern, ConceptId typeId, ReasoningContext ctx) {
+    public Atom(ReasonerQuery reasonerQuery, Variable varName, Statement pattern, ConceptId typeId) {
         super(reasonerQuery, varName, pattern);
-        this.ctx = ctx;
         this.typeId = typeId;
     }
 
@@ -85,8 +84,6 @@ public abstract class Atom extends AtomicBase {
     public ConceptId getTypeId() {
         return typeId;
     }
-
-    public ReasoningContext context(){ return ctx;}
 
     public RelationAtom toRelationAtom() {
         throw ReasonerException.illegalAtomConversion(this, RelationAtom.class);
@@ -139,8 +136,8 @@ public abstract class Atom extends AtomicBase {
     @Override
     public boolean isAtom() { return true;}
 
-    public boolean isRuleResolvable() {
-        return getApplicableRules().findFirst().isPresent();
+    public boolean isRuleResolvable(RuleCache ruleCache) {
+        return getApplicableRules(ruleCache).findFirst().isPresent();
     }
 
     /**
@@ -181,9 +178,7 @@ public abstract class Atom extends AtomicBase {
     /**
      * @return true if this atom requires direct schema lookups
      */
-    public boolean requiresSchema() {
-        return getSchemaConcept() == null || this instanceof OntologicalAtom;
-    }
+    public abstract boolean requiresSchema();
 
     public abstract Class<? extends VarProperty> getVarPropertyClass();
 
@@ -226,11 +221,10 @@ public abstract class Atom extends AtomicBase {
     /**
      * @return set of potentially applicable rules - does shallow (fast) check for applicability
      */
-    public Stream<Rule> getPotentialRules() {
+    public Stream<Rule> getPotentialRules(RuleCache ruleCache) {
         boolean isDirect = getPattern().getProperties(IsaProperty.class).findFirst()
                 .map(IsaProperty::isExplicit).orElse(false);
 
-        RuleCache ruleCache = ctx.ruleCache();
         return getPossibleTypes().stream()
                 .flatMap(type -> ruleCache.getRulesWithType(type, isDirect))
                 .distinct();
@@ -239,11 +233,10 @@ public abstract class Atom extends AtomicBase {
     /**
      * @return set of applicable rules - does detailed (slow) check for applicability
      */
-    public Stream<InferenceRule> getApplicableRules() {
+    public Stream<InferenceRule> getApplicableRules(RuleCache ruleCache) {
         if (applicableRules == null) {
             applicableRules = new HashSet<>();
-            RuleCache ruleCache = ctx.ruleCache();
-            getPotentialRules()
+            getPotentialRules(ruleCache)
                     .map(rule -> CacheCasting.ruleCacheCast(ruleCache).getRule(rule))
                     .filter(this::isRuleApplicable)
                     .map(r -> r.rewrite(this))
@@ -265,9 +258,8 @@ public abstract class Atom extends AtomicBase {
     /**
      * @return if this atom requires decomposition into a set of atoms
      */
-    public boolean requiresDecomposition() {
-        RuleCache ruleCache = ctx.ruleCache();
-        return this.getPotentialRules()
+    public boolean requiresDecomposition(RuleCache ruleCache) {
+        return this.getPotentialRules(ruleCache)
                 .map(r -> CacheCasting.ruleCacheCast(ruleCache).getRule(r))
                 .anyMatch(InferenceRule::appendsRolePlayers);
     }
@@ -275,7 +267,7 @@ public abstract class Atom extends AtomicBase {
     /**
      * @return corresponding type if any
      */
-    public abstract SchemaConcept getSchemaConcept();
+    public abstract SchemaConcept getSchemaConcept(ConceptManager cm);
 
     /**
      * @return value variable name
@@ -340,25 +332,25 @@ public abstract class Atom extends AtomicBase {
         );
     }
 
-    @Override
-    public Atom inferTypes() { return inferTypes(new ConceptMap()); }
+    public Atom inferTypes(ReasoningContext ctx) { return inferTypes(new ConceptMap(), ctx); }
 
-    @Override
-    public Atom inferTypes(ConceptMap sub) { return this; }
+    public Atom inferTypes(ConceptMap sub, ReasoningContext ctx) { return this; }
 
     /**
      * @return list of types this atom can take
      */
-    public ImmutableList<Type> getPossibleTypes() {
-        return (getSchemaConcept() != null && getSchemaConcept().isType())?
-                ImmutableList.of(getSchemaConcept().asType()) :
-                ImmutableList.of();}
+    public ImmutableList<Type> getPossibleTypes(ReasoningContext ctx) {
+        SchemaConcept type = getSchemaConcept(ctx.conceptManager());
+        return (type != null && type.isType())?
+                ImmutableList.of(type.asType()) : ImmutableList.of();
+    }
 
     /**
      * @param sub partial substitution
      * @return list of possible atoms obtained by applying type inference
      */
-    public List<Atom> atomOptions(ConceptMap sub) { return Lists.newArrayList(inferTypes(sub));}
+    public List<Atom> atomOptions(ConceptMap sub, ReasoningContext ctx) { return Lists.newArrayList(inferTypes(sub, ctx));}
+
 
     /**
      * @param type to be added to this Atom

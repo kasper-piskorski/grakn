@@ -271,7 +271,7 @@ public class ReasonerQueryImpl extends ResolvableQuery {
 
     @Override
     public boolean isRuleResolvable() {
-        return selectAtoms().anyMatch(Atom::isRuleResolvable);
+        return selectAtoms().anyMatch(at -> at.isRuleResolvable(context().ruleCache()));
     }
 
     /**
@@ -513,7 +513,7 @@ public class ReasonerQueryImpl extends ResolvableQuery {
 
     @Override
     public boolean requiresDecomposition(){
-        return this.selectAtoms().anyMatch(Atom::requiresDecomposition);
+        return this.selectAtoms().anyMatch(at -> at.requiresDecomposition(context().ruleCache()));
     }
 
     /**
@@ -540,7 +540,6 @@ public class ReasonerQueryImpl extends ResolvableQuery {
     public boolean isCacheComplete(){
         MultilevelSemanticCache queryCache = CacheCasting.queryCacheCast(context().queryCache());
         ReasonerQueryFactory reasonerQueryFactory = context().queryFactory();
-        ConceptManager conceptManager = context().conceptManager();
         if (selectAtoms().count() == 0) return false;
         if (isAtomic()) return queryCache.isComplete(reasonerQueryFactory.atomic(selectAtoms().iterator().next()));
         List<ReasonerAtomicQuery> queries = resolutionPlan().plan().stream().map(reasonerQueryFactory::atomic).collect(Collectors.toList());
@@ -577,7 +576,7 @@ public class ReasonerQueryImpl extends ResolvableQuery {
         Set<InferenceRule> dependentRules = RuleUtils.getDependentRules(this);
         return RuleUtils.subGraphIsCyclical(dependentRules, context().queryCache())
                 || RuleUtils.subGraphHasRulesWithHeadSatisfyingBody(dependentRules)
-                || selectAtoms().filter(Atom::isDisconnected).filter(Atom::isRuleResolvable).count() > 1;
+                || selectAtoms().filter(Atom::isDisconnected).filter(at -> at.isRuleResolvable(context().ruleCache())).count() > 1;
     }
 
     @Override

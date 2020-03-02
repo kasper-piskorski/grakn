@@ -278,7 +278,7 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      */
     private Iterator<ResolutionState> ruleStateIterator(AnswerPropagatorState parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
         return RuleUtils
-                .stratifyRules(getAtom().getApplicableRules().collect(Collectors.toSet()))
+                .stratifyRules(getAtom().getApplicableRules(context().ruleCache()).collect(Collectors.toSet()))
                 .flatMap(r -> r.getMultiUnifier(getAtom()).stream().map(unifier -> new Pair<>(r, unifier)))
                 .map(rulePair -> rulePair.first().subGoal(this.getAtom(), rulePair.second(), parent, visitedSubGoals))
                 .iterator();

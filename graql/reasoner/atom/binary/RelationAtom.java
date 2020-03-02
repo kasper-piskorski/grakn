@@ -117,7 +117,7 @@ public class RelationAtom extends IsaAtomBase {
         this.relationPlayers = relationPlayers;
         this.roleLabels = roleLabels;
 
-        this.typeReasoner = new RelationTypeReasoner(ctx);
+        this.typeReasoner = new RelationTypeReasoner();
         this.semanticProcessor = new RelationSemanticProcessor(ctx.conceptManager());
         this.validator = new RelationAtomValidator(ctx.conceptManager());
     }
@@ -157,9 +157,7 @@ public class RelationAtom extends IsaAtomBase {
         return relationPlayers;
     }
 
-    private ImmutableSet<Label> getRoleLabels() {
-        return roleLabels;
-    }
+    public ImmutableSet<Label> getRoleLabels() { return roleLabels; }
 
 
     //NB: overriding as these require a derived property
@@ -519,13 +517,18 @@ public class RelationAtom extends IsaAtomBase {
     }
 
     @Override
-    public ImmutableList<Type> getPossibleTypes() {
-        return typeReasoner.inferPossibleTypes(this, new ConceptMap());
+    public ImmutableList<Type> getPossibleTypes(ReasoningContext ctx) {
+        return typeReasoner.inferPossibleTypes(this, new ConceptMap(), ctx);
     }
 
     @Override
-    public RelationAtom inferTypes(ConceptMap sub) {
-        return typeReasoner.inferTypes(this, sub);
+    public RelationAtom inferTypes(ConceptMap sub, ReasoningContext ctx) {
+        return typeReasoner.inferTypes(this, sub, ctx);
+    }
+
+    @Override
+    public List<Atom> atomOptions(ConceptMap sub, ReasoningContext ctx) {
+        return typeReasoner.atomOptions(this, sub, ctx);
     }
 
     @Override
@@ -533,16 +536,6 @@ public class RelationAtom extends IsaAtomBase {
         return new RelationMaterialiser(context()).materialise(this);
     }
 
-    @Override
-    public List<Atom> atomOptions(ConceptMap sub) {
-        return typeReasoner.inferPossibleTypes(this, sub).stream()
-                .map(this::addType)
-                .map(at -> typeReasoner.inferTypes(at, sub))
-                //order by number of distinct roles
-                .sorted(Comparator.comparing(at -> -at.getRoleLabels().size()))
-                .sorted(Comparator.comparing(Atom::isRuleResolvable))
-                .collect(Collectors.toList());
-    }
 
     @Override
     public Set<Variable> getRoleExpansionVariables() {

@@ -61,7 +61,7 @@ public class IsaAtom extends IsaAtomBase {
     private IsaAtom(Variable varName, Statement pattern, ReasonerQuery reasonerQuery, ConceptId typeId,
                     Variable predicateVariable, ReasoningContext ctx) {
         super(varName, pattern, reasonerQuery, typeId, predicateVariable, ctx);
-        this.typeReasoner = new IsaTypeReasoner(ctx.conceptManager());
+        this.typeReasoner = new IsaTypeReasoner();
     }
 
     public static IsaAtom create(Variable var, Variable predicateVar, Statement pattern, @Nullable ConceptId predicateId, ReasonerQuery parent, ReasoningContext ctx) {
@@ -97,15 +97,6 @@ public class IsaAtom extends IsaAtomBase {
     @Override
     public Class<? extends VarProperty> getVarPropertyClass() {
         return IsaProperty.class;
-    }
-
-    @Override
-    public void checkValid(){
-        super.checkValid();
-        SchemaConcept type = getSchemaConcept();
-        if (type != null && !type.isType()) {
-            throw GraqlSemanticException.cannotGetInstancesOfNonType(type.label());
-        }
     }
 
     //NB: overriding as these require a derived property
@@ -154,26 +145,23 @@ public class IsaAtom extends IsaAtomBase {
     }
 
     @Override
-    public IsaAtom inferTypes(ConceptMap sub) {
-        return typeReasoner.inferTypes(this, sub);
+    public IsaAtom inferTypes(ConceptMap sub, ReasoningContext ctx) {
+        return typeReasoner.inferTypes(this, sub, ctx);
     }
 
     @Override
-    public ImmutableList<Type> getPossibleTypes() {
-        return typeReasoner.inferPossibleTypes(this, new ConceptMap());
+    public ImmutableList<Type> getPossibleTypes(ReasoningContext ctx) {
+        return typeReasoner.inferPossibleTypes(this, new ConceptMap(), ctx);
+    }
+
+    @Override
+    public List<Atom> atomOptions(ConceptMap sub, ReasoningContext ctx) {
+        return typeReasoner.atomOptions(this, sub, ctx);
     }
 
     @Override
     public Stream<ConceptMap> materialise() {
         return new IsaMaterialiser().materialise(this);
-    }
-
-    @Override
-    public List<Atom> atomOptions(ConceptMap sub) {
-        return typeReasoner.inferPossibleTypes(this, sub).stream()
-                .map(this::addType)
-                .sorted(Comparator.comparing(Atom::isRuleResolvable))
-                .collect(Collectors.toList());
     }
 
     @Override

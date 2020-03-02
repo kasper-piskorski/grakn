@@ -20,7 +20,6 @@ package grakn.core.graql.reasoner.atom;
 
 import com.google.common.collect.Sets;
 import grakn.core.common.exception.ErrorMessage;
-import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
 import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.kb.concept.api.Label;
@@ -136,11 +135,6 @@ public abstract class AtomicBase implements Atomic {
     public Pattern getCombinedPattern(){
         return createCombinedPattern();
     }
-
-    @Override
-    public Atomic inferTypes(){ return inferTypes(new ConceptMap()); }
-
-    public Atomic inferTypes(ConceptMap sub){ return this; }
 
     @Override
     public boolean equals(Object o) {

@@ -29,6 +29,7 @@ import grakn.core.graql.reasoner.unifier.MultiUnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.SchemaConcept;
+import grakn.core.kb.concept.manager.ConceptManager;
 import grakn.core.kb.graql.reasoner.ReasonerCheckedException;
 import grakn.core.kb.graql.reasoner.query.ReasonerQuery;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
@@ -65,7 +66,7 @@ public abstract class Binary extends Atom {
 
     Binary(Variable varName, Statement pattern, ReasonerQuery reasonerQuery, ConceptId typeId,
            Variable predicateVariable, ReasoningContext ctx) {
-        super(reasonerQuery, varName, pattern, typeId, ctx);
+        super(reasonerQuery, varName, pattern, typeId);
         this.predicateVariable = predicateVariable;
         this.semanticProcessor = new BinarySemanticProcessor(ctx.conceptManager());
     }
@@ -87,11 +88,16 @@ public abstract class Binary extends Atom {
                 .map(IsaProperty::isExplicit).orElse(false);
     }
 
+    @Override
+    public boolean requiresSchema() {
+        return getTypeId() == null || this instanceof OntologicalAtom;
+    }
+
     @Nullable
     @Override
-    public SchemaConcept getSchemaConcept(){
+    public SchemaConcept getSchemaConcept(ConceptManager conceptManager){
         if (type == null && getTypeId() != null) {
-            SchemaConcept concept = context().conceptManager().getConcept(getTypeId());
+            SchemaConcept concept = conceptManager.getConcept(getTypeId());
             if (concept == null) throw ReasonerCheckedException.idNotFound(getTypeId());
             type = concept;
         }

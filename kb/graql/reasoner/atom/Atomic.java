@@ -18,6 +18,7 @@
 
 package grakn.core.kb.graql.reasoner.atom;
 
+import grakn.core.graql.reasoner.ReasoningContext;
 import grakn.core.kb.concept.api.Label;
 import grakn.core.kb.concept.api.Rule;
 import grakn.core.kb.concept.api.Type;
@@ -178,7 +179,7 @@ public interface Atomic {
      * @return either this atom if nothing could be inferred or a fresh atom with inferred types
      */
     @CheckReturnValue
-    Atomic inferTypes();
+    Atomic inferTypes(ReasoningContext ctx);
 
     @CheckReturnValue
     default Atomic simplify(){ return this;}
