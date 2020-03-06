@@ -34,6 +34,7 @@ import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.AtomicBase;
 import grakn.core.graql.reasoner.atom.AtomicUtil;
 import grakn.core.graql.reasoner.atom.PropertyAtomicFactory;
+import grakn.core.graql.reasoner.atom.binary.AttributeAtom;
 import grakn.core.graql.reasoner.atom.binary.IsaAtom;
 import grakn.core.graql.reasoner.atom.binary.IsaAtomBase;
 import grakn.core.graql.reasoner.atom.binary.OntologicalAtom;
@@ -74,8 +75,6 @@ import graql.lang.pattern.Conjunction;
 import graql.lang.pattern.Pattern;
 import graql.lang.statement.Statement;
 import graql.lang.statement.Variable;
-
-import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -87,6 +86,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 
 /**
  *
@@ -347,7 +347,16 @@ public class ReasonerQueryImpl extends ResolvableQuery {
         return getAtoms(Atom.class).filter(at -> !(at instanceof OntologicalAtom)).map(Atom::toIsaAtom);
     }
 
-    private Stream<IsaAtom> inferEntityTypes(ConceptMap sub) {
+    private Stream<Pair<Variable, Type>> typeMappings(){
+        return getAtoms(Atom.class)
+                .filter(at -> !(at instanceof OntologicalAtom))
+                .filter(at -> !(at instanceof AttributeAtom))
+                .filter(at -> Objects.nonNull(at.getSchemaConcept()))
+                .filter(at -> at.getSchemaConcept().isType())
+                .map(at -> new Pair<>(at.getVarName(), at.getSchemaConcept().asType()));
+    }
+
+    private Stream<Pair<Variable, Type>> inferEntityTypes(ConceptMap sub) {
         Set<Variable> typedVars = isas().map(AtomicBase::getVarName).collect(Collectors.toSet());
         ConceptManager conceptManager = context().conceptManager();
         return Stream.concat(
@@ -355,23 +364,19 @@ public class ReasonerQueryImpl extends ResolvableQuery {
                 AtomicUtil.answerToPredicates(sub, this).stream()
                 .map(IdPredicate.class::cast))
                 .filter(p -> !typedVars.contains(p.getVarName()))
-                .map(p -> new Pair<>(p, conceptManager.<Concept>getConcept(p.getPredicate())))
+                .map(p -> new Pair<>(p.getVarName(), conceptManager.<Concept>getConcept(p.getPredicate())))
                 .filter(p -> Objects.nonNull(p.second()))
                 .filter(p -> p.second().isEntity())
-                .map(p -> IsaAtom.create(p.first().getVarName(), new Variable(), p.second().asEntity().type().label(), false, this, context()));
+                .map(p -> new Pair<>(p.first(), p.second().asEntity().type()));
     }
 
-    private Multimap<Variable, Type> getVarTypeMap(Stream<IsaAtom> isas){
+    private Multimap<Variable, Type> getVarTypeMap(Stream<Pair<Variable, Type>> typeMappings){
         HashMultimap<Variable, Type> map = HashMultimap.create();
-        isas
-                .map(at -> new Pair<>(at.getVarName(), at.getSchemaConcept()))
-                .filter(p -> Objects.nonNull(p.second()))
-                .filter(p -> p.second().isType())
+        typeMappings
                 .forEach(p -> {
                     Variable var = p.first();
-                    Type newType = p.second().asType();
+                    Type newType = p.second();
                     Set<Type> types = map.get(var);
-
                     if (types.isEmpty()) map.put(var, newType);
                     else {
                         boolean isSubType = newType.sups().anyMatch(types::contains);
@@ -393,7 +398,7 @@ public class ReasonerQueryImpl extends ResolvableQuery {
     @Override
     public ImmutableSetMultimap<Variable, Type> getVarTypeMap(boolean inferTypes) {
         if (!inferTypes) {
-            return ImmutableSetMultimap.copyOf(getVarTypeMap(isas()));
+            return ImmutableSetMultimap.copyOf(getVarTypeMap(typeMappings()));
         }
         return getVarTypeMap();
     }
@@ -410,7 +415,7 @@ public class ReasonerQueryImpl extends ResolvableQuery {
     public ImmutableSetMultimap<Variable, Type> getVarTypeMap(ConceptMap sub) {
         return ImmutableSetMultimap.copyOf(
                 getVarTypeMap(
-                        Stream.concat(isas(), inferEntityTypes(sub))
+                        Stream.concat(typeMappings(), inferEntityTypes(sub))
                 )
         );
     }
