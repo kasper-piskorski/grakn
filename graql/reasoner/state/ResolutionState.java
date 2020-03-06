@@ -41,7 +41,12 @@ public abstract class ResolutionState {
     }
 
     @Override
-    public String toString(){ return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode());}
+    public String toString(){
+        return getClass().getSimpleName() +
+                "@" + Integer.toHexString(hashCode()) +
+                " to @" +
+        (getParentState() != null? Integer.toHexString(getParentState().hashCode()) : "ROOT");
+    }
 
     /**
      * @return new sub goal generated from this state

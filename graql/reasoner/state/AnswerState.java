@@ -48,7 +48,6 @@ public class AnswerState extends ResolutionState {
     @Override
     public String toString(){
         return super.toString() + ": " + getSubstitution() +
-                (getParentState() != null? " to @" + Integer.toHexString(getParentState().hashCode()) : "") +
                 (" with u: " + getUnifier());
     }
 

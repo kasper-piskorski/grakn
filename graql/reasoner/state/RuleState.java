@@ -53,7 +53,7 @@ public class RuleState extends AnswerPropagatorState<ResolvableQuery> {
 
     @Override
     public String toString(){
-        return super.toString() + " to state @" + Integer.toHexString(getParentState().hashCode()) + "\n" +
+        return super.toString() +
                 rule + "\n" +
                 "Unifier: " + getUnifier();
     }
