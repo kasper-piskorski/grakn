@@ -46,7 +46,8 @@ public abstract class ResolutionState {
     }
 
     @Override
-    public String toString(){ return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode());}
+    public String toString(){ return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) +
+            (getParentState() != null? " to @" + Integer.toHexString(getParentState().hashCode()) : " to ROOT");}
 
     public long creationTime(){ return creationTime;}
 

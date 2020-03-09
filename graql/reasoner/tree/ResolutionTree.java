@@ -63,5 +63,9 @@ public class ResolutionTree {
     public void clear(){
         mapping.clear();
     }
+
+    public String toJsonCompatible() {
+        return rootNode.toJsonCompatible().toString();
+    }
 }
 

@@ -51,4 +51,22 @@ public abstract class Node {
 
     public MultiNode asMultiNode(){ throw new UnsupportedOperationException();}
 
+    public JsonCompatibleKV toJsonCompatible() {
+        JsonCompatibleKV data = new JsonCompatibleKV();
+        data.put("time", totalTime());
+
+        List<String> states = new ArrayList<>();
+        getStates().forEach(state -> states.add(state.toString()));
+        data.put("state", states);
+
+        data.put("answers", answers.size());
+
+        List<JsonCompatibleKV> childrenData = new ArrayList<>();
+        for (Node child : children()) {
+            childrenData.add(child.toJsonCompatible());
+        }
+
+        data.put("children", childrenData);
+        return data;
+    }
 }

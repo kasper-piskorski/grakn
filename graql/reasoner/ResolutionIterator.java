@@ -30,10 +30,16 @@ import grakn.core.kb.graql.reasoner.cache.QueryCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -136,6 +142,15 @@ public class ResolutionIterator extends ReasonerQueryIterator {
                 startTime = System.currentTimeMillis();
                 return hasNext();
             }
+        }
+
+        try {
+            Path path = Paths.get("/Users/joshua/Documents/grakn/local_scripts/raw.txt");
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+            Files.write(path, logTree.toJsonCompatible().getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         MultilevelSemanticCache queryCache = CacheCasting.queryCacheCast(this.queryCache);
