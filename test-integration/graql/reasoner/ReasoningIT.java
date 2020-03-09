@@ -31,8 +31,14 @@ import graql.lang.Graql;
 import graql.lang.query.GraqlGet;
 import graql.lang.statement.Variable;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +50,7 @@ import static grakn.core.core.Schema.ImplicitType.HAS_VALUE;
 import static grakn.core.util.GraqlTestUtil.assertCollectionsEqual;
 import static grakn.core.util.GraqlTestUtil.assertCollectionsNonTriviallyEqual;
 import static grakn.core.util.GraqlTestUtil.loadFromFileAndCommit;
+import static java.lang.annotation.ElementType.METHOD;
 import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
@@ -56,6 +63,9 @@ import static org.junit.Assert.assertTrue;
  */
 @SuppressWarnings({"CheckReturnValue", "Duplicates"})
 public class ReasoningIT {
+
+    @Rule
+    public RepeatRule repeatRule = new RepeatRule();
 
     @ClassRule
     public static final GraknTestServer server = new GraknTestServer();
@@ -574,38 +584,39 @@ public class ReasoningIT {
     }
 
     @Test
+    @Repeat( times = 100 )
     public void whenAppendingRolePlayers_queryIsRewrittenCorrectly(){
         try(Session session = server.sessionWithNewKeyspace()) {
             loadFromFileAndCommit(resourcePath, "appendingRPs.gql", session);
             try (Transaction tx = session.readTransaction()) {
                 List<ConceptMap> persistedRelations = tx.execute(Graql.parse("match $r isa baseRelation; get;").asGet(), false);
 
-                List<ConceptMap> answers = tx.execute(Graql.<GraqlGet>parse("match (someRole: $x, anotherRole: $y, anotherRole: $z, inferredRole: $z); $y != $z;get;"));
+                List<ConceptMap> answers = tx.execute(Graql.<GraqlGet>parse("match (someRole: $TEST_X, anotherRole: $TEST_Y, anotherRole: $TEST_Z, inferredRole: $TEST_Z); $TEST_Y != $TEST_Z;get;"));
                 assertEquals(1, answers.size());
 
-                List<ConceptMap> answers2 = tx.execute(Graql.<GraqlGet>parse("match (someRole: $x, yetAnotherRole: $y, andYetAnotherRole: $y, inferredRole: $z); get;"));
-                assertEquals(1, answers2.size());
-
-                List<ConceptMap> answers3 = tx.execute(Graql.<GraqlGet>parse("match " +
-                        "(someRole: $x, inferredRole: $z); " +
-                        "not {(anotherRole: $z);};" +
-                        "get;"));
-
-                assertTrue(answers3.isEmpty());
-
-                List<ConceptMap> answers4 = tx.execute(Graql.<GraqlGet>parse("match " +
-                        "$r (someRole: $x, inferredRole: $z); " +
-                        "not {$r (anotherRole: $z);};" +
-                        "get;"));
-                assertEquals(2, answers4.size());
-
-                List<ConceptMap> answers5 = tx.execute(Graql.<GraqlGet>parse("match " +
-                        "$r (someRole: $x, inferredRole: $z); " +
-                        "not {$r (yetAnotherRole: $y, andYetAnotherRole: $y);};" +
-                        "get;"));
-                assertEquals(2, answers5.size());
-
-                assertEquals("New relations were created!", persistedRelations, tx.execute(Graql.parse("match $r isa baseRelation; get;").asGet(), false));
+//                List<ConceptMap> answers2 = tx.execute(Graql.<GraqlGet>parse("match (someRole: $x, yetAnotherRole: $y, andYetAnotherRole: $y, inferredRole: $z); get;"));
+//                assertEquals(1, answers2.size());
+//
+//                List<ConceptMap> answers3 = tx.execute(Graql.<GraqlGet>parse("match " +
+//                        "(someRole: $x, inferredRole: $z); " +
+//                        "not {(anotherRole: $z);};" +
+//                        "get;"));
+//
+//                assertTrue(answers3.isEmpty());
+//
+//                List<ConceptMap> answers4 = tx.execute(Graql.<GraqlGet>parse("match " +
+//                        "$r (someRole: $x, inferredRole: $z); " +
+//                        "not {$r (anotherRole: $z);};" +
+//                        "get;"));
+//                assertEquals(2, answers4.size());
+//
+//                List<ConceptMap> answers5 = tx.execute(Graql.<GraqlGet>parse("match " +
+//                        "$r (someRole: $x, inferredRole: $z); " +
+//                        "not {$r (yetAnotherRole: $y, andYetAnotherRole: $y);};" +
+//                        "get;"));
+//                assertEquals(2, answers5.size());
+//
+//                assertEquals("New relations were created!", persistedRelations, tx.execute(Graql.parse("match $r isa baseRelation; get;").asGet(), false));
             }
         }
     }
@@ -756,4 +767,43 @@ public class ReasoningIT {
             }
         }
     }
+
+    static class RepeatRule implements TestRule {
+
+        private static class RepeatStatement extends org.junit.runners.model.Statement {
+
+            private final int times;
+            private final org.junit.runners.model.Statement statement;
+
+            private RepeatStatement(int times, org.junit.runners.model.Statement statement) {
+                this.times = times;
+                this.statement = statement;
+            }
+
+            @Override
+            public void evaluate() throws Throwable {
+                for( int i = 0; i < times; i++ ) {
+                    statement.evaluate();
+                }
+            }
+        }
+
+        @Override
+        public org.junit.runners.model.Statement apply(org.junit.runners.model.Statement statement, Description description) {
+            org.junit.runners.model.Statement result = statement;
+            Repeat repeat = description.getAnnotation(Repeat.class);
+            if( repeat != null ) {
+                int times = repeat.times();
+                result = new RepeatStatement(times, statement);
+            }
+            return result;
+        }
+    }
+}
+
+
+@Retention( RetentionPolicy.RUNTIME )
+@Target(METHOD)
+@interface Repeat {
+    int times();
 }
