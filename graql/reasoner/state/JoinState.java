@@ -24,9 +24,11 @@ import grakn.core.concept.answer.Explanation;
 import grakn.core.graql.reasoner.explanation.JoinExplanation;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ReasonerQueryImpl;
+import grakn.core.graql.reasoner.tree.Node;
+import grakn.core.graql.reasoner.tree.NodeSingle;
+import grakn.core.graql.reasoner.tree.ResolutionTree;
 import grakn.core.graql.reasoner.utils.AnswerUtil;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -40,14 +42,17 @@ import java.util.stream.Collectors;
 public class JoinState extends AnswerPropagatorState<ReasonerQueryImpl> {
 
     private final LinkedList<ReasonerQueryImpl> subQueries;
+    private final AnswerPropagatorState conjunctiveStateParent;
 
     public JoinState(List<ReasonerQueryImpl> qs,
                      ConceptMap sub,
                      Unifier u,
-                     AnswerPropagatorState parent,
+                     AnswerPropagatorState immediateParent,
+                     AnswerPropagatorState CSParent,
                      Set<ReasonerAtomicQuery> subGoals) {
-        super(Iterables.getFirst(qs, null), sub, u, parent, subGoals);
+        super(Iterables.getFirst(qs, null), sub, u, immediateParent, subGoals);
         this.subQueries = new LinkedList<>(qs);
+        this.conjunctiveStateParent = CSParent;
         subQueries.removeFirst();
     }
 
@@ -78,13 +83,28 @@ public class JoinState extends AnswerPropagatorState<ReasonerQueryImpl> {
                 merged.getPattern());
 
         if (answer.isEmpty()) return null;
-        if (subQueries.isEmpty()) return new AnswerState(answer, getUnifier(), getParentState());
-        return new JoinState(subQueries, answer, getUnifier(), getParentState(), getVisitedSubGoals());
+        if (subQueries.isEmpty()) return new AnswerState(answer, getUnifier(), conjunctiveStateParent);
+        return new JoinState(subQueries, answer, getUnifier(), getParentState(), conjunctiveStateParent, getVisitedSubGoals());
     }
 
     @Override
     ConceptMap consumeAnswer(AnswerState state) {
         return state.getSubstitution();
+    }
+
+    @Override
+    public Node createNode(){
+        if(getParentState() instanceof ConjunctiveState) return new NodeSingle(this);
+        return null;
+    }
+
+    @Override
+    public void updateTreeProfile(ResolutionTree tree){
+        AnswerPropagatorState parentCS = this;
+        while(parentCS.getParentState() != null && !(parentCS.getParentState() instanceof ConjunctiveState)){
+            parentCS = parentCS.getParentState();
+        }
+        if (parentCS == this) tree.addChildToNode(getParentState(),this);
     }
 
     private static Explanation mergeExplanations(ConceptMap base, ConceptMap toMerge) {

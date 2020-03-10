@@ -100,6 +100,8 @@ public class ReasonerQueryImpl extends ResolvableQuery {
     private ConceptMap substitution = null;
     private ImmutableSetMultimap<Variable, Type> varTypeMap = null;
     private ResolutionPlan resolutionPlan = null;
+    private ResolutionQueryPlan resolutionQueryPlan = null;
+
     private Conjunction<Pattern> pattern = null;
     private Set<Variable> varNames = null;
 
@@ -440,6 +442,13 @@ public class ReasonerQueryImpl extends ResolvableQuery {
         return resolutionPlan;
     }
 
+    public ResolutionQueryPlan resolutionQueryPlan(){
+        if (resolutionQueryPlan == null){
+            resolutionQueryPlan = new ResolutionQueryPlan(context().queryFactory(), this);
+        }
+        return resolutionQueryPlan;
+    }
+
     /**
      * @param var variable name
      * @return id predicate for the specified var name if any
@@ -638,8 +647,8 @@ public class ReasonerQueryImpl extends ResolvableQuery {
         } else {
             dbIterator = Collections.emptyIterator();
 
-            ResolutionQueryPlan queryPlan = new ResolutionQueryPlan(context().queryFactory(), this);
-            subGoalIterator = Iterators.singletonIterator(new JoinState(queryPlan.queries(), new ConceptMap(), parent.getUnifier(), parent, subGoals));
+            ResolutionQueryPlan queryPlan = resolutionQueryPlan();
+            subGoalIterator = Iterators.singletonIterator(new JoinState(queryPlan.queries(), new ConceptMap(), parent.getUnifier(), parent, parent, subGoals));
         }
         return Iterators.concat(dbIterator, subGoalIterator);
     }

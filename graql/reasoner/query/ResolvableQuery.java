@@ -22,6 +22,7 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.ReasoningContext;
 import grakn.core.graql.reasoner.ResolutionIterator;
 import grakn.core.graql.reasoner.atom.Atom;
+import grakn.core.graql.reasoner.plan.ResolutionPlan;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.ResolutionState;
 import grakn.core.kb.graql.executor.ExecutorFactory;
@@ -113,6 +114,9 @@ public abstract class ResolvableQuery implements ReasonerQuery {
     public GraqlGet getQuery() {
         return Graql.match(getPattern()).get();
     }
+
+    @CheckReturnValue
+    public abstract ResolutionPlan resolutionPlan();
 
     /**
      * @return rewritten (decomposed) version of the query

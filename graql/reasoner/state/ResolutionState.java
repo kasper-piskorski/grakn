@@ -19,6 +19,9 @@
 package grakn.core.graql.reasoner.state;
 
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.graql.reasoner.tree.Node;
+import grakn.core.graql.reasoner.tree.NodeSingle;
+import grakn.core.graql.reasoner.tree.ResolutionTree;
 
 /**
  *
@@ -34,14 +37,23 @@ public abstract class ResolutionState {
 
     private final ConceptMap sub;
     private final AnswerPropagatorState parentState;
+    private final long creationTime;
 
     ResolutionState(ConceptMap sub, AnswerPropagatorState parent){
         this.sub = sub;
         this.parentState = parent;
+        this.creationTime = System.currentTimeMillis();
     }
 
     @Override
-    public String toString(){ return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode());}
+    public String toString(){ return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) +
+            (getParentState() != null? " to @" + Integer.toHexString(getParentState().hashCode()) : " to ROOT");}
+
+    public long creationTime(){ return creationTime;}
+
+    public Node createNode(){return new NodeSingle(this);}
+
+    public void updateTreeProfile(ResolutionTree tree){};
 
     /**
      * @return new sub goal generated from this state
@@ -68,5 +80,5 @@ public abstract class ResolutionState {
     /**
      * @return parent state of this state
      */
-    AnswerPropagatorState getParentState(){ return parentState;}
+    public AnswerPropagatorState getParentState(){ return parentState;}
 }
