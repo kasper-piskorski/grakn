@@ -134,6 +134,18 @@ public class RuleCacheImpl implements RuleCache {
         return getRulesWithType(type, false);
     }
 
+    private final Map<Rule, Set<Type>> positiveTypes = new HashMap<>();
+
+    private Stream<Type> getRulePositiveTypes(Rule rule){
+        Set<Type> match = positiveTypes.get(rule);
+        if (match != null) return match.stream();
+
+        Set<Type> types = new HashSet<>();
+        rule.whenPositiveTypes().forEach(types::add);
+        positiveTypes.put(rule, types);
+        return types.stream();
+    }
+
     /**
      * @param types to check
      * @return true if any of the provided types is absent - doesn't have instances
@@ -192,8 +204,8 @@ public class RuleCacheImpl implements RuleCache {
                 || type.subs().flatMap(SchemaConcept::thenRules).anyMatch(this::isRuleMatchable);
         if (!instancePresent){
             absentTypes.add(type);
-            type.whenRules()
-                    .filter(rule -> rule.whenPositiveTypes().anyMatch(pt -> pt.equals(type)))
+            getRulesWithType(type)
+                    .filter(rule -> getRulePositiveTypes(rule).anyMatch(pt -> pt.equals(type)))
                     .forEach(r -> unmatchableRules.add(r));
         }
         return instancePresent;
@@ -208,7 +220,7 @@ public class RuleCacheImpl implements RuleCache {
         if (unmatchableRules.contains(rule)) return false;
         if (checkedRules.contains(rule)) return true;
         checkedRules.add(rule);
-        return rule.whenPositiveTypes()
+        return getRulePositiveTypes(rule)
                 .allMatch(this::typeHasInstances);
     }
 
@@ -231,6 +243,7 @@ public class RuleCacheImpl implements RuleCache {
     @Override
     public void clear() {
         ruleMap.clear();
+        positiveTypes.clear();
         ruleConversionMap.clear();
         absentTypes.clear();
         checkedTypes.clear();
