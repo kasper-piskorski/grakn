@@ -123,6 +123,12 @@ public abstract class TypeAtom extends Atom {
     }
 
     @Override
+    public MultiUnifier tryToApplyRuleViaAtom(Atom ruleAtom) {
+        if (!(ruleAtom instanceof IsaAtom)) return this.tryToApplyRuleViaAtom(ruleAtom.toIsaAtom());
+        return ruleAtom.getMultiUnifier(this, UnifierType.RULE);
+    }
+
+    @Override
     public boolean isSelectable() {
         return getTypePredicate() == null
                 //disjoint atom

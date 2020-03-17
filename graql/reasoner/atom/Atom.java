@@ -34,6 +34,7 @@ import grakn.core.graql.reasoner.atom.task.validate.AtomValidator;
 import grakn.core.graql.reasoner.atom.task.validate.BasicAtomValidator;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.rule.InferenceRule;
+import grakn.core.graql.reasoner.rule.RuleContext;
 import grakn.core.graql.reasoner.unifier.MultiUnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.kb.concept.api.Label;
@@ -65,7 +66,7 @@ public abstract class Atom extends AtomicBase {
 
     private final ReasoningContext ctx;
     private final AtomValidator<Atom> validator = new BasicAtomValidator();
-    private Set<InferenceRule> applicableRules = null;
+    private Set<RuleContext> applicableRules = null;
 
     private final Label typeLabel;
 
@@ -126,14 +127,6 @@ public abstract class Atom extends AtomicBase {
                         inverse.stream().allMatch(u -> u.values().containsAll(this.getVarNames()))
                         && !parent.getPredicates(VariablePredicate.class).findFirst().isPresent()
                         && !this.getPredicates(VariablePredicate.class).findFirst().isPresent();
-    }
-
-    /**
-     * @param atom to unify with
-     * @return true if this unifies with atom via rule unifier
-     */
-    public boolean isUnifiableWith(Atom atom) {
-        return !this.getMultiUnifier(atom, UnifierType.RULE).equals(MultiUnifierImpl.nonExistent());
     }
 
     @Override
@@ -219,6 +212,25 @@ public abstract class Atom extends AtomicBase {
 
     public abstract boolean isRuleApplicableViaAtom(Atom headAtom);
 
+    public abstract MultiUnifier tryToApplyRuleViaAtom(Atom headAtom);
+
+    private RuleContext tryToApplyRule(InferenceRule child){
+        if(getIdPredicate(getVarName()) != null
+                && !child.redefinesType()
+                && !child.appendsRolePlayers()){
+            return new RuleContext(child, MultiUnifierImpl.nonExistent());
+        }
+        return new RuleContext(child, tryToApplyRuleViaAtom(child.getRuleConclusionAtom()));
+    }
+
+    /**
+     * @param atom to unify with
+     * @return true if this unifies with atom via rule unifier
+     */
+    public boolean isUnifiableWith(Atom atom) {
+        return !this.getMultiUnifier(atom, UnifierType.RULE).equals(MultiUnifierImpl.nonExistent());
+    }
+
     public boolean isRuleResolvable() {
         return getApplicableRules().findFirst().isPresent();
     }
@@ -240,17 +252,23 @@ public abstract class Atom extends AtomicBase {
      * @return set of applicable rules - does detailed (slow) check for applicability
      */
     public Stream<InferenceRule> getApplicableRules() {
+        return getRuleContexts().map(RuleContext::rule);
+    }
+
+    public Stream<RuleContext> getRuleContexts() {
         if (applicableRules == null) {
             RuleCache ruleCache = ctx.ruleCache();
             applicableRules = new HashSet<>();
             getPotentialRules()
                     .map(rule -> CacheCasting.ruleCacheCast(ruleCache).getRule(rule))
-                    .filter(this::isRuleApplicable)
-                    .map(r -> r.rewrite(this))
+                    .map(rule -> rule.rewrite(this))
+                    .map(this::tryToApplyRule)
+                    .filter(rctx -> !rctx.unifier().isEmpty())
                     .forEach(applicableRules::add);
         }
         return applicableRules.stream();
     }
+
 
     /**
      * @return if this atom requires decomposition into a set of atoms

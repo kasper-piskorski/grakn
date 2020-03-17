@@ -24,7 +24,6 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import grakn.common.util.Pair;
 import grakn.core.concept.answer.ConceptMap;
-import grakn.core.kb.graql.executor.TraversalExecutor;
 import grakn.core.graql.reasoner.CacheCasting;
 import grakn.core.graql.reasoner.ReasoningContext;
 import grakn.core.graql.reasoner.atom.Atom;
@@ -33,7 +32,7 @@ import grakn.core.graql.reasoner.atom.PropertyAtomicFactory;
 import grakn.core.graql.reasoner.atom.binary.TypeAtom;
 import grakn.core.graql.reasoner.atom.predicate.VariablePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
-import grakn.core.graql.reasoner.rule.RuleUtils;
+import grakn.core.graql.reasoner.rule.InferenceRule;
 import grakn.core.graql.reasoner.state.AnswerPropagatorState;
 import grakn.core.graql.reasoner.state.AnswerState;
 import grakn.core.graql.reasoner.state.AtomicState;
@@ -44,6 +43,7 @@ import grakn.core.graql.reasoner.state.VariableComparisonState;
 import grakn.core.graql.reasoner.unifier.MultiUnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
 import grakn.core.graql.reasoner.utils.ReasonerUtils;
+import grakn.core.kb.graql.executor.TraversalExecutor;
 import grakn.core.kb.graql.planning.gremlin.TraversalPlanFactory;
 import grakn.core.kb.graql.reasoner.atom.Atomic;
 import grakn.core.kb.graql.reasoner.cache.QueryCache;
@@ -52,7 +52,6 @@ import grakn.core.kb.graql.reasoner.unifier.MultiUnifier;
 import grakn.core.kb.graql.reasoner.unifier.Unifier;
 import graql.lang.pattern.Conjunction;
 import graql.lang.statement.Statement;
-
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -278,10 +277,20 @@ public class ReasonerAtomicQuery extends ReasonerQueryImpl {
      * @return ruleState iterator corresponding to rules that are matchable with this query
      */
     private Iterator<ResolutionState> ruleStateIterator(AnswerPropagatorState parent, Set<ReasonerAtomicQuery> visitedSubGoals) {
-        return RuleUtils
-                .stratifyRules(getAtom().getApplicableRules().collect(Collectors.toSet()))
-                .flatMap(r -> r.getMultiUnifier(getAtom()).stream().map(unifier -> new Pair<>(r, unifier)))
-                .map(rulePair -> rulePair.first().subGoal(this.getAtom(), rulePair.second(), parent, visitedSubGoals))
+        return /*RuleUtils
+                .stratifyRules()*/
+                getAtom().getRuleContexts()
+                        .peek(rctx -> {
+                            MultiUnifier unifier = rctx.unifier();
+                            InferenceRule rule = rctx.rule();
+
+                            MultiUnifier runifier = rule.getMultiUnifier(getAtom());
+                            if (!unifier.equals(runifier)){
+                                System.out.println();
+                            }
+                        })
+                .flatMap(rctx -> rctx.unifier().stream().map(unifier -> rctx.rule().subGoal(this.getAtom(), unifier, parent, visitedSubGoals)))
+                //.map(rulePair -> rulePair.first().subGoal(this.getAtom(), rulePair.second(), parent, visitedSubGoals))
                 .iterator();
     }
 }

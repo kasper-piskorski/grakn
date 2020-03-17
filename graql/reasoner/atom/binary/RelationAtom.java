@@ -510,6 +510,14 @@ public class RelationAtom extends Atom {
         return false;
     }
 
+    @Override
+    public MultiUnifier tryToApplyRuleViaAtom(Atom ruleAtom) {
+        if (ruleAtom instanceof RelationAtom || ruleAtom instanceof AttributeAtom)  {
+            RelationAtom atomWithType = typeReasoner.inferTypes(this.addType(ruleAtom.toRelationAtom().getSchemaConcept()), new ConceptMap(), context());
+            return ruleAtom.getMultiUnifier(atomWithType, UnifierType.RULE);
+        }
+        return MultiUnifierImpl.nonExistent();
+    }
 
     @Override
     public RelationAtom addType(SchemaConcept type) {

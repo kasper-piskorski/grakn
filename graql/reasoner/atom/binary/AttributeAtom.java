@@ -284,6 +284,13 @@ public class AttributeAtom extends Atom{
     }
 
     @Override
+    public MultiUnifier tryToApplyRuleViaAtom(Atom ruleAtom) {
+        if (!(ruleAtom instanceof AttributeAtom)) return MultiUnifierImpl.nonExistent();
+        AttributeAtom childAtom = (AttributeAtom) ruleAtom;
+        return childAtom.getMultiUnifier(this, UnifierType.RULE);
+    }
+
+    @Override
     public boolean isAttribute(){ return true;}
 
     @Override
