@@ -153,6 +153,6 @@ public class UnifierImpl implements Unifier {
                 }
             }
         }
-        return new ConceptMap(unified, answer.explanation(), answer.getPattern());
+        return new ConceptMap(unified, answer.explanation(), answer.getPattern(), answer.isCached());
     }
 }

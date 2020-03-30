@@ -43,25 +43,19 @@ public class ConceptMap extends Answer {
     private final Map<Variable, Concept> map;
     private final Explanation explanation;
     private final Pattern pattern;
+    private final boolean isCached;
 
-    public ConceptMap() {
-        this.map = Collections.emptyMap();
-        this.explanation = new Explanation();
-        pattern = null;
-    }
-
+    public ConceptMap() { this(Collections.emptyMap(), new Explanation(), null, false); }
     public ConceptMap(ConceptMap map) {
-        this(map.map, map.explanation, map.pattern);
+        this(map.map, map.explanation, map.pattern, map.isCached);
     }
-
-    public ConceptMap(Map<Variable, Concept> map, Explanation exp, Pattern pattern) {
+    public ConceptMap(Map<Variable, Concept> m) { this(m, new Explanation(), null, false); }
+    public ConceptMap(Map<Variable, Concept> map, Explanation exp, Pattern pattern){ this(map, exp, pattern, false); }
+    public ConceptMap(Map<Variable, Concept> map, Explanation exp, Pattern pattern, boolean isCached) {
         this.map = Collections.unmodifiableMap(map);
         this.explanation = exp;
         this.pattern = pattern;
-    }
-
-    public ConceptMap(Map<Variable, Concept> m) {
-        this(m, new Explanation(), null);
+        this.isCached = isCached;
     }
 
     /**
@@ -69,7 +63,7 @@ public class ConceptMap extends Answer {
      * @return Copy of this concept map with a new pattern set
      */
     public ConceptMap withPattern(Pattern pattern) {
-        ConceptMap copy = new ConceptMap(map(), explanation(), pattern);
+        ConceptMap copy = new ConceptMap(map(), explanation(), pattern, isCached);
         return copy;
     }
 
@@ -98,6 +92,8 @@ public class ConceptMap extends Answer {
     public Explanation explanation() {
         return explanation;
     }
+
+    public boolean isCached(){ return isCached;}
 
     @CheckReturnValue
     public Map<Variable, Concept> map() {
@@ -163,7 +159,11 @@ public class ConceptMap extends Answer {
      * @return explained answer
      */
     public ConceptMap explain(Explanation exp, Pattern pattern) {
-        return new ConceptMap(this.map, exp.childOf(this), pattern);
+        return new ConceptMap(this.map, exp.childOf(this), pattern, isCached);
+    }
+
+    public ConceptMap cached(){
+        return new ConceptMap(this.map,  this.explanation, this.pattern, true);
     }
 
     /**
@@ -177,7 +177,8 @@ public class ConceptMap extends Answer {
                         .filter(e -> vars.contains(e.getKey()))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                 this.explanation,
-                this.pattern
+                this.pattern,
+                this.isCached
         );
     }
 }

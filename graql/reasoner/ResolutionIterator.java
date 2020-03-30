@@ -78,15 +78,16 @@ public class ResolutionIterator extends ReasonerQueryIterator {
 
             ResolutionState newState = state.generateChildState();
             if (newState != null) {
-                if (LOG.isTraceEnabled()) logTree.addState(newState);
+                //if (LOG.isTraceEnabled())
+                    logTree.addState(newState);
 
                 if (!state.isAnswerState()) states.push(state);
                 states.push(newState);
             } else {
-                if (LOG.isTraceEnabled()) {
+                //if (LOG.isTraceEnabled()) {
                     Node node = logTree.getNode(state);
                     if (node != null) node.ackCompletion();
-                }
+                //}
 
                 LOG.trace("new state: NULL");
             }

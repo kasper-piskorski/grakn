@@ -77,5 +77,5 @@ public class AnswerState extends ResolutionState {
 
     InferenceRule getRule(){ return rule;}
 
-    Unifier getUnifier(){ return unifier;}
+    public Unifier getUnifier(){ return unifier;}
 }
