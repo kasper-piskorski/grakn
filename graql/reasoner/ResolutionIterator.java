@@ -22,6 +22,7 @@ import grakn.core.concept.answer.ConceptMap;
 import grakn.core.graql.reasoner.cache.MultilevelSemanticCache;
 import grakn.core.graql.reasoner.query.ReasonerAtomicQuery;
 import grakn.core.graql.reasoner.query.ResolvableQuery;
+import grakn.core.graql.reasoner.state.AtomicState;
 import grakn.core.graql.reasoner.state.ResolutionState;
 import grakn.core.graql.reasoner.tree.Node;
 import grakn.core.graql.reasoner.tree.ResolutionTree;
@@ -48,7 +49,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
     private long oldAns = 0;
     private final ResolvableQuery query;
     private final Set<ConceptMap> answers = new HashSet<>();
-    private final Set<ReasonerAtomicQuery> subGoals;
+    private final Set<ReasonerAtomicQuery> completeSubGoals = new HashSet<>();
     private final QueryCache queryCache;
     private final Stack<ResolutionState> states = new Stack<>();
     private final ResolutionTree logTree;
@@ -59,7 +60,6 @@ public class ResolutionIterator extends ReasonerQueryIterator {
 
     public ResolutionIterator(ResolvableQuery q, Set<ReasonerAtomicQuery> subGoals, QueryCache queryCache){
         this.query = q;
-        this.subGoals = subGoals;
         this.queryCache = queryCache;
         ResolutionState rootState = query.resolutionState(new ConceptMap(), new UnifierImpl(), null, subGoals);
         states.push(rootState);
@@ -79,7 +79,6 @@ public class ResolutionIterator extends ReasonerQueryIterator {
             ResolutionState newState = state.generateChildState();
             if (newState != null) {
                 if (LOG.isDebugEnabled()) logTree.addState(newState, state);
-
                 if (!state.isAnswerState()) states.push(state);
                 states.push(newState);
             } else {
@@ -88,6 +87,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
                     if (node != null) node.ackCompletion();
                 }
 
+                if (state instanceof AtomicState) completeSubGoals.add(((AtomicState) state).getQuery());
                 LOG.trace("new state: NULL");
             }
         }
@@ -131,10 +131,9 @@ public class ResolutionIterator extends ReasonerQueryIterator {
         if (reiterate()) {
             long dAns = answers.size() - oldAns;
             if (dAns != 0 || iter == 0) {
-                LOG.debug("iter: {} answers: {} dAns = {} time = {}", iter, answers.size(), dAns, System.currentTimeMillis() - startTime);
+                LOG.info("iter: {} answers: {} dAns = {} time = {}", iter, answers.size(), dAns, System.currentTimeMillis() - startTime);
                 iter++;
                 states.push(query.resolutionState(new ConceptMap(), new UnifierImpl(), null, new HashSet<>()));
-
                 oldAns = answers.size();
                 startTime = System.currentTimeMillis();
                 return hasNext();
@@ -148,7 +147,7 @@ public class ResolutionIterator extends ReasonerQueryIterator {
 
     private void finalise(){
         MultilevelSemanticCache queryCache = CacheCasting.queryCacheCast(this.queryCache);
-        subGoals.forEach(queryCache::ackCompleteness);
+        completeSubGoals.forEach(queryCache::ackCompleteness);
         queryCache.propagateAnswers();
 
         if (LOG.isDebugEnabled()) logTree.outputToFile();

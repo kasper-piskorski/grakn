@@ -20,6 +20,7 @@ package grakn.core.graql.reasoner;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import grakn.core.concept.answer.ConceptMap;
+import grakn.core.kb.concept.api.Concept;
 import grakn.core.kb.concept.api.Relation;
 import grakn.core.kb.concept.api.Thing;
 import grakn.core.kb.server.Session;
@@ -38,6 +39,7 @@ import java.util.stream.Stream;
 
 import static grakn.core.util.GraqlTestUtil.assertCollectionsNonTriviallyEqual;
 import static grakn.core.util.GraqlTestUtil.loadFromFileAndCommit;
+import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -58,6 +60,57 @@ public class ReasoningIT {
     //The tests validate the correctness of the rule reasoning implementation w.r.t. the intended semantics of rules.
     //The ignored tests reveal some bugs in the reasoning algorithm, as they don't return the expected results,
     //as specified in the respective comments below.
+
+    @Test
+    public void test() {
+        for(int i = 0; i < 50 ; i++) {
+            try (Session session = server.sessionWithNewKeyspace()) {
+                loadFromFileAndCommit(resourcePath, "debug-schema.gql", session);
+                loadFromFileAndCommit(resourcePath, "debug-data-trim4.gql", session);
+
+                try (Transaction tx = session.transaction(Transaction.Type.WRITE)) {
+                    long start = System.currentTimeMillis();
+
+                    List<ConceptMap> r2answers = tx.execute(Graql.parse("match $x isa relationship-2; get;")
+                            .asGet(), false);
+
+                    List<ConceptMap> r5answers = tx.execute(Graql.parse(
+                            "match $x isa relationship-5; get;"
+                    )
+                            .asGet(), false);
+
+                    List<ConceptMap> r8answers = tx.execute(Graql.parse("match $x isa relationship-8; get;")
+                            .asGet(), false);
+
+
+                    /*
+                    List<ConceptMap> r4answers = tx.execute(Graql.parse(
+                    "match " +
+                    "(role-1: $var-7, role-7: $var-6) isa relationship-2;" +
+                    "not { (role-5: $var-7, role-6: $var-8) isa relationship-5;}; get;").asGet(), false);
+                    */
+
+                    List<ConceptMap> answers = tx.execute(Graql.parse(
+                            "match $thing isa relationship-4; get $thing;"
+                            //"match (role-5: $x, role-6: $y) isa relationship-6; get;"
+                            //"match (role-5: $x, role-6: $y) isa relationship-4; get;"
+                    )
+                            .asGet());
+                    System.out.println("execution time: " + (System.currentTimeMillis() - start));
+
+                    Set<Concept> concepts = answers.stream().flatMap(a -> a.concepts().stream()).collect(toSet());
+                    System.out.println("concepts: " + concepts.size());
+                    System.out.println("answers: " + answers.size());
+                    //assertEquals(2979, answers.size());
+                    //assertEquals(1629, answers.size());
+                    //assertEquals(548, answers.size());
+                    assertEquals(11, answers.size());
+
+                }
+            }
+        }
+    }
+
 
     @Test
     public void whenMaterialising_duplicatesAreNotCreated() {
@@ -571,7 +624,7 @@ public class ReasoningIT {
                         Iterables.getOnlyElement(tx.execute(Graql.<GraqlGet>parse("match $r (anotherRole: $x, andYetAnotherRole: $y); get;"), false))
                 )
                         .map(ans -> ans.project(Sets.newHashSet(new Variable("r"))))
-                        .collect(Collectors.toSet());
+                        .collect(toSet());
 
                 assertCollectionsNonTriviallyEqual("Rules are not matched correctly!", variants, inferredRelations);
             }
@@ -590,7 +643,7 @@ public class ReasoningIT {
                 //three symmetric roles hence 3! results
                 assertEquals("Rule body is not rewritten correctly!", 6, derivedRPTriples.size());
                 assertEquals("Rule body is not rewritten correctly!", 6, derivedRelations.size());
-                assertEquals(1, derivedRelations.stream().map(ans -> ans.get("r")).collect(Collectors.toSet()).size());
+                assertEquals(1, derivedRelations.stream().map(ans -> ans.get("r")).collect(toSet()).size());
             }
         }
     }

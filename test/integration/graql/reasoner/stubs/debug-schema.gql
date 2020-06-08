@@ -1,0 +1,48 @@
+define
+attribute-1 sub attribute, value string;
+attribute-2 sub attribute, value string;
+attribute-3 sub attribute, value string;
+attribute-4 sub attribute, value string;
+attribute-5 sub attribute, value string;
+entity-1 sub entity, key attribute-1, has attribute-2, plays role-7, plays role-6;
+entity-2 sub entity, has attribute-1, has attribute-3, has attribute-5, plays role-1, plays role-2, plays role-2, plays role-1, plays role-4, plays role-1, plays role-3;
+entity-3 sub entity-2, plays role-8, plays role-5, plays role-6, plays role-6;
+entity-4 sub entity-2, key attribute-2, plays role-5, plays role-6, plays role-1, plays role-5, plays role-6;
+entity-6 sub entity-2, key attribute-2, plays role-5, plays role-6, plays role-1;
+entity-5 sub entity-2, key attribute-2, plays role-6, plays role-1, plays role-5, abstract;
+entity-7 sub entity, key attribute-5, has attribute-1, plays role-9;
+relationship-1 sub relation, abstract;
+relationship-2 sub relation, relates role-1, relates role-7;
+relationship-3 sub relation, relates role-1, relates role-8;
+relationship-7 sub relation, relates role-1, relates role-9, has attribute-4;
+relationship-4 sub relation, relates role-5, relates role-6;
+relationship-5 sub relation, relates role-5, relates role-6;
+relationship-6 sub relation, relates role-5, relates role-6;
+relationship-10 sub relation, relates role-1, relates role-4;
+relationship-8 sub relation, relates role-2, relates role-2;
+relationship-9 sub relation, relates role-1, relates role-3;
+
+rule-1 sub rule , when {
+ (role-5: $var-7, role-6: $var-6) isa relationship-5;}, then {
+ (role-5: $var-7, role-6: $var-6) isa relationship-4;};
+
+rule-2 sub rule , when {
+    (role-1: $var-7, role-7: $var-6) isa relationship-2;
+    not {
+    (role-5: $var-7, role-6: $var-8) isa relationship-5;};}, then {
+    (role-5: $var-7, role-6: $var-6) isa relationship-4;};
+
+extra-rule sub rule , when {
+     (role-5: $var-7, role-6: $var-6) isa relationship-4;
+    (role-5: $var-8, role-6: $var-7) isa relationship-4;}, then {
+     (role-5: $var-8, role-6: $var-6) isa relationship-4;};
+
+rule-6 sub rule , when {
+ (role-2: $var-6, role-2: $var-7) isa relationship-8;}, then {
+ (role-5: $var-7, role-6: $var-6) isa relationship-5;};
+
+entity-12 sub entity-1;
+entity-10 sub entity-5, plays role-1;
+entity-11 sub entity-5, plays role-1, plays role-1, plays role-4, plays role-5, plays role-3, plays role-2;
+entity-9 sub entity-5, plays role-1, plays role-6, plays role-5;
+entity-8 sub entity-5, plays role-1, plays role-6;

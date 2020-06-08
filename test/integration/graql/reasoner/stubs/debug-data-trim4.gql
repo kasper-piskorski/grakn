@@ -1,0 +1,16 @@
+insert $var-12 isa entity-12, has attribute-1 "value-7", has attribute-2 "value-6"; 
+
+match $var-15 isa entity-1,  has attribute-2 "value-6"; 
+insert $var-16 isa entity-6, has attribute-1 "value-11", has attribute-2 "value-10", has attribute-5 "value-4";(role-1: $var-16, role-7: $var-15)  isa relationship-2; 
+
+match $var-725 isa entity-1,  has attribute-2 "value-6";$var-723 isa entity-6,  has attribute-2 "value-10"; 
+insert $var-724 isa entity-11, has attribute-1 "value-473", has attribute-2 "value-472", has attribute-5 "value-4";(role-1: $var-724, role-7: $var-725)  isa relationship-2;(role-5: $var-724, role-6: $var-723)  isa relationship-5; 
+
+match $var-728 isa entity-1,  has attribute-2 "value-6";$var-726 isa entity-6,  has attribute-2 "value-10"; 
+insert $var-727 isa entity-11, has attribute-1 "value-475", has attribute-2 "value-474", has attribute-5 "value-4";(role-1: $var-727, role-7: $var-728)  isa relationship-2;(role-5: $var-727, role-6: $var-726)  isa relationship-5; 
+
+match $var-731 isa entity-1,  has attribute-2 "value-6";$var-729 isa entity-6,  has attribute-2 "value-10";
+insert $var-730 isa entity-11, has attribute-1 "value-477", has attribute-2 "value-476", has attribute-5 "value-4";(role-1: $var-730, role-7: $var-731)  isa relationship-2;(role-5: $var-730, role-6: $var-729)  isa relationship-5; 
+
+match $var-1531 isa entity-5,  has attribute-2 "value-470";$var-1530 isa entity-5,  has attribute-2 "value-474";  insert $var-1532 ( role-2: $var-1531 ,  role-2: $var-1530 ) isa relationship-8 ; 
+match $var-1540 isa entity-5,  has attribute-2 "value-476";$var-1539 isa entity-5,  has attribute-2 "value-474";  insert $var-1541 ( role-2: $var-1540 ,  role-2: $var-1539 ) isa relationship-8 ; 
