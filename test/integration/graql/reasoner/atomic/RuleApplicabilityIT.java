@@ -76,6 +76,7 @@ public class RuleApplicabilityIT {
     private static Session ruleApplicabilitySession;
     private static Session resourceApplicabilitySession;
     private static Session explicitOwnershipRelationSession;
+    private static Session newExampleSession;
 
     private static Thing putEntityWithResource(Transaction tx, EntityType type, Label resource, Object value) {
         Thing inst = type.create();
@@ -90,14 +91,19 @@ public class RuleApplicabilityIT {
 
     @BeforeClass
     public static void loadContext(){
-        Config mockServerConfig = storage.createCompatibleServerConfig();
-        resourceApplicabilitySession = SessionUtil.serverlessSessionWithNewKeyspace(mockServerConfig);
         String resourcePath = "test/integration/graql/reasoner/resources/";
+        Config mockServerConfig = storage.createCompatibleServerConfig();
+
+        resourceApplicabilitySession = SessionUtil.serverlessSessionWithNewKeyspace(mockServerConfig);
         loadFromFileAndCommit(resourcePath,"resourceApplicabilityTest.gql", resourceApplicabilitySession);
         explicitOwnershipRelationSession =  SessionUtil.serverlessSessionWithNewKeyspace(mockServerConfig);
         loadFromFileAndCommit(resourcePath,"explicitOwnershipRelationApplicabilityTest.gql", explicitOwnershipRelationSession);
+
         ruleApplicabilitySession =  SessionUtil.serverlessSessionWithNewKeyspace(mockServerConfig);
         loadFromFileAndCommit(resourcePath,"ruleApplicabilityTest.gql", ruleApplicabilitySession);
+
+        newExampleSession = SessionUtil.serverlessSessionWithNewKeyspace(mockServerConfig);
+        loadFromFileAndCommit("test/integration/graql/reasoner/stubs/", "example.gql", newExampleSession);
 
         //add extra data so that all rules can be possibly triggered
         try(Transaction tx = ruleApplicabilitySession.transaction(Transaction.Type.WRITE)) {
@@ -115,6 +121,7 @@ public class RuleApplicabilityIT {
                     .has(tx.getAttributeType("description").create("someDescription"));
             tx.commit();
         }
+
     }
 
     @AfterClass
@@ -122,6 +129,41 @@ public class RuleApplicabilityIT {
         ruleApplicabilitySession.close();
         resourceApplicabilitySession.close();
         explicitOwnershipRelationSession.close();
+        newExampleSession.close();
+    }
+
+    @Test
+    public void genericRelationWithGenericallyTypedRolePlayer2() {
+        try (Transaction tx = newExampleSession.transaction(Transaction.Type.WRITE)) {
+            TestTransactionProvider.TestTransaction testTx = (TestTransactionProvider.TestTransaction) tx;
+            ReasonerQueryFactory reasonerQueryFactory = testTx.reasonerQueryFactory();
+
+            String relationString = "{ ($x, $y);$x isa root; };";
+            String relationString2 = "{ ($x, $y);$x isa entity; };";
+            String relationString3 = "{ ($x, $y);$x isa relation; };";
+            Atom relation = reasonerQueryFactory.atomic(conjunction(relationString)).getAtom();
+            Atom relation2 = reasonerQueryFactory.atomic(conjunction(relationString2)).getAtom();
+            Atom relation3 = reasonerQueryFactory.create(conjunction(relationString3)).getAtoms(RelationAtom.class).findFirst().orElse(null);
+
+            assertEquals(7, relation.getApplicableRules().count());
+            assertEquals(7, relation2.getApplicableRules().count());
+            assertEquals(1, relation3.getApplicableRules().count());
+        }
+    }
+
+    @Test
+    public void relationWithUnspecifiedRoles_specifyingRolePlayerMakesRuleInapplicable2(){
+        try (Transaction tx = newExampleSession.transaction(Transaction.Type.WRITE)) {
+            ReasonerQueryFactory reasonerQueryFactory = ((TestTransactionProvider.TestTransaction) tx).reasonerQueryFactory();
+
+            Concept concept = getConcept(tx, "name", "root");
+            String relationString = "{" +
+                    "($x, $y) isa ternary-steep-path;" +
+                    "$x id " + concept.id().getValue() + ";" +
+                    "};";
+            Atom relation = reasonerQueryFactory.atomic(conjunction(relationString)).getAtom();
+            assertThat(relation.getApplicableRules().collect(toSet()), empty());
+        }
     }
 
     @Test
@@ -514,7 +556,7 @@ public class RuleApplicabilityIT {
             Atom relation3 = reasonerQueryFactory.create(conjunction(relationString3)).getAtoms(RelationAtom.class).findFirst().orElse(null);
 
             assertEquals(7, relation.getApplicableRules().count());
-            assertEquals(testTx.ruleCache().getRules().filter(r -> r.thenTypes().allMatch(Concept::isRelationType)).count(), relation2.getApplicableRules().count());
+            assertEquals(7, relation2.getApplicableRules().count());
 
             //TODO not filtered correctly
             //assertEquals(testTx.ruleCache().getRules().filter(r -> r.thenTypes().allMatch(Concept::isAttributeType)).count(), relation3.getApplicableRules().count());
@@ -536,7 +578,7 @@ public class RuleApplicabilityIT {
             Atom relation3 = reasonerQueryFactory.atomic(conjunction(relationString3)).getAtom();
             Atom relation4 = reasonerQueryFactory.atomic(conjunction(relationString4)).getAtom();
             assertEquals(2, relation.getApplicableRules().count());
-            assertEquals(2, relation2.getApplicableRules().count());
+            assertEquals(1, relation2.getApplicableRules().count());
             assertEquals(1, relation3.getApplicableRules().count());
             assertThat(relation4.getApplicableRules().collect(toSet()), empty());
         }

@@ -32,6 +32,7 @@ import grakn.core.graql.reasoner.ReasoningContext;
 import grakn.core.graql.reasoner.atom.Atom;
 import grakn.core.graql.reasoner.atom.binary.RelationAtom;
 import grakn.core.graql.reasoner.atom.predicate.IdPredicate;
+import grakn.core.graql.reasoner.atom.predicate.Predicate;
 import grakn.core.graql.reasoner.atom.predicate.ValuePredicate;
 import grakn.core.graql.reasoner.cache.SemanticDifference;
 import grakn.core.graql.reasoner.cache.VariableDefinition;
@@ -39,6 +40,7 @@ import grakn.core.graql.reasoner.query.ReasonerQueryEquivalence;
 import grakn.core.graql.reasoner.unifier.MultiUnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierImpl;
 import grakn.core.graql.reasoner.unifier.UnifierType;
+import grakn.core.kb.concept.api.ConceptId;
 import grakn.core.kb.concept.api.Label;
 import grakn.core.kb.concept.api.Role;
 import grakn.core.kb.concept.api.Type;
@@ -182,8 +184,11 @@ public class RelationSemanticProcessor implements SemanticProcessor<RelationAtom
                             .filter(crp -> {
                                 Variable childVar = crp.getPlayer().var();
                                 Set<Type> childTypes = childVarTypeMap.get(childVar);
+                                IdPredicate parentId = parentAtom.getIdPredicate(prp.getPlayer().var());
+                                Type parentDirectType = parentId != null? conceptManager.getConcept(parentId.getPredicate()).asThing().type() : null;
+
                                 return unifierType.typeCompatibility(parentTypes, childTypes)
-                                        && unifierType.typePlayabilityWithInsertSemantics(childAtom, childVar, parentTypes);
+                                        && unifierType.typePlayabilityWithInsertSemantics(childAtom, childVar, parentTypes, parentDirectType);
                             })
                             //rule body playability - match semantics
                             .filter(crp -> {

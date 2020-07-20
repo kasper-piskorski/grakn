@@ -122,7 +122,7 @@ public interface Atomic {
     default boolean typesRoleCompatibleWithMatchSemantics(Variable typedVar, Set<Type> parentTypes){ return true;}
 
     @CheckReturnValue
-    default boolean typesRoleCompatibleWithInsertSemantics(Variable typedVar, Set<Type> parentTypes){ return true;}
+    default boolean typesRoleCompatibleWithInsertSemantics(Variable typedVar, Set<Type> parentTypes, Type parentDirectType){ return true;}
 
     /**
      * Determines whether the subsumption relation between this (A) and provided atom (B) holds,

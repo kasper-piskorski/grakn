@@ -65,7 +65,7 @@ public class TypeAtomSemanticProcessor implements SemanticProcessor<TypeAtom> {
                     parentType != null? Collections.singleton(parentType) : Collections.emptySet(),
                     childType != null? Collections.singleton(childType) : Collections.emptySet())
                 || !unifierType.typeCompatibility(parentTypes, childTypes)
-                || !unifierType.typePlayabilityWithInsertSemantics(childAtom, childAtom.getVarName(), parentTypes)
+                || !unifierType.typePlayabilityWithInsertSemantics(childAtom, childAtom.getVarName(), parentTypes, null)
                 || !unifierType.typeDirectednessCompatibility(parentAtom, childAtom)){
             return UnifierImpl.nonExistent();
         }

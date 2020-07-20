@@ -189,8 +189,8 @@ public enum UnifierType implements UnifierComparison, EquivalenceCoupling {
         }
 
         @Override
-        public boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types) {
-            return child.typesRoleCompatibleWithInsertSemantics(var, types);
+        public boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types, Type directType) {
+            return child.typesRoleCompatibleWithInsertSemantics(var, types, directType);
         }
 
         @Override
@@ -280,8 +280,8 @@ public enum UnifierType implements UnifierComparison, EquivalenceCoupling {
         }
 
         @Override
-        public boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types) {
-            return child.typesRoleCompatibleWithInsertSemantics(var, types);
+        public boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types, Type directType) {
+            return child.typesRoleCompatibleWithInsertSemantics(var, types, directType);
         }
 
         @Override
@@ -348,8 +348,8 @@ public enum UnifierType implements UnifierComparison, EquivalenceCoupling {
         }
 
         @Override
-        public boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types) {
-            return SUBSUMPTIVE.typePlayabilityWithInsertSemantics(child, var, types);
+        public boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types, Type directType) {
+            return SUBSUMPTIVE.typePlayabilityWithInsertSemantics(child, var, types, directType);
         }
 
         @Override

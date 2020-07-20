@@ -433,15 +433,17 @@ public class RelationAtom extends Atom {
         return validator.validateAsRuleBody(this, ruleLabel, context());
     }
 
+    @Override
     public boolean typesRoleCompatibleWithMatchSemantics(Variable typedVar, Set<Type> parentTypes) {
-        return parentTypes.stream().allMatch(parentType -> isTypeRoleCompatible(typedVar, parentType, true));
+        return parentTypes.stream().allMatch(parentType -> isTypeRoleCompatible(typedVar, parentType, null, true));
     }
 
-    public boolean typesRoleCompatibleWithInsertSemantics(Variable typedVar, Set<Type> parentTypes) {
-        return parentTypes.stream().allMatch(parentType -> isTypeRoleCompatible(typedVar, parentType, false));
+    @Override
+    public boolean typesRoleCompatibleWithInsertSemantics(Variable typedVar, Set<Type> parentTypes, Type parentDirectType) {
+        return parentTypes.stream().allMatch(parentType -> isTypeRoleCompatible(typedVar, parentType, parentDirectType,false));
     }
 
-    private boolean isTypeRoleCompatible(Variable typedVar, Type parentType, boolean includeRoleHierarchy) {
+    private boolean isTypeRoleCompatible(Variable typedVar, Type parentType, Type parentDirectType, boolean includeHierarchies) {
         if (parentType == null || Schema.MetaSchema.isMetaLabel(parentType.label())) return true;
 
         List<Role> roleRequirements = getRoleVarMap().entries().stream()
@@ -453,10 +455,10 @@ public class RelationAtom extends Atom {
 
         if (roleRequirements.isEmpty()) return true;
 
-        Set<Type> parentTypes = parentType.subs().collect(Collectors.toSet());
+        Set<Type> parentTypes = parentDirectType != null? Sets.newHashSet(parentDirectType) : parentType.subs().collect(Collectors.toSet());
         return roleRequirements.stream()
                 //include sub roles
-                .flatMap(role -> includeRoleHierarchy ? role.subs() : Stream.of(role))
+                .flatMap(role -> includeHierarchies ? role.subs() : Stream.of(role))
                 //check if it can play it
                 .flatMap(Role::players)
                 .anyMatch(parentTypes::contains);

@@ -23,6 +23,7 @@ filegroup(
         "appendingRPs.gql",
         "duplicateMaterialisation.gql",
         "explanations.gql",
+        "example.gql",
         "negation.gql",
         "negationCompleteness.gql",
         "negationGoalPropagation.gql",

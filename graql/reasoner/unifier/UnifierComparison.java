@@ -180,7 +180,7 @@ public interface UnifierComparison {
      */
     default boolean typePlayabilityWithMatchSemantics(Atomic child, Variable var, Set<Type> types){ return true;}
 
-    default boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types){ return true;}
+    default boolean typePlayabilityWithInsertSemantics(Atomic child, Variable var, Set<Type> types, Type directType){ return true;}
 
     /**
      *

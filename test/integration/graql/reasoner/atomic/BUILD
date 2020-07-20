@@ -72,6 +72,7 @@ java_test(
         "//test/integration/graql/reasoner/resources:explicit-ownership-relation-applicability",
         "//test/integration/graql/reasoner/resources:resource-applicability",
         "//test/integration/graql/reasoner/resources:rule-applicability",
+        "//test/integration/graql/reasoner/stubs:reasoning-stubs",
     ],
     test_class = "grakn.core.graql.reasoner.atomic.RuleApplicabilityIT",
     deps = [
